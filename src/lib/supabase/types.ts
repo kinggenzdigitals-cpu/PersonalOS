@@ -25,6 +25,8 @@ export type HabitStatus = "completed" | "skipped" | "missed";
 export type TaskStatus = "todo" | "done" | "cancelled" | "backlog";
 export type CalendarEventKind = "appointment" | "personal" | "work" | "other";
 export type WeekStart = "monday" | "sunday";
+export type LedgerDirection = "receivable" | "payable";
+export type LedgerStatus = "open" | "settled";
 
 // ---- Helpers -------------------------------------------------------------
 
@@ -178,6 +180,18 @@ export type CalendarEvent = Owned & {
   location: string | null;
 } & Timestamps;
 
+export type LedgerEntry = Owned & {
+  direction: LedgerDirection;
+  party: string;
+  amount: number;
+  due_date: string | null;
+  status: LedgerStatus;
+  account_id: string | null;
+  settled_transaction_id: string | null;
+  settled_at: string | null;
+  notes: string | null;
+} & Timestamps;
+
 // ---- Insert / Update helpers --------------------------------------------
 
 // user_id is required on insert; every other column is optional because the
@@ -226,6 +240,11 @@ export type Database = {
         InsertOf<CalendarEvent>,
         UpdateOf<CalendarEvent>
       >;
+      ledger_entries: TableShape<
+        LedgerEntry,
+        InsertOf<LedgerEntry>,
+        UpdateOf<LedgerEntry>
+      >;
     };
     Views: {
       account_balances: {
@@ -245,6 +264,8 @@ export type Database = {
       habit_status: HabitStatus;
       task_status: TaskStatus;
       calendar_event_kind: CalendarEventKind;
+      ledger_direction: LedgerDirection;
+      ledger_status: LedgerStatus;
     };
   };
 };

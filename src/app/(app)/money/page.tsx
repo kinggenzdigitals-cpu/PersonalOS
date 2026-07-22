@@ -1,8 +1,11 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { requireOnboardedProfile } from "@/lib/auth";
 import { getMoneyOverview, getCategories } from "@/lib/queries/money";
+import { getLedgerSummary } from "@/lib/queries/ledger";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { MoneyQuickActions } from "@/components/money/money-quick-actions";
 import { AccountCard } from "@/components/money/account-card";
 import { TrendChart } from "@/components/money/trend-chart-lazy";
@@ -12,11 +15,14 @@ export const metadata: Metadata = { title: "Money" };
 
 export default async function MoneyOverviewPage() {
   const profile = await requireOnboardedProfile();
-  const [overview, categories] = await Promise.all([
+  const [overview, categories, ledger] = await Promise.all([
     getMoneyOverview(profile.timezone),
     getCategories(),
+    getLedgerSummary(profile.timezone),
   ]);
   const currency = profile.currency;
+  const hasLedger =
+    ledger.totalReceivable > 0 || ledger.totalPayable > 0;
 
   const catName = new Map(categories.map((c) => [c.id, c]));
   const donutData = overview.byCategory.map((row) => {
@@ -56,9 +62,11 @@ export default async function MoneyOverviewPage() {
 
       <MoneyQuickActions />
 
-      {/* Accounts */}
+      {/* Cash Position */}
       <section className="space-y-2">
-        <h2 className="text-sm font-medium text-muted-foreground">Accounts</h2>
+        <h2 className="text-sm font-medium text-muted-foreground">
+          Cash Position
+        </h2>
         {overview.accounts.length > 0 ? (
           <div className="grid grid-cols-2 gap-3">
             {overview.accounts.map((a) => (
@@ -70,6 +78,45 @@ export default async function MoneyOverviewPage() {
             No accounts yet. Add one above.
           </p>
         )}
+      </section>
+
+      {/* Receivables & Payables */}
+      <section className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            Receivables &amp; Payables
+          </h2>
+          <Link
+            href="/money/owed"
+            className="text-xs text-brand underline-offset-4 hover:underline"
+          >
+            {hasLedger ? "Manage →" : "Add →"}
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <LedgerStat
+            label="Total Receivable"
+            value={formatMoney(ledger.totalReceivable, currency)}
+            sub={
+              ledger.overdueReceivable > 0
+                ? `${formatMoney(ledger.overdueReceivable, currency)} overdue`
+                : "Owed to you"
+            }
+            overdue={ledger.overdueReceivable > 0}
+            tone="up"
+          />
+          <LedgerStat
+            label="Total Payable"
+            value={formatMoney(ledger.totalPayable, currency)}
+            sub={
+              ledger.overduePayable > 0
+                ? `${formatMoney(ledger.overduePayable, currency)} overdue`
+                : "You owe"
+            }
+            overdue={ledger.overduePayable > 0}
+            tone="down"
+          />
+        </div>
       </section>
 
       {/* This month */}
@@ -126,6 +173,42 @@ function Stat({
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className={`tnum mt-0.5 text-sm font-semibold ${className ?? ""}`}>
         {value}
+      </p>
+    </div>
+  );
+}
+
+function LedgerStat({
+  label,
+  value,
+  sub,
+  overdue,
+  tone,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  overdue: boolean;
+  tone: "up" | "down";
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          "tnum mt-1 font-display text-xl",
+          tone === "up" ? "text-money-up" : "text-money-down",
+        )}
+      >
+        {value}
+      </p>
+      <p
+        className={cn(
+          "mt-0.5 text-[11px]",
+          overdue ? "text-error" : "text-muted-foreground",
+        )}
+      >
+        {sub}
       </p>
     </div>
   );

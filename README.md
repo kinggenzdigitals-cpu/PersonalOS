@@ -122,3 +122,12 @@ skeletons, an error boundary, and a 404 page.
 All 7 milestones are code-complete. `npm run build` and `npm run lint` pass
 clean. The remaining step is connecting Supabase (see **Getting started**) so
 the app can run and be verified end-to-end.
+
+**Extension — Receivables & Payables + Cash Position.** A ledger module
+(`ledger_entries`, migration `0003_ledger.sql`) tracking money owed to you
+(receivables) and money you owe (payables), works for business (invoices /
+supplier POs) or personal (utang / pautang). Money → **Owed** sub-tab shows
+Total Receivable / Overdue / Total Payable / Overdue stat cards plus grouped
+lists; **mark received/paid** creates the matching income/expense transaction
+and updates the account balance. The Money overview gains a **Cash Position**
+section (per-account balances) and a receivables/payables summary.
