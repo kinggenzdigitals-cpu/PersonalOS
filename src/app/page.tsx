@@ -18,14 +18,16 @@ export const metadata: Metadata = {
 };
 
 /**
- * Stock imagery. These are swappable placeholders (Lorem Picsum) — replace the
- * URLs with your own branded photos or specific Unsplash images anytime.
+ * Stock imagery (Unsplash, warm-toned to match the palette). Swap the URLs for
+ * your own branded photos anytime — hosts are allow-listed in next.config.ts.
  */
 const IMAGES = {
-  hero: "https://picsum.photos/seed/lifeos-calm-morning/1000/1250",
-  money: "https://picsum.photos/seed/lifeos-money-planning/1000/800",
-  habits: "https://picsum.photos/seed/lifeos-wellness-walk/1000/800",
-  plan: "https://picsum.photos/seed/lifeos-desk-planner/1000/800",
+  hero: "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=1200&q=80&auto=format&fit=crop",
+  money:
+    "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1000&q=80&auto=format&fit=crop",
+  habits:
+    "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=1000&q=80&auto=format&fit=crop",
+  plan: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=1000&q=80&auto=format&fit=crop",
 };
 
 export default async function LandingPage() {
@@ -112,7 +114,7 @@ export default async function LandingPage() {
             <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] rounded-t-[7rem] border border-border shadow-lifted">
               <Image
                 src={IMAGES.hero}
-                alt="A calm, organised morning workspace"
+                alt="A calm desk with coffee and a notepad by a window"
                 fill
                 priority
                 sizes="(max-width: 1024px) 90vw, 45vw"
@@ -171,7 +173,7 @@ export default async function LandingPage() {
               "Budgets and gentle bill reminders",
             ]}
             image={IMAGES.money}
-            imageAlt="Planning finances with a notebook and coffee"
+            imageAlt="Two people reviewing plans and finances at a desk"
           />
           <Benefit
             reverse
@@ -185,7 +187,7 @@ export default async function LandingPage() {
               "Mood, energy & stress trends over time",
             ]}
             image={IMAGES.habits}
-            imageAlt="A calm walk outdoors"
+            imageAlt="A person meditating outdoors at golden hour"
           />
           <Benefit
             icon={<ListChecksIcon className="size-5" />}
@@ -198,7 +200,7 @@ export default async function LandingPage() {
               "One calendar for everything",
             ]}
             image={IMAGES.plan}
-            imageAlt="A tidy desk with a planner"
+            imageAlt="A hand writing a checklist in a notebook"
           />
         </div>
 
