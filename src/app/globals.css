@@ -1,0 +1,238 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ------------------------------------------------------------------ */
+/*  Theme mapping — exposes design tokens as Tailwind utilities        */
+/* ------------------------------------------------------------------ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-heading: var(--font-display);
+
+  /* shadcn semantic tokens */
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* brand / semantic extensions */
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-sage: var(--sage);
+  --color-sage-soft: var(--sage-soft);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-money-up: var(--money-up);
+  --color-money-down: var(--money-down);
+
+  /* radius scale (base 14px → 12–16px surfaces) */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+
+  /* soft, two-layer shadows */
+  --shadow-soft: 0 1px 2px rgba(45, 42, 38, 0.04), 0 2px 8px rgba(45, 42, 38, 0.06);
+  --shadow-card: 0 1px 3px rgba(45, 42, 38, 0.05), 0 6px 20px rgba(45, 42, 38, 0.08);
+  --shadow-lifted: 0 2px 6px rgba(45, 42, 38, 0.06), 0 16px 40px rgba(45, 42, 38, 0.14);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Terracotta Cream — light (default)                                 */
+/* ------------------------------------------------------------------ */
+:root {
+  --radius: 0.875rem; /* 14px */
+
+  --background: #faf6f1;
+  --foreground: #2d2a26;
+
+  --card: #ffffff;
+  --card-foreground: #2d2a26;
+  --popover: #ffffff;
+  --popover-foreground: #2d2a26;
+
+  /* primary = terracotta accent */
+  --primary: #c4643b;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f1e8de;
+  --secondary-foreground: #4a453d;
+
+  --muted: #f1e8de;
+  --muted-foreground: #6b6459;
+
+  /* shadcn "accent" = subtle hover tint (not the brand accent) */
+  --accent: #f3ebe2;
+  --accent-foreground: #2d2a26;
+
+  --destructive: #b3452e;
+
+  --border: #eae0d5;
+  --input: #eae0d5;
+  --ring: #c4643b;
+
+  /* brand extensions */
+  --brand: #c4643b;
+  --brand-hover: #a94f2c;
+  --sage: #7c9082;
+  --sage-soft: #e6ede8;
+  --success: #2f7d5c;
+  --warning: #d97706;
+  --error: #b3452e;
+  --money-up: #2f7d5c;
+  --money-down: #b3452e;
+
+  /* charts — warm, organic sequence */
+  --chart-1: #c4643b;
+  --chart-2: #7c9082;
+  --chart-3: #d99a5b;
+  --chart-4: #6b7f9e;
+  --chart-5: #b3452e;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #2d2a26;
+  --sidebar-primary: #c4643b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1e8de;
+  --sidebar-accent-foreground: #2d2a26;
+  --sidebar-border: #eae0d5;
+  --sidebar-ring: #c4643b;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Terracotta Cream — dark (warm, low-glare)                          */
+/* ------------------------------------------------------------------ */
+.dark {
+  --background: #211d1a;
+  --foreground: #f2ece4;
+
+  --card: #2a2521;
+  --card-foreground: #f2ece4;
+  --popover: #2a2521;
+  --popover-foreground: #f2ece4;
+
+  --primary: #d67a52;
+  --primary-foreground: #211d1a;
+
+  --secondary: #352e28;
+  --secondary-foreground: #f2ece4;
+
+  --muted: #352e28;
+  --muted-foreground: #b6aa9c;
+
+  --accent: #3a322b;
+  --accent-foreground: #f2ece4;
+
+  --destructive: #d9694f;
+
+  --border: rgba(242, 236, 228, 0.12);
+  --input: rgba(242, 236, 228, 0.16);
+  --ring: #d67a52;
+
+  --brand: #d67a52;
+  --brand-hover: #e28c66;
+  --sage: #9bb0a1;
+  --sage-soft: #2e3a33;
+  --success: #58b088;
+  --warning: #e9a13c;
+  --error: #d9694f;
+  --money-up: #58b088;
+  --money-down: #e08a72;
+
+  --chart-1: #d67a52;
+  --chart-2: #9bb0a1;
+  --chart-3: #e0a866;
+  --chart-4: #8ea2be;
+  --chart-5: #d9694f;
+
+  --sidebar: #2a2521;
+  --sidebar-foreground: #f2ece4;
+  --sidebar-primary: #d67a52;
+  --sidebar-primary-foreground: #211d1a;
+  --sidebar-accent: #352e28;
+  --sidebar-accent-foreground: #f2ece4;
+  --sidebar-border: rgba(242, 236, 228, 0.12);
+  --sidebar-ring: #d67a52;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Base                                                               */
+/* ------------------------------------------------------------------ */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-background text-foreground;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* display type for page titles + big figures */
+  .font-display {
+    font-family: var(--font-display), Georgia, serif;
+  }
+
+  /* all money + stat figures use tabular numerals */
+  .tnum,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display), Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* honour reduced-motion preference globally */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
