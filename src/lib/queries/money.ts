@@ -1,7 +1,7 @@
 import { addDays, format, subMonths } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { monthRange } from "@/lib/date";
-import { fromZonedTime } from "date-fns-tz";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import type {
   Account,
   AccountBalance,
@@ -222,18 +222,17 @@ export async function getMoneyOverview(
     .map(([categoryId, amount]) => ({ categoryId, amount }))
     .sort((a, b) => b.amount - a.amount);
 
-  // Trend: last 6 months bucketed by YYYY-MM
+  // Trend: last 6 months bucketed by the user's local YYYY-MM (not server TZ).
+  const zonedNow = toZonedTime(new Date(), timezone);
   const trendMap = new Map<string, { income: number; expense: number }>();
   for (let i = 5; i >= 0; i--) {
-    const d = subMonths(new Date(), i);
-    trendMap.set(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, {
+    trendMap.set(format(subMonths(zonedNow, i), "yyyy-MM"), {
       income: 0,
       expense: 0,
     });
   }
   for (const t of trendTx.data ?? []) {
-    const d = new Date(t.occurred_at);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const key = format(toZonedTime(new Date(t.occurred_at), timezone), "yyyy-MM");
     const bucket = trendMap.get(key);
     if (!bucket) continue;
     if (t.type === "income") bucket.income += Number(t.amount);

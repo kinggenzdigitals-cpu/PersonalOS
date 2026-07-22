@@ -8,7 +8,7 @@ import {
   addMonths,
   addWeeks,
 } from "date-fns";
-import { fromZonedTime } from "date-fns-tz";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { createClient } from "@/lib/supabase/server";
 import { isScheduledOn } from "@/lib/habits";
 import type {
@@ -79,7 +79,8 @@ export async function getReport(
   weekStartsOn: 0 | 1,
 ): Promise<Report> {
   const supabase = await createClient();
-  const now = new Date();
+  // Anchor to the user's local "now" so period boundaries match their calendar.
+  const now = toZonedTime(new Date(), timezone);
   const anchor =
     period === "week" ? addWeeks(now, offset) : addMonths(now, offset);
   const { start, end } = periodRange(period, anchor, weekStartsOn);
