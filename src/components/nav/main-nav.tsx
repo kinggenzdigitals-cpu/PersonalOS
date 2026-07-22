@@ -70,10 +70,6 @@ function SidebarBody({
 
   return (
     <>
-      <div className="mb-4">
-        <QuickAdd variant="sidebar" />
-      </div>
-
       <nav aria-label="Primary" className="flex-1">
         <ul className="space-y-1">
           {NAV.map((item) => {
@@ -141,6 +137,9 @@ export function DesktopSidebar({ moneyBadge = 0 }: { moneyBadge?: number }) {
       <div className="mb-6 flex items-center justify-between px-1">
         <Brand />
         <ThemeToggle />
+      </div>
+      <div className="mb-4">
+        <QuickAdd variant="sidebar" />
       </div>
       <SidebarBody pathname={pathname} moneyBadge={moneyBadge} />
     </aside>

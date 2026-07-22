@@ -14,9 +14,10 @@ export async function getTasksByView(
 
   switch (view) {
     case "today":
+      // Due today or earlier, plus undated todos (so they never disappear).
       query = query
-        .in("status", ["todo"])
-        .lte("due_date", today)
+        .eq("status", "todo")
+        .or(`due_date.lte.${today},due_date.is.null`)
         .order("is_priority", { ascending: false })
         .order("sort_order");
       break;
