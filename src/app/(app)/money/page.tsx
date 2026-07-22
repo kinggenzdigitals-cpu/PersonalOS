@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { MoneyQuickActions } from "@/components/money/money-quick-actions";
+import { NetPositionCard } from "@/components/money/net-position";
 import { AccountCard } from "@/components/money/account-card";
 import { TrendChart } from "@/components/money/trend-chart-lazy";
 import { CategoryDonut } from "@/components/money/category-donut-lazy";
@@ -38,27 +39,14 @@ export default async function MoneyOverviewPage() {
 
   return (
     <div className="space-y-5">
-      {/* Totals */}
-      <Card className="shadow-card">
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-muted-foreground">Total money</p>
-              <p className="tnum font-display text-2xl">
-                {formatMoney(overview.total, currency)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Available to spend
-              </p>
-              <p className="tnum font-display text-2xl text-sage">
-                {formatMoney(overview.available, currency)}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Net position */}
+      <NetPositionCard
+        cash={overview.total}
+        receivable={ledger.totalReceivable}
+        payable={ledger.totalPayable}
+        available={overview.available}
+        currency={currency}
+      />
 
       <MoneyQuickActions />
 

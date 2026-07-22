@@ -8,7 +8,6 @@ import {
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { requireOnboardedProfile } from "@/lib/auth";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { greeting, longDate } from "@/lib/greeting";
@@ -20,12 +19,14 @@ import {
 } from "@/lib/queries/planning";
 import { getHabitsBoard, localToday } from "@/lib/queries/habits";
 import { getTodayMood } from "@/lib/queries/mood";
+import { getLedgerSummary } from "@/lib/queries/ledger";
 import {
   getTodayPriorities,
   getPriorityCandidates,
   getCarryOverTasks,
   getTasksByView,
 } from "@/lib/queries/tasks";
+import { NetPositionCard } from "@/components/money/net-position";
 import {
   AlertsStrip,
   type DashboardAlert,
@@ -56,6 +57,7 @@ export default async function HomePage() {
     candidates,
     carryOver,
     todayTasks,
+    ledger,
   ] = await Promise.all([
     supabase
       .from("account_balances")
@@ -77,6 +79,7 @@ export default async function HomePage() {
     getPriorityCandidates(profile.timezone),
     getCarryOverTasks(profile.timezone),
     getTasksByView("today", profile.timezone),
+    getLedgerSummary(profile.timezone),
   ]);
 
   const accounts = balances ?? [];
@@ -225,49 +228,52 @@ export default async function HomePage() {
       {/* Alerts */}
       <AlertsStrip alerts={alerts} />
 
-      {/* Money summary */}
-      <Link href="/money" className="block">
-        <Card className="shadow-card transition-shadow hover:shadow-lifted">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                <WalletIcon className="size-4" /> Total money
-              </span>
-              <span className="tnum font-display text-2xl">
-                {formatMoney(total, currency)}
-              </span>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-              <Stat label="Available" value={formatMoney(available, currency)} />
-              <Stat
-                label="Spent today"
-                value={formatMoney(spentToday, currency)}
-              />
-              <Stat
-                label="Next bill"
-                value={
-                  nextBill
-                    ? formatMoneyCompact(
-                        Number(nextBill.bill.amount),
-                        currency,
-                      )
-                    : "—"
-                }
-              />
-            </div>
-            {nextBill && (
-              <p className="mt-2 text-center text-xs text-muted-foreground">
-                {nextBill.bill.name} ·{" "}
-                {nextBill.daysUntilDue < 0
-                  ? `${Math.abs(nextBill.daysUntilDue)}d overdue`
-                  : nextBill.daysUntilDue === 0
-                    ? "due today"
-                    : `due in ${nextBill.daysUntilDue}d`}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+      {/* Money — net position */}
+      <Link
+        href="/money"
+        className="block transition-transform hover:-translate-y-0.5"
+      >
+        <NetPositionCard
+          cash={total}
+          receivable={ledger.totalReceivable}
+          payable={ledger.totalPayable}
+          available={available}
+          currency={currency}
+        />
       </Link>
+
+      {/* Today's money */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-border bg-card p-3 shadow-soft">
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <WalletIcon className="size-3.5" /> Spent today
+          </p>
+          <p className="tnum mt-1 font-display text-lg">
+            {formatMoney(spentToday, currency)}
+          </p>
+        </div>
+        <Link
+          href="/money/bills"
+          className="rounded-xl border border-border bg-card p-3 shadow-soft transition-colors hover:border-brand/40"
+        >
+          <p className="text-xs text-muted-foreground">Next bill</p>
+          <p className="tnum mt-1 font-display text-lg">
+            {nextBill
+              ? formatMoneyCompact(Number(nextBill.bill.amount), currency)
+              : "—"}
+          </p>
+          {nextBill && (
+            <p className="truncate text-[11px] text-muted-foreground">
+              {nextBill.bill.name} ·{" "}
+              {nextBill.daysUntilDue < 0
+                ? `${Math.abs(nextBill.daysUntilDue)}d overdue`
+                : nextBill.daysUntilDue === 0
+                  ? "due today"
+                  : `due in ${nextBill.daysUntilDue}d`}
+            </p>
+          )}
+        </Link>
+      </div>
 
       {/* Carry-over prompt */}
       <CarryOver count={carryOver.length} />
@@ -379,15 +385,6 @@ export default async function HomePage() {
           />
         )}
       </section>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl bg-secondary/60 py-2.5">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="tnum mt-0.5 text-sm font-semibold">{value}</p>
     </div>
   );
 }
