@@ -127,7 +127,7 @@ export function OnboardingWizard({
       setSaving(false);
       return;
     }
-    router.replace("/");
+    router.replace("/home");
     router.refresh();
   }
 

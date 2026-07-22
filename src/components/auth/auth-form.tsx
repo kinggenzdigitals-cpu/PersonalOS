@@ -61,7 +61,7 @@ export function AuthForm({ mode, next }: { mode: Mode; next?: string }) {
         setLoading(false);
         return;
       }
-      router.replace(next ?? "/");
+      router.replace(next ?? "/home");
       router.refresh();
       return;
     }
@@ -79,7 +79,7 @@ export function AuthForm({ mode, next }: { mode: Mode; next?: string }) {
       setLoading(false);
       return;
     }
-    router.replace(next ?? "/");
+    router.replace(next ?? "/home");
     router.refresh();
   }
 

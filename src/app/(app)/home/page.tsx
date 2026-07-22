@@ -35,8 +35,6 @@ import { DashboardHabits } from "@/components/dashboard/dashboard-habits";
 import { DashboardPriorities } from "@/components/dashboard/dashboard-priorities";
 import { CarryOver } from "@/components/dashboard/carry-over";
 import { MoodChip } from "@/components/dashboard/mood-chip";
-import { MobileProfileMenu } from "@/components/nav/mobile-profile-menu";
-import { ThemeToggle } from "@/components/nav/theme-toggle";
 import { ReceiptTextIcon, CircleCheckBigIcon, BarChart3Icon } from "lucide-react";
 import type { AccountBalance, Transaction } from "@/lib/supabase/types";
 
@@ -200,19 +198,13 @@ export default async function HomePage() {
     <div className="space-y-6">
       {/* Greeting */}
       <header className="space-y-2">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-0.5">
-            <h1 className="font-display text-2xl tracking-tight">
-              {greeting(profile.timezone, profile.display_name)}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {longDate(profile.timezone)}
-            </p>
-          </div>
-          <div className="flex items-center gap-1 md:hidden">
-            <ThemeToggle />
-            <MobileProfileMenu />
-          </div>
+        <div className="space-y-0.5">
+          <h1 className="font-display text-2xl tracking-tight">
+            {greeting(profile.timezone, profile.display_name)}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {longDate(profile.timezone)}
+          </p>
         </div>
         <MoodChip today={todayKey} entry={todayMood} />
       </header>

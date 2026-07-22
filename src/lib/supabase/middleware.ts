@@ -12,6 +12,8 @@ const PUBLIC_PATHS = [
 ];
 
 function isPublicPath(pathname: string) {
+  // The marketing landing page at "/" is public.
+  if (pathname === "/") return true;
   return PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
@@ -60,10 +62,10 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Authenticated users hitting an auth page → home.
+  // Authenticated users hitting an auth page → app home.
   if (user && (pathname === "/login" || pathname === "/signup")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/home";
     return NextResponse.redirect(url);
   }
 

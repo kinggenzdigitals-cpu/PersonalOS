@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Life OS",
     description:
       "Your personal life operating system — money, habits, mood, tasks, and calendar in one calm place.",
-    start_url: "/",
+    start_url: "/home",
     display: "standalone",
     background_color: "#FAF6F1",
     theme_color: "#FAF6F1",

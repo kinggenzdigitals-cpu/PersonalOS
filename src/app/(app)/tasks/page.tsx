@@ -36,7 +36,7 @@ export default async function TasksPage({
     <div className="space-y-5">
       <header className="space-y-3">
         <Link
-          href="/"
+          href="/home"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ChevronLeftIcon className="size-4" /> Home

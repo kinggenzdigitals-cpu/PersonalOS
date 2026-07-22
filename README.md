@@ -48,9 +48,11 @@ system. Built to the spec in [`spec.md`](./spec.md).
   the Supabase session on every request and guards routes. Unauthenticated
   users are sent to `/login`; onboarding is enforced by the `(app)` layout via
   `requireOnboardedProfile()`.
-- **Route groups** — `(auth)` holds sign-in/up/reset; `(app)` holds the
-  authenticated shell (Home, Calendar, Money, Habits) with a mobile bottom tab
-  bar + center Quick Add FAB, and a desktop left sidebar.
+- **Routing** — `/` is a public marketing **landing page**; the authenticated
+  app lives under `/home`, `/money`, `/habits`, `/calendar`, `/tasks`,
+  `/reports`, `/settings`. `(auth)` holds sign-in/up/reset; `(app)` holds the
+  authenticated shell with a **left sidebar** (persistent on desktop, a
+  hamburger drawer + top bar on mobile) and Quick Add.
 - **Derived balances** — account balances are **never stored**. The
   `account_balances` Postgres view computes `opening_balance + Σ(in) − Σ(out)`
   and runs with `security_invoker` so RLS still applies.

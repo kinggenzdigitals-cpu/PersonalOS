@@ -3,7 +3,7 @@ import { getAccounts, getCategories } from "@/lib/queries/money";
 import { getDueBillCount } from "@/lib/queries/planning";
 import { ProfileProvider } from "@/components/providers/profile-provider";
 import { ReferenceProvider } from "@/components/providers/reference-provider";
-import { BottomNav, DesktopSidebar } from "@/components/nav/main-nav";
+import { DesktopSidebar, MobileTopBar } from "@/components/nav/main-nav";
 
 export default async function AppLayout({
   children,
@@ -22,10 +22,10 @@ export default async function AppLayout({
       <ReferenceProvider accounts={accounts} categories={categories}>
         <div className="min-h-dvh md:pl-60">
           <DesktopSidebar moneyBadge={dueBills} />
-          <main className="mx-auto w-full max-w-2xl px-4 pb-28 pt-6 md:max-w-3xl md:pb-10">
+          <MobileTopBar moneyBadge={dueBills} />
+          <main className="mx-auto w-full max-w-2xl px-4 pb-16 pt-6 md:max-w-3xl">
             {children}
           </main>
-          <BottomNav moneyBadge={dueBills} />
         </div>
       </ReferenceProvider>
     </ProfileProvider>
