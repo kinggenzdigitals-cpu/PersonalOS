@@ -37,7 +37,7 @@ export function NetPositionCard({
           {formatMoney(net, currency)}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Ang totoong laman ng bulsa mo
+          Cash plus what you&apos;re owed, minus what you owe
         </p>
 
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">

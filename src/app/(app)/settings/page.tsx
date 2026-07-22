@@ -4,6 +4,7 @@ import { ChevronLeftIcon } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/nav/theme-toggle";
 import { SettingsForm } from "./settings-form";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -26,6 +27,18 @@ export default async function SettingsPage() {
       <Card className="shadow-card">
         <CardContent className="pt-6">
           <SettingsForm profile={profile} />
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-card">
+        <CardContent className="flex items-center justify-between gap-3 pt-6">
+          <div>
+            <p className="text-sm font-medium">Appearance</p>
+            <p className="text-xs text-muted-foreground">
+              Switch between light and dark.
+            </p>
+          </div>
+          <ThemeToggle className="border border-border" />
         </CardContent>
       </Card>
 

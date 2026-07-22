@@ -36,6 +36,7 @@ import { DashboardPriorities } from "@/components/dashboard/dashboard-priorities
 import { CarryOver } from "@/components/dashboard/carry-over";
 import { MoodChip } from "@/components/dashboard/mood-chip";
 import { MobileProfileMenu } from "@/components/nav/mobile-profile-menu";
+import { ThemeToggle } from "@/components/nav/theme-toggle";
 import { ReceiptTextIcon, CircleCheckBigIcon, BarChart3Icon } from "lucide-react";
 import type { AccountBalance, Transaction } from "@/lib/supabase/types";
 
@@ -208,7 +209,10 @@ export default async function HomePage() {
               {longDate(profile.timezone)}
             </p>
           </div>
-          <MobileProfileMenu />
+          <div className="flex items-center gap-1 md:hidden">
+            <ThemeToggle />
+            <MobileProfileMenu />
+          </div>
         </div>
         <MoodChip today={todayKey} entry={todayMood} />
       </header>

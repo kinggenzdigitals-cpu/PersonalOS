@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuickAdd } from "@/components/nav/quick-add";
+import { ThemeToggle } from "@/components/nav/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -126,6 +127,7 @@ export function DesktopSidebar({ moneyBadge = 0 }: { moneyBadge?: number }) {
           <span className="font-display text-lg leading-none">L</span>
         </span>
         <span className="font-display text-lg tracking-tight">Life OS</span>
+        <ThemeToggle className="ml-auto" />
       </div>
 
       <div className="mb-4">

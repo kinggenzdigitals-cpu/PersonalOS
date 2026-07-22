@@ -3,6 +3,7 @@
 import { AlertTriangleIcon, PiggyBankIcon } from "lucide-react";
 import { FormSheet } from "@/components/money/form-sheet";
 import { AccountForm } from "@/components/money/account-form";
+import { Sparkline } from "@/components/money/sparkline";
 import { useReference } from "@/components/providers/reference-provider";
 import { useProfile } from "@/components/providers/profile-provider";
 import { formatMoney } from "@/lib/format";
@@ -10,7 +11,13 @@ import { ACCOUNT_TYPES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { AccountBalance } from "@/lib/supabase/types";
 
-export function AccountCard({ balance }: { balance: AccountBalance }) {
+export function AccountCard({
+  balance,
+  series,
+}: {
+  balance: AccountBalance;
+  series?: number[];
+}) {
   const { accounts } = useReference();
   const profile = useProfile();
   const account = accounts.find((a) => a.id === balance.id);
@@ -64,6 +71,11 @@ export function AccountCard({ balance }: { balance: AccountBalance }) {
           >
             {formatMoney(Number(balance.balance), profile.currency)}
           </p>
+          {series && series.length > 1 && (
+            <div className="mt-2 h-7">
+              <Sparkline series={series} />
+            </div>
+          )}
         </button>
       }
     >

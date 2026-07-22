@@ -1,7 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { requireOnboardedProfile } from "@/lib/auth";
-import { getMoneyOverview, getCategories } from "@/lib/queries/money";
+import {
+  getMoneyOverview,
+  getCategories,
+  getAccountSparklines,
+} from "@/lib/queries/money";
 import { getLedgerSummary } from "@/lib/queries/ledger";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format";
@@ -16,10 +20,11 @@ export const metadata: Metadata = { title: "Money" };
 
 export default async function MoneyOverviewPage() {
   const profile = await requireOnboardedProfile();
-  const [overview, categories, ledger] = await Promise.all([
+  const [overview, categories, ledger, sparklines] = await Promise.all([
     getMoneyOverview(profile.timezone),
     getCategories(),
     getLedgerSummary(profile.timezone),
+    getAccountSparklines(profile.timezone, 14),
   ]);
   const currency = profile.currency;
   const hasLedger =
@@ -58,7 +63,7 @@ export default async function MoneyOverviewPage() {
         {overview.accounts.length > 0 ? (
           <div className="grid grid-cols-2 gap-3">
             {overview.accounts.map((a) => (
-              <AccountCard key={a.id} balance={a} />
+              <AccountCard key={a.id} balance={a} series={sparklines[a.id]} />
             ))}
           </div>
         ) : (
