@@ -1,0 +1,113 @@
+import type { Metadata } from "next";
+import { requireOnboardedProfile } from "@/lib/auth";
+import { getNetWorth } from "@/lib/queries/networth";
+import { Card, CardContent } from "@/components/ui/card";
+import { formatMoney } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { NetWorthSection } from "@/components/money/networth-section";
+
+export const metadata: Metadata = { title: "Net Worth" };
+
+export default async function NetWorthPage() {
+  const profile = await requireOnboardedProfile();
+  const nw = await getNetWorth(profile.timezone);
+  const currency = profile.currency;
+
+  // Distribution: liquid (cash) vs non-liquid (assets)
+  const positive = Math.max(nw.liquid, 0) + Math.max(nw.assetsTotal, 0);
+  const liquidPct = positive > 0 ? (nw.liquid / positive) * 100 : 0;
+
+  return (
+    <div className="space-y-5">
+      {/* Total net worth */}
+      <Card className="shadow-card">
+        <CardContent className="pt-6">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Total net worth
+          </p>
+          <p
+            className={cn(
+              "tnum font-display text-3xl",
+              nw.netWorth < 0 && "text-money-down",
+            )}
+          >
+            {formatMoney(nw.netWorth, currency)}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Everything you own minus everything you owe
+          </p>
+
+          <dl className="mt-4 space-y-1.5 text-sm">
+            <Row label="Cash (liquid)" value={formatMoney(nw.liquid, currency)} />
+            <Row
+              label="Assets (non-liquid)"
+              value={formatMoney(nw.assetsTotal, currency)}
+            />
+            <Row
+              label="Owed to you"
+              value={formatMoney(nw.receivable, currency)}
+              tone="up"
+            />
+            <Row
+              label="You owe"
+              value={`− ${formatMoney(nw.payable, currency)}`}
+              tone="down"
+            />
+            <Row
+              label="Liabilities"
+              value={`− ${formatMoney(nw.liabilitiesTotal, currency)}`}
+              tone="down"
+            />
+          </dl>
+
+          {positive > 0 && (
+            <div className="mt-4">
+              <div className="mb-1 flex justify-between text-[11px] text-muted-foreground">
+                <span>Liquid {Math.round(liquidPct)}%</span>
+                <span>Non-liquid {Math.round(100 - liquidPct)}%</span>
+              </div>
+              <div className="flex h-2.5 overflow-hidden rounded-full bg-secondary">
+                <div
+                  className="h-full bg-sage"
+                  style={{ width: `${liquidPct}%` }}
+                />
+                <div
+                  className="h-full bg-brand"
+                  style={{ width: `${100 - liquidPct}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <NetWorthSection type="asset" items={nw.assets} />
+      <NetWorthSection type="liability" items={nw.liabilities} />
+    </div>
+  );
+}
+
+function Row({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "up" | "down";
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd
+        className={cn(
+          "tnum font-medium",
+          tone === "up" && "text-money-up",
+          tone === "down" && "text-money-down",
+        )}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}

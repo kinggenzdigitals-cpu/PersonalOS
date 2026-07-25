@@ -27,6 +27,14 @@ export type CalendarEventKind = "appointment" | "personal" | "work" | "other";
 export type WeekStart = "monday" | "sunday";
 export type LedgerDirection = "receivable" | "payable";
 export type LedgerStatus = "open" | "settled";
+export type AssetKind =
+  | "property"
+  | "investment"
+  | "business"
+  | "vehicle"
+  | "cash"
+  | "other";
+export type LiabilityKind = "mortgage" | "loan" | "credit_card" | "other";
 
 // ---- Helpers -------------------------------------------------------------
 
@@ -192,6 +200,22 @@ export type LedgerEntry = Owned & {
   notes: string | null;
 } & Timestamps;
 
+export type Asset = Owned & {
+  name: string;
+  kind: AssetKind;
+  value: number;
+  notes: string | null;
+  sort_order: number;
+} & Timestamps;
+
+export type Liability = Owned & {
+  name: string;
+  kind: LiabilityKind;
+  balance: number;
+  notes: string | null;
+  sort_order: number;
+} & Timestamps;
+
 // ---- Insert / Update helpers --------------------------------------------
 
 // user_id is required on insert; every other column is optional because the
@@ -245,6 +269,12 @@ export type Database = {
         InsertOf<LedgerEntry>,
         UpdateOf<LedgerEntry>
       >;
+      assets: TableShape<Asset, InsertOf<Asset>, UpdateOf<Asset>>;
+      liabilities: TableShape<
+        Liability,
+        InsertOf<Liability>,
+        UpdateOf<Liability>
+      >;
     };
     Views: {
       account_balances: {
@@ -266,6 +296,8 @@ export type Database = {
       calendar_event_kind: CalendarEventKind;
       ledger_direction: LedgerDirection;
       ledger_status: LedgerStatus;
+      asset_kind: AssetKind;
+      liability_kind: LiabilityKind;
     };
   };
 };
