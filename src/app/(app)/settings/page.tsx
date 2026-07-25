@@ -2,10 +2,12 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ChevronLeftIcon } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
+import { getActivePlan } from "@/lib/queries/billing";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/nav/theme-toggle";
 import { ExportButton } from "@/components/money/export-button";
+import { PlanCard } from "@/components/settings/plan-card";
 import { DangerZone } from "@/components/settings/danger-zone";
 import { SettingsForm } from "./settings-form";
 
@@ -13,6 +15,7 @@ export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const profile = await requireOnboardedProfile();
+  const plan = await getActivePlan();
 
   return (
     <div className="space-y-5">
@@ -25,6 +28,8 @@ export default async function SettingsPage() {
         </Link>
         <h1 className="font-display text-2xl tracking-tight">Settings</h1>
       </header>
+
+      <PlanCard plan={plan} />
 
       <Card className="shadow-card">
         <CardContent className="pt-6">
