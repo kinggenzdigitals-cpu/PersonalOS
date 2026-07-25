@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/nav/theme-toggle";
 import { ExportButton } from "@/components/money/export-button";
+import { DangerZone } from "@/components/settings/danger-zone";
 import { SettingsForm } from "./settings-form";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -60,6 +61,8 @@ export default async function SettingsPage() {
           Sign out
         </Button>
       </form>
+
+      <DangerZone />
     </div>
   );
 }
