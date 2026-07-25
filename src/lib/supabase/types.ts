@@ -216,6 +216,15 @@ export type Liability = Owned & {
   sort_order: number;
 } & Timestamps;
 
+export type SavingsGoal = Owned & {
+  name: string;
+  target_amount: number;
+  saved_amount: number;
+  color: string | null;
+  notes: string | null;
+  sort_order: number;
+} & Timestamps;
+
 // ---- Insert / Update helpers --------------------------------------------
 
 // user_id is required on insert; every other column is optional because the
@@ -274,6 +283,11 @@ export type Database = {
         Liability,
         InsertOf<Liability>,
         UpdateOf<Liability>
+      >;
+      savings_goals: TableShape<
+        SavingsGoal,
+        InsertOf<SavingsGoal>,
+        UpdateOf<SavingsGoal>
       >;
     };
     Views: {
