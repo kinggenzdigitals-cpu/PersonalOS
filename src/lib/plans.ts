@@ -13,6 +13,7 @@ export type PlanLimits = {
   goals: number | null;
   reportsMonths: number | null;
   csvExport: boolean;
+  netWorth: boolean; // assets & liabilities tracking
 };
 
 export type Plan = {
@@ -41,6 +42,7 @@ export const PLANS: Record<PlanId, Plan> = {
       goals: 3,
       reportsMonths: 3,
       csvExport: false,
+      netWorth: false,
     },
     features: [
       "Up to 3 accounts",
@@ -65,6 +67,7 @@ export const PLANS: Record<PlanId, Plan> = {
       goals: null,
       reportsMonths: null,
       csvExport: true,
+      netWorth: true,
     },
     features: [
       "Everything in Free, plus:",

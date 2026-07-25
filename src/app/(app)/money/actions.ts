@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { checkCap } from "@/lib/plan-guard";
 import {
   getTransactions,
   type TransactionFilters,
@@ -206,7 +207,11 @@ export async function createAccount(
   const { count } = await supabase
     .from("accounts")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .eq("archived", false);
+
+  const capError = await checkCap("accounts", count ?? 0);
+  if (capError) return { ok: false, error: capError };
 
   const { data, error } = await supabase
     .from("accounts")
