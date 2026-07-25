@@ -5,6 +5,7 @@ import { requireOnboardedProfile } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/nav/theme-toggle";
+import { ExportButton } from "@/components/money/export-button";
 import { SettingsForm } from "./settings-form";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -39,6 +40,18 @@ export default async function SettingsPage() {
             </p>
           </div>
           <ThemeToggle className="border border-border" />
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-card">
+        <CardContent className="space-y-3 pt-6">
+          <div>
+            <p className="text-sm font-medium">Your data</p>
+            <p className="text-xs text-muted-foreground">
+              Download a copy of your transactions as a spreadsheet.
+            </p>
+          </div>
+          <ExportButton />
         </CardContent>
       </Card>
 
