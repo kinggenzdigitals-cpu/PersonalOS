@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/pwa/register-sw";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { getSiteURL } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 const fraunces = Fraunces({
@@ -20,6 +21,7 @@ const karla = Karla({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getSiteURL()),
   title: {
     default: "Life OS",
     template: "%s · Life OS",
@@ -30,6 +32,14 @@ export const metadata: Metadata = {
   icons: {
     icon: "/icon-192.png",
     apple: "/apple-icon.png",
+  },
+  openGraph: {
+    siteName: "Life OS",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
   },
   appleWebApp: {
     capable: true,

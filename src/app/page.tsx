@@ -10,12 +10,39 @@ import {
   CheckIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { MarketingHeader } from "@/components/marketing/marketing-header";
+import { MarketingFooter } from "@/components/marketing/marketing-footer";
 
 export const metadata: Metadata = {
   title: "Life OS — your whole life, in one calm place",
   description:
     "Money, habits, mood, tasks, and your calendar together at last. A warm, low-friction personal operating system for a calmer everyday.",
+  openGraph: {
+    title: "Life OS — your whole life, in one calm place",
+    description:
+      "Money, habits, mood, tasks, and your calendar together at last.",
+    type: "website",
+  },
 };
+
+const FAQS: { q: string; a: string }[] = [
+  {
+    q: "Is my financial data private?",
+    a: "Yes. Every record is scoped to your account with database-level row security — no other user can ever see your data.",
+  },
+  {
+    q: "Do I need to connect my bank?",
+    a: "No. Life OS is manual-first and low-friction: you add accounts and log expenses in three taps. No bank linking required.",
+  },
+  {
+    q: "Can I use it on my phone?",
+    a: "Absolutely. It's mobile-first and installable as an app (PWA) — add it to your home screen and it works like a native app.",
+  },
+  {
+    q: "Is there a free plan?",
+    a: "Yes. The Free plan covers your everyday life. Upgrade to Pro anytime for unlimited accounts, habits, goals, net-worth tracking, and CSV export.",
+  },
+];
 
 /**
  * Stock imagery (Unsplash, warm-toned to match the palette). Swap the URLs for
@@ -40,39 +67,7 @@ export default async function LandingPage() {
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
-      {/* Nav */}
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="grid size-9 place-items-center rounded-xl bg-brand text-primary-foreground shadow-soft">
-              <span className="font-display text-lg leading-none">L</span>
-            </span>
-            <span className="font-display text-lg tracking-tight">Life OS</span>
-          </Link>
-          <nav className="hidden items-center gap-7 text-sm text-muted-foreground sm:flex">
-            <a href="#features" className="transition-colors hover:text-foreground">
-              Features
-            </a>
-            <a href="#how" className="transition-colors hover:text-foreground">
-              How it works
-            </a>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/login"
-              className="rounded-full px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/signup"
-              className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-primary-foreground shadow-soft transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              Get started
-            </Link>
-          </div>
-        </div>
-      </header>
+      <MarketingHeader />
 
       <main>
         {/* Hero */}
@@ -242,6 +237,50 @@ export default async function LandingPage() {
           </div>
         </section>
 
+        {/* Pricing teaser */}
+        <section className="border-t border-border/60">
+          <div className="mx-auto max-w-6xl px-5 py-16 text-center">
+            <h2 className="font-display text-3xl tracking-tight sm:text-4xl">
+              Simple, honest pricing
+            </h2>
+            <p className="mx-auto mt-3 max-w-md text-muted-foreground">
+              Start free — everything to run your everyday life. Go Pro for
+              unlimited accounts, goals, net worth, and CSV export.
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href="/signup"
+                className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-medium text-primary-foreground shadow-soft transition-colors hover:bg-brand-hover"
+              >
+                Get started free
+              </Link>
+              <Link
+                href="/pricing"
+                className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium transition-colors hover:bg-secondary"
+              >
+                See pricing <ArrowRightIcon className="size-4" />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className="mx-auto max-w-3xl px-5 py-16">
+          <h2 className="text-center font-display text-3xl tracking-tight sm:text-4xl">
+            Questions, answered
+          </h2>
+          <dl className="mt-8 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+            {FAQS.map((f) => (
+              <div key={f.q} className="p-5">
+                <dt className="font-medium">{f.q}</dt>
+                <dd className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                  {f.a}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
         {/* Final CTA */}
         <section className="mx-auto max-w-6xl px-5 py-20">
           <div className="overflow-hidden rounded-[2rem] border border-border bg-card px-6 py-14 text-center shadow-card sm:px-16">
@@ -261,19 +300,7 @@ export default async function LandingPage() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border/60">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 py-8 text-sm text-muted-foreground sm:flex-row">
-          <div className="flex items-center gap-2">
-            <span className="grid size-7 place-items-center rounded-lg bg-brand text-primary-foreground">
-              <span className="font-display text-sm leading-none">L</span>
-            </span>
-            <span className="font-medium text-foreground">Life OS</span>
-          </div>
-          <p>Your whole life, in one calm place.</p>
-          <p>© {new Date().getFullYear()} Life OS</p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 }
