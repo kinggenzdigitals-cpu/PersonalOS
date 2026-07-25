@@ -32,8 +32,11 @@ GitHub CLI (`gh auth login`).
    1. `supabase/migrations/0001_init.sql`
    2. `supabase/migrations/0002_rls.sql`
    3. `supabase/migrations/0003_ledger.sql`
+   4. `supabase/migrations/0004_networth.sql` (assets & liabilities)
+   5. `supabase/migrations/0005_savings_goals.sql` (savings goals)
 
-   Each should finish with "Success. No rows returned."
+   Each should finish with "Success. No rows returned." If your project was
+   created before these existed, just run the missing ones (0004, 0005) now.
 
 3. **Enable Email auth.** Authentication → Providers → **Email** → enable.
    (Email confirmations on/off is your choice — see SMTP note below.)
