@@ -12,6 +12,7 @@ const PUBLIC_PATHS = [
   "/pricing",
   "/terms",
   "/privacy",
+  "/api/webhooks",
 ];
 
 function isPublicPath(pathname: string) {

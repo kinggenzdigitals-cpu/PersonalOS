@@ -1,15 +1,33 @@
 "use client";
 
-import { SparklesIcon, CheckIcon } from "lucide-react";
+import * as React from "react";
+import { SparklesIcon, CheckIcon, Loader2Icon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FormSheet } from "@/components/money/form-sheet";
+import { cn } from "@/lib/utils";
 import { PLANS, monthlyEquivalent, type PlanId } from "@/lib/plans";
+import { startProCheckout } from "@/app/(app)/settings/billing-actions";
 import { toast } from "sonner";
 
 export function PlanCard({ plan }: { plan: PlanId }) {
   const isPro = plan === "pro";
   const pro = PLANS.pro;
+  const [interval, setInterval] = React.useState<"monthly" | "yearly">(
+    "yearly",
+  );
+  const [busy, setBusy] = React.useState(false);
+
+  async function checkout() {
+    setBusy(true);
+    const res = await startProCheckout(interval);
+    if (!res.ok) {
+      toast.error(res.error);
+      setBusy(false);
+      return;
+    }
+    window.location.href = res.url;
+  }
 
   return (
     <Card className="shadow-card">
@@ -44,17 +62,41 @@ export function PlanCard({ plan }: { plan: PlanId }) {
             >
               {() => (
                 <div className="space-y-4">
+                  {/* Billing interval */}
+                  <div className="inline-flex w-full items-center gap-1 rounded-full bg-secondary p-1 text-sm">
+                    {(["monthly", "yearly"] as const).map((iv) => (
+                      <button
+                        key={iv}
+                        type="button"
+                        onClick={() => setInterval(iv)}
+                        className={cn(
+                          "flex-1 rounded-full py-1.5 font-medium capitalize transition-colors",
+                          interval === iv
+                            ? "bg-card text-foreground shadow-soft"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        {iv}
+                      </button>
+                    ))}
+                  </div>
+
                   <div>
                     <p className="font-display text-2xl">
-                      ₱{monthlyEquivalent(pro).toLocaleString("en-PH")}
+                      ₱
+                      {(interval === "yearly"
+                        ? monthlyEquivalent(pro)
+                        : pro.priceMonthly
+                      ).toLocaleString("en-PH")}
                       <span className="text-base font-normal text-muted-foreground">
                         {" "}
                         /mo
                       </span>
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      ₱{pro.priceYearly.toLocaleString("en-PH")} billed yearly ·
-                      or ₱{pro.priceMonthly.toLocaleString("en-PH")}/mo
+                      {interval === "yearly"
+                        ? `₱${pro.priceYearly.toLocaleString("en-PH")} billed yearly · save 2 months`
+                        : "Billed monthly · cancel anytime"}
                     </p>
                   </div>
 
@@ -71,24 +113,15 @@ export function PlanCard({ plan }: { plan: PlanId }) {
                       ))}
                   </ul>
 
-                  <div className="rounded-xl bg-secondary/60 p-3 text-xs text-muted-foreground">
-                    💳 Pro billing launches soon — pay with{" "}
-                    <span className="font-medium text-foreground">
-                      GCash, Maya, cards, or bank transfer
-                    </span>{" "}
-                    via Xendit.
-                  </div>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Pay with GCash, Maya, card, or bank transfer via Xendit.
+                  </p>
 
-                  <Button
-                    className="w-full"
-                    onClick={() =>
-                      toast("Pro billing is launching soon", {
-                        description:
-                          "You'll be able to pay with GCash, Maya, and cards.",
-                      })
-                    }
-                  >
-                    Notify me when Pro is ready
+                  <Button className="w-full" onClick={checkout} disabled={busy}>
+                    {busy && (
+                      <Loader2Icon className="size-4 animate-spin" aria-hidden />
+                    )}
+                    Continue to payment
                   </Button>
                 </div>
               )}
