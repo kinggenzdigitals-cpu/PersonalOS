@@ -35,6 +35,11 @@ export type AssetKind =
   | "cash"
   | "other";
 export type LiabilityKind = "mortgage" | "loan" | "credit_card" | "other";
+export type SubscriptionStatus =
+  | "inactive"
+  | "active"
+  | "past_due"
+  | "canceled";
 
 // ---- Helpers -------------------------------------------------------------
 
@@ -225,6 +230,15 @@ export type SavingsGoal = Owned & {
   sort_order: number;
 } & Timestamps;
 
+export type Subscription = Owned & {
+  plan: string;
+  status: SubscriptionStatus;
+  interval: string | null;
+  xendit_customer_id: string | null;
+  xendit_plan_id: string | null;
+  current_period_end: string | null;
+} & Timestamps;
+
 // ---- Insert / Update helpers --------------------------------------------
 
 // user_id is required on insert; every other column is optional because the
@@ -289,6 +303,11 @@ export type Database = {
         InsertOf<SavingsGoal>,
         UpdateOf<SavingsGoal>
       >;
+      subscriptions: TableShape<
+        Subscription,
+        InsertOf<Subscription>,
+        UpdateOf<Subscription>
+      >;
     };
     Views: {
       account_balances: {
@@ -312,6 +331,7 @@ export type Database = {
       ledger_status: LedgerStatus;
       asset_kind: AssetKind;
       liability_kind: LiabilityKind;
+      subscription_status: SubscriptionStatus;
     };
   };
 };
