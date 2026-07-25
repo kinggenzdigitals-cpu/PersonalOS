@@ -139,6 +139,72 @@ export async function getHabitDetail(
   };
 }
 
+// ---- Month grid (spreadsheet-style tracker) ------------------------------
+
+export type HabitGridCell = {
+  day: number;
+  date: string;
+  status: HabitStatus | null;
+  scheduled: boolean;
+  future: boolean;
+};
+
+export type HabitGridRow = {
+  habit: Habit;
+  cells: HabitGridCell[];
+  total: number; // completed
+  goal: number; // scheduled days this month
+  pct: number;
+};
+
+export type HabitGrid = {
+  monthLabel: string;
+  today: string;
+  daysInMonth: number;
+  rows: HabitGridRow[];
+};
+
+export async function getHabitGrid(timezone: string): Promise<HabitGrid> {
+  const { habits, byHabit, today } = await fetchHabitsAndLogs(timezone, 40);
+  const todayKey = format(today, "yyyy-MM-dd");
+  const year = today.getFullYear();
+  const monthIdx = today.getMonth();
+  const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+
+  const rows: HabitGridRow[] = habits.map((habit) => {
+    const logs = toLogMap(byHabit.get(habit.id) ?? []);
+    let total = 0;
+    let goal = 0;
+    const cells: HabitGridCell[] = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(year, monthIdx, day, 12);
+      const key = format(d, "yyyy-MM-dd");
+      const scheduled = isScheduledOn(habit.schedule_days, d);
+      const status = logs.get(key) ?? null;
+      if (scheduled) goal++;
+      if (status === "completed") total++;
+      cells.push({ day, date: key, status, scheduled, future: key > todayKey });
+    }
+    return {
+      habit,
+      cells,
+      total,
+      goal,
+      pct: goal > 0 ? Math.round((total / goal) * 100) : 0,
+    };
+  });
+
+  return {
+    monthLabel: today.toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    }),
+    today: todayKey,
+    daysInMonth,
+    rows,
+  };
+}
+
 export type HabitStats = {
   overallPct: number;
   mostMissed: { habit: Habit; missedRate: number }[];
