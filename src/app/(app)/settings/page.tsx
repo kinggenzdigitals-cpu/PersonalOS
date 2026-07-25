@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ChevronLeftIcon } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
-import { getActivePlan } from "@/lib/queries/billing";
+import { getActivePlan, getSubscription } from "@/lib/queries/billing";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/nav/theme-toggle";
@@ -20,6 +20,7 @@ export default async function SettingsPage({
 }) {
   const profile = await requireOnboardedProfile();
   const plan = await getActivePlan();
+  const subscription = await getSubscription();
   const sp = await searchParams;
 
   return (
@@ -50,7 +51,7 @@ export default async function SettingsPage({
         </div>
       )}
 
-      <PlanCard plan={plan} />
+      <PlanCard plan={plan} periodEnd={subscription?.current_period_end ?? null} />
 
       <Card className="shadow-card">
         <CardContent className="pt-6">
@@ -78,7 +79,7 @@ export default async function SettingsPage({
               Download a copy of your transactions as a spreadsheet.
             </p>
           </div>
-          <ExportButton />
+          <ExportButton canExport={plan === "pro"} />
         </CardContent>
       </Card>
 

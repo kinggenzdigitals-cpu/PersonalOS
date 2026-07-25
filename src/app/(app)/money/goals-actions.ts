@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { checkCap } from "@/lib/plan-guard";
 
 export type ActionResult =
   | { ok: true; id?: string }
@@ -49,6 +50,13 @@ export async function upsertSavingsGoal(input: {
     revalidate();
     return { ok: true, id: input.id };
   }
+
+  const { count } = await supabase
+    .from("savings_goals")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
+  const capError = await checkCap("goals", count ?? 0);
+  if (capError) return { ok: false, error: capError };
 
   const { data, error } = await supabase
     .from("savings_goals")

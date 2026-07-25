@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { hasProFeature } from "@/lib/plan-guard";
 import type { AssetKind, LiabilityKind } from "@/lib/supabase/types";
+
+const PRO_REQUIRED =
+  "Net worth tracking is a Pro feature. Upgrade to add assets & liabilities.";
 
 export type ActionResult =
   | { ok: true; id?: string }
@@ -31,6 +35,9 @@ export async function upsertAsset(input: {
 }): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
+  if (!(await hasProFeature("netWorth"))) {
+    return { ok: false, error: PRO_REQUIRED };
+  }
   if (!input.name.trim()) return { ok: false, error: "Name the asset." };
   if (!(input.value >= 0)) return { ok: false, error: "Enter a value." };
 
@@ -81,6 +88,9 @@ export async function upsertLiability(input: {
 }): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
+  if (!(await hasProFeature("netWorth"))) {
+    return { ok: false, error: PRO_REQUIRED };
+  }
   if (!input.name.trim()) return { ok: false, error: "Name the liability." };
   if (!(input.balance >= 0)) return { ok: false, error: "Enter a balance." };
 

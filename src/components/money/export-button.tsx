@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { DownloadIcon, Loader2Icon } from "lucide-react";
+import Link from "next/link";
+import { DownloadIcon, Loader2Icon, SparklesIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReference } from "@/components/providers/reference-provider";
 import { fetchTransactionsAction } from "@/app/(app)/money/actions";
@@ -11,9 +12,20 @@ function csvEscape(value: string) {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
-export function ExportButton() {
+export function ExportButton({ canExport = true }: { canExport?: boolean }) {
   const { accounts, categories } = useReference();
   const [busy, setBusy] = React.useState(false);
+
+  if (!canExport) {
+    return (
+      <Button variant="outline" asChild>
+        <Link href="/settings">
+          <SparklesIcon className="size-4" aria-hidden />
+          Export transactions (CSV) · Pro
+        </Link>
+      </Button>
+    );
+  }
 
   async function exportCsv() {
     setBusy(true);

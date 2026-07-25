@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { addWeeks, addMonths, addYears, format } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
+import { checkCap } from "@/lib/plan-guard";
 import type { BillFrequency } from "@/lib/supabase/types";
 
 export type ActionResult =
@@ -41,6 +42,22 @@ export async function upsertBudget(input: {
     if (error) return { ok: false, error: error.message };
     revalidate();
     return { ok: true, id: input.id };
+  }
+
+  // Enforce the plan cap only when adding a budget for a new category.
+  const { data: existing } = await supabase
+    .from("budgets")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("category_id", input.categoryId)
+    .maybeSingle();
+  if (!existing) {
+    const { count } = await supabase
+      .from("budgets")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    const capError = await checkCap("budgets", count ?? 0);
+    if (capError) return { ok: false, error: capError };
   }
 
   // One budget per category — upsert on conflict.

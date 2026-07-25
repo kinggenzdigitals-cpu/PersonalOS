@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, LockIcon } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
+import { reportsMonthsLimit } from "@/lib/plan-guard";
 import { getReport, type ReportPeriod } from "@/lib/queries/reports";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format";
@@ -19,8 +20,19 @@ export default async function ReportsPage({
   const profile = await requireOnboardedProfile();
   const sp = await searchParams;
   const period: ReportPeriod = sp.period === "week" ? "week" : "month";
-  const offset = Math.min(0, Number.parseInt(sp.offset ?? "0", 10) || 0);
   const weekStartsOn: 0 | 1 = profile.week_starts_on === "sunday" ? 0 : 1;
+
+  // Plan-gated history depth. Free = last N months; Pro = unlimited.
+  const monthsLimit = await reportsMonthsLimit();
+  const minOffset =
+    monthsLimit === null
+      ? Number.NEGATIVE_INFINITY
+      : period === "week"
+        ? -(monthsLimit * 4 - 1)
+        : -(monthsLimit - 1);
+  const requestedOffset = Math.min(0, Number.parseInt(sp.offset ?? "0", 10) || 0);
+  const offset = Math.max(requestedOffset, minOffset);
+  const atHistoryLimit = offset <= minOffset;
 
   const report = await getReport(
     profile.timezone,
@@ -56,13 +68,24 @@ export default async function ReportsPage({
             ))}
           </div>
           <div className="flex items-center gap-1">
-            <Link
-              href={href(period, offset - 1)}
-              aria-label="Previous period"
-              className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
-            >
-              <ChevronLeftIcon className="size-5" />
-            </Link>
+            {atHistoryLimit ? (
+              <Link
+                href="/settings"
+                aria-label="Upgrade to see older reports"
+                title="Free plan shows the last 3 months — upgrade to Pro for full history"
+                className="rounded-lg p-1.5 text-brand hover:bg-secondary"
+              >
+                <LockIcon className="size-5" />
+              </Link>
+            ) : (
+              <Link
+                href={href(period, offset - 1)}
+                aria-label="Previous period"
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <ChevronLeftIcon className="size-5" />
+              </Link>
+            )}
             {offset < 0 ? (
               <Link
                 href={href(period, offset + 1)}

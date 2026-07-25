@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { checkCap } from "@/lib/plan-guard";
 import { nextStatus } from "@/lib/habits";
 import { getHabitsBoard, type HabitBoardItem } from "@/lib/queries/habits";
 import type { HabitStatus, LifeArea } from "@/lib/supabase/types";
@@ -74,6 +75,14 @@ export async function upsertHabit(
     .from("habits")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id);
+
+  const { count: activeCount } = await supabase
+    .from("habits")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("active", true);
+  const capError = await checkCap("habits", activeCount ?? 0);
+  if (capError) return { ok: false, error: capError };
 
   const { data, error } = await supabase
     .from("habits")

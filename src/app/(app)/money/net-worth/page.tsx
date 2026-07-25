@@ -1,15 +1,32 @@
 import type { Metadata } from "next";
 import { requireOnboardedProfile } from "@/lib/auth";
 import { getNetWorth } from "@/lib/queries/networth";
+import { hasProFeature } from "@/lib/plan-guard";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { NetWorthSection } from "@/components/money/networth-section";
+import { ProGate } from "@/components/settings/pro-gate";
 
 export const metadata: Metadata = { title: "Net Worth" };
 
 export default async function NetWorthPage() {
   const profile = await requireOnboardedProfile();
+
+  if (!(await hasProFeature("netWorth"))) {
+    return (
+      <ProGate
+        title="Track your true net worth"
+        description="See everything you own minus everything you owe — a complete picture of your wealth over time."
+        bullets={[
+          "Add assets: property, investments, vehicles & more",
+          "Track liabilities: loans, mortgages, credit cards",
+          "Net worth combines cash, assets, debts & what you're owed",
+        ]}
+      />
+    );
+  }
+
   const nw = await getNetWorth(profile.timezone);
   const currency = profile.currency;
 
