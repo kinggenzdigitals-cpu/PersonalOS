@@ -76,7 +76,10 @@ export async function deleteAllData(): Promise<ActionResult> {
       .from(table)
       .delete()
       .eq("user_id", user.id);
-    if (error) return { ok: false, error: `${table}: ${error.message}` };
+    // Tolerate tables that don't exist yet (migrations not applied) — 42P01.
+    if (error && error.code !== "42P01") {
+      return { ok: false, error: `${table}: ${error.message}` };
+    }
   }
 
   // Send them back through onboarding (categories + profile are kept).
