@@ -72,7 +72,8 @@ export default function TermsPage() {
         <h2>7. Changes &amp; contact</h2>
         <p>
           We may update these terms; we&apos;ll note the date above. Questions?
-          Reach us at <a href="mailto:hello@lifeos.app">hello@lifeos.app</a>.
+          Reach us at{" "}
+          <a href="mailto:kingfmgonzales@gmail.com">kingfmgonzales@gmail.com</a>.
         </p>
       </section>
     </LegalShell>

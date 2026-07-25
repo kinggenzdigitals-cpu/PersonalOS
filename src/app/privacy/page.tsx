@@ -62,7 +62,7 @@ export default function PrivacyPage() {
         <p>
           We may update this policy; we&apos;ll note the date above. For any
           privacy questions, contact{" "}
-          <a href="mailto:hello@lifeos.app">hello@lifeos.app</a>.
+          <a href="mailto:kingfmgonzales@gmail.com">kingfmgonzales@gmail.com</a>.
         </p>
       </section>
     </LegalShell>

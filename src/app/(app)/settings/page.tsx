@@ -13,9 +13,14 @@ import { SettingsForm } from "./settings-form";
 
 export const metadata: Metadata = { title: "Settings" };
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ upgraded?: string; checkout?: string }>;
+}) {
   const profile = await requireOnboardedProfile();
   const plan = await getActivePlan();
+  const sp = await searchParams;
 
   return (
     <div className="space-y-5">
@@ -28,6 +33,22 @@ export default async function SettingsPage() {
         </Link>
         <h1 className="font-display text-2xl tracking-tight">Settings</h1>
       </header>
+
+      {sp.upgraded === "1" && (
+        <div className="rounded-2xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-foreground">
+          <p className="font-medium">Payment received — thank you! 🎉</p>
+          <p className="text-muted-foreground">
+            {plan === "pro"
+              ? "You're on Pro now. Enjoy everything Life OS has to offer."
+              : "Your Pro upgrade will activate in a moment. Refresh this page shortly."}
+          </p>
+        </div>
+      )}
+      {sp.checkout === "failed" && (
+        <div className="rounded-2xl border border-border bg-secondary px-4 py-3 text-sm text-muted-foreground">
+          Checkout was cancelled. No charge was made — you can try again anytime.
+        </div>
+      )}
 
       <PlanCard plan={plan} />
 
