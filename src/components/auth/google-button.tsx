@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { getSiteURL } from "@/lib/site";
@@ -32,9 +33,19 @@ export function GoogleButton({ next }: { next?: string }) {
       className="w-full"
       onClick={signIn}
       disabled={loading}
+      aria-busy={loading}
     >
-      <GoogleIcon className="size-4" aria-hidden />
-      Continue with Google
+      {loading ? (
+        <>
+          <Loader2Icon className="size-4 animate-spin" aria-hidden />
+          Connecting to Google…
+        </>
+      ) : (
+        <>
+          <GoogleIcon className="size-4" aria-hidden />
+          Continue with Google
+        </>
+      )}
     </Button>
   );
 }
