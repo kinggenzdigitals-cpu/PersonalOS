@@ -10,11 +10,12 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-/** Max-width per size (spec: sm≤400, md≤520, lg≤640). */
+/** Max-width per size (spec: sm≤400, md≤520, lg≤640, xl≤720). */
 const SIZE_CLASS = {
   sm: "sm:max-w-[400px]",
   md: "sm:max-w-[520px]",
   lg: "sm:max-w-[640px]",
+  xl: "sm:max-w-[720px]",
 } as const;
 
 /**
@@ -41,7 +42,7 @@ export function FormSheet({
   children: (close: () => void) => React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
 }) {
   const [uncontrolled, setUncontrolled] = React.useState(false);
   const open = controlledOpen ?? uncontrolled;
