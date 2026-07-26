@@ -169,13 +169,11 @@ export default async function AccountPage() {
             <KeyRoundIcon className="size-4" /> Change password
           </Link>
         </Button>
-        {!complimentary && (
-          <Button asChild>
-            <Link href="/settings">
-              <CreditCardIcon className="size-4" /> Manage subscription
-            </Link>
-          </Button>
-        )}
+        <Button asChild>
+          <Link href="/subscription">
+            <CreditCardIcon className="size-4" /> View plans &amp; subscription
+          </Link>
+        </Button>
       </div>
     </div>
   );
