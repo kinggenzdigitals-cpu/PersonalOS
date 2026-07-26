@@ -62,6 +62,10 @@ type TableShape<Row, Insert, Update> = {
 
 // ---- Row types -----------------------------------------------------------
 
+export type UserRole = "user" | "super_admin";
+export type AccessType = "paid" | "complimentary_pro" | "lifetime_pro";
+export type AccountStatus = "active" | "suspended" | "revoked";
+
 export type Profile = {
   id: string;
   user_id: string;
@@ -71,6 +75,11 @@ export type Profile = {
   week_starts_on: WeekStart;
   onboarded: boolean;
   low_balance_threshold: number;
+  role: UserRole;
+  username: string | null;
+  status: AccountStatus;
+  must_change_password: boolean;
+  last_login_at: string | null;
 } & Timestamps;
 
 export type Account = Owned & {
@@ -237,7 +246,40 @@ export type Subscription = Owned & {
   xendit_customer_id: string | null;
   xendit_plan_id: string | null;
   current_period_end: string | null;
+  access_type: AccessType | null;
+  access_expires_at: string | null;
+  granted_by: string | null;
 } & Timestamps;
+
+export type FeedbackCategory = "bug" | "feature" | "recommendation" | "other";
+export type FeedbackStatus =
+  | "new"
+  | "under_review"
+  | "planned"
+  | "in_progress"
+  | "completed"
+  | "declined";
+
+export type Feedback = Owned & {
+  category: FeedbackCategory;
+  title: string;
+  message: string;
+  screenshot_url: string | null;
+  status: FeedbackStatus;
+  admin_note: string | null;
+  admin_response: string | null;
+  is_duplicate: boolean;
+  archived: boolean;
+} & Timestamps;
+
+export type AdminAuditLog = {
+  id: string;
+  admin_id: string;
+  target_user_id: string | null;
+  action: string;
+  detail: Record<string, unknown> | null;
+  created_at: string;
+};
 
 export type FocusSessionType = "focus" | "short_break" | "long_break";
 
@@ -327,6 +369,15 @@ export type Database = {
         InsertOf<FocusSession>,
         UpdateOf<FocusSession>
       >;
+      feedback: TableShape<Feedback, InsertOf<Feedback>, UpdateOf<Feedback>>;
+      admin_audit_log: TableShape<
+        AdminAuditLog,
+        Omit<AdminAuditLog, "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        },
+        Partial<AdminAuditLog>
+      >;
     };
     Views: {
       account_balances: {
@@ -352,6 +403,11 @@ export type Database = {
       liability_kind: LiabilityKind;
       subscription_status: SubscriptionStatus;
       focus_session_type: FocusSessionType;
+      user_role: UserRole;
+      access_type: AccessType;
+      account_status: AccountStatus;
+      feedback_category: FeedbackCategory;
+      feedback_status: FeedbackStatus;
     };
   };
 };

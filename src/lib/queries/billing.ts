@@ -25,17 +25,11 @@ export async function getSubscription(): Promise<Subscription | null> {
 }
 
 /**
- * The plan to gate features on. 'pro' only when the subscription is active AND
- * the paid period hasn't lapsed (billing is invoice-based, so access is granted
- * per period rather than auto-renewed). A null period end means no expiry
- * (e.g. a manually comped account).
+ * The plan to gate features on. Delegates to the server-side entitlement engine
+ * so super_admin / lifetime / complimentary access is honored (not just paid
+ * subscriptions).
  */
 export async function getActivePlan(): Promise<PlanId> {
-  const sub = await getSubscription();
-  if (!sub || sub.plan !== "pro" || sub.status !== "active") return "free";
-  if (sub.current_period_end) {
-    const notExpired = new Date(sub.current_period_end).getTime() > Date.now();
-    if (!notExpired) return "free";
-  }
-  return "pro";
+  const { getEntitlement } = await import("@/lib/entitlement");
+  return (await getEntitlement()).plan;
 }

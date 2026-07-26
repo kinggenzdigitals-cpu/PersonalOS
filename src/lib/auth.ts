@@ -32,6 +32,8 @@ export async function requireOnboardedProfile(): Promise<Profile> {
     .single();
 
   if (!profile) redirect("/onboarding");
+  // Suspended / revoked accounts are locked out of protected pages.
+  if (profile.status && profile.status !== "active") redirect("/suspended");
   if (!profile.onboarded) redirect("/onboarding");
 
   return profile;
