@@ -3,7 +3,7 @@ import { requireSuperAdmin } from "@/lib/entitlement";
 import { listAdminUsers, summarize } from "@/lib/admin/users";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
-import type { Feedback } from "@/lib/supabase/types";
+import type { Feedback, Invitation } from "@/lib/supabase/types";
 
 export const metadata: Metadata = { title: "Subscribers & Users" };
 
@@ -13,11 +13,20 @@ export default async function AdminPage() {
   const summary = summarize(users);
 
   const admin = createAdminClient();
-  const { data: feedback } = await admin
-    .from("feedback")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(200);
+  const [feedbackRes, invitesRes] = await Promise.all([
+    admin
+      .from("feedback")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200),
+    admin
+      .from("user_invitations")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200),
+  ]);
+  const feedback = feedbackRes.data;
+  const invitations = (invitesRes.data as Invitation[] | null) ?? [];
 
   return (
     <div className="space-y-5">
@@ -33,6 +42,7 @@ export default async function AdminPage() {
         users={users}
         summary={summary}
         feedback={(feedback as Feedback[] | null) ?? []}
+        invitations={invitations}
       />
     </div>
   );

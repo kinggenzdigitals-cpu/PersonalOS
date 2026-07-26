@@ -35,22 +35,26 @@ import {
 } from "@/app/(app)/admin/actions";
 import { STATUS_LABELS, STATUS_ORDER, CATEGORY_LABELS } from "@/lib/feedback";
 import type { AdminUser, AdminSummary } from "@/lib/admin/users";
+import { InvitationsPanel } from "@/components/admin/invitations-panel";
 import type {
   AccessType,
   Feedback,
   FeedbackStatus,
+  Invitation,
 } from "@/lib/supabase/types";
 
-type Tab = "users" | "feedback";
+type Tab = "users" | "invitations" | "feedback";
 
 export function AdminDashboard({
   users,
   summary,
   feedback,
+  invitations,
 }: {
   users: AdminUser[];
   summary: AdminSummary;
   feedback: Feedback[];
+  invitations: Invitation[];
 }) {
   const [tab, setTab] = React.useState<Tab>("users");
   const [q, setQ] = React.useState("");
@@ -76,7 +80,7 @@ export function AdminDashboard({
       </div>
 
       <div className="flex items-center gap-1 rounded-full bg-secondary p-1 text-sm w-fit">
-        {(["users", "feedback"] as const).map((t) => (
+        {(["users", "invitations", "feedback"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -88,12 +92,12 @@ export function AdminDashboard({
                 : "text-muted-foreground",
             )}
           >
-            {t === "users" ? "Users" : "Feedback"}
+            {t}
           </button>
         ))}
       </div>
 
-      {tab === "users" ? (
+      {tab === "users" && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Input
@@ -106,7 +110,9 @@ export function AdminDashboard({
           </div>
           <UsersTable users={filtered} />
         </div>
-      ) : (
+      )}
+      {tab === "invitations" && <InvitationsPanel invitations={invitations} />}
+      {tab === "feedback" && (
         <FeedbackTriage feedback={feedback} users={users} />
       )}
     </div>

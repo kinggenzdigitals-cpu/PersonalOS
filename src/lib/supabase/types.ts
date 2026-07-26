@@ -272,6 +272,26 @@ export type Feedback = Owned & {
   archived: boolean;
 } & Timestamps;
 
+export type InvitationStatus = "pending" | "accepted" | "expired" | "revoked";
+
+export type Invitation = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  selected_plan: string;
+  access_type: AccessType;
+  access_expires_at: string | null;
+  token_hash: string;
+  invitation_expires_at: string;
+  status: InvitationStatus;
+  invited_by: string | null;
+  accepted_by: string | null;
+  accepted_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type AdminAuditLog = {
   id: string;
   admin_id: string;
@@ -378,6 +398,13 @@ export type Database = {
         },
         Partial<AdminAuditLog>
       >;
+      user_invitations: TableShape<
+        Invitation,
+        { email: string; token_hash: string; invitation_expires_at: string } & Partial<
+          Omit<Invitation, "email" | "token_hash" | "invitation_expires_at">
+        >,
+        Partial<Invitation>
+      >;
     };
     Views: {
       account_balances: {
@@ -408,6 +435,7 @@ export type Database = {
       account_status: AccountStatus;
       feedback_category: FeedbackCategory;
       feedback_status: FeedbackStatus;
+      invitation_status: InvitationStatus;
     };
   };
 };
