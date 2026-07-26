@@ -2,7 +2,15 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Loader2Icon, MessageSquarePlusIcon } from "lucide-react";
+import {
+  Loader2Icon,
+  MessageSquarePlusIcon,
+  BugIcon,
+  SparklesIcon,
+  LightbulbIcon,
+  MessageCircleIcon,
+  type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +26,13 @@ import {
 } from "@/lib/feedback";
 import type { MyFeedback } from "@/lib/queries/feedback";
 import type { FeedbackCategory } from "@/lib/supabase/types";
+
+const CATEGORY_ICONS: Record<FeedbackCategory, LucideIcon> = {
+  bug: BugIcon,
+  feature: SparklesIcon,
+  recommendation: LightbulbIcon,
+  other: MessageCircleIcon,
+};
 
 export function FeedbackView({ initial }: { initial: MyFeedback[] }) {
   const router = useRouter();
@@ -60,21 +75,25 @@ export function FeedbackView({ initial }: { initial: MyFeedback[] }) {
                 Category
               </label>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {CATEGORY_ORDER.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setCategory(c)}
-                    className={cn(
-                      "rounded-lg border px-2 py-2 text-xs font-medium transition-colors",
-                      category === c
-                        ? "border-brand bg-brand/10 text-brand"
-                        : "border-border text-muted-foreground hover:bg-secondary",
-                    )}
-                  >
-                    {CATEGORY_LABELS[c]}
-                  </button>
-                ))}
+                {CATEGORY_ORDER.map((c) => {
+                  const Icon = CATEGORY_ICONS[c];
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCategory(c)}
+                      className={cn(
+                        "flex flex-col items-center gap-1.5 rounded-lg border px-2 py-2.5 text-xs font-medium transition-colors",
+                        category === c
+                          ? "border-brand bg-brand/10 text-brand"
+                          : "border-border text-muted-foreground hover:bg-secondary",
+                      )}
+                    >
+                      <Icon className="size-4" aria-hidden />
+                      {CATEGORY_LABELS[c]}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -140,8 +159,14 @@ export function FeedbackView({ initial }: { initial: MyFeedback[] }) {
           initial.map((f) => (
             <Card key={f.id} className="shadow-soft">
               <CardContent className="space-y-2 pt-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-muted-foreground">
+                    {React.createElement(CATEGORY_ICONS[f.category], {
+                      className: "size-4",
+                      "aria-hidden": true,
+                    })}
+                  </span>
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{f.title}</p>
                     <p className="text-xs text-muted-foreground">
                       {CATEGORY_LABELS[f.category]} ·{" "}
