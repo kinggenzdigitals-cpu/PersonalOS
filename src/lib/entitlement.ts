@@ -72,7 +72,7 @@ export async function getEntitlement(): Promise<Entitlement> {
       userId: user.id,
       email: user.email ?? null,
       role: "super_admin",
-      plan: "pro",
+      plan: "premium", // highest tier — full access
       accountStatus: "active",
       accessType: "lifetime_pro",
       isSuperAdmin: true,
@@ -112,15 +112,21 @@ export async function getEntitlement(): Promise<Entitlement> {
   const notExpired = (iso: string | null | undefined) =>
     !iso || new Date(iso).getTime() > now;
 
+  // The paid tier stored on the subscription row ("pro" | "premium").
+  const paidTier: PlanId = sub?.plan === "premium" ? "premium" : "pro";
+
   let plan: PlanId = "free";
   const accessType = sub?.access_type ?? null;
   if (sub) {
     if (accessType === "lifetime_pro") {
-      plan = "pro";
+      plan = paidTier;
     } else if (accessType === "complimentary_pro") {
-      plan = notExpired(sub.access_expires_at) ? "pro" : "free";
-    } else if (sub.plan === "pro" && sub.status === "active") {
-      plan = notExpired(sub.current_period_end) ? "pro" : "free";
+      plan = notExpired(sub.access_expires_at) ? paidTier : "free";
+    } else if (
+      (sub.plan === "pro" || sub.plan === "premium") &&
+      sub.status === "active"
+    ) {
+      plan = notExpired(sub.current_period_end) ? paidTier : "free";
     }
   }
 
