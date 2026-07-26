@@ -2,7 +2,17 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { MoreVerticalIcon, UserPlusIcon, Loader2Icon } from "lucide-react";
+import {
+  MoreVerticalIcon,
+  UserPlusIcon,
+  Loader2Icon,
+  UsersIcon,
+  CreditCardIcon,
+  GiftIcon,
+  InfinityIcon,
+  CircleSlashIcon,
+  type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,11 +68,11 @@ export function AdminDashboard({
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        <SummaryCard label="Total users" value={summary.total} />
-        <SummaryCard label="Active paid" value={summary.activePaid} />
-        <SummaryCard label="Complimentary" value={summary.complimentary} />
-        <SummaryCard label="Lifetime" value={summary.lifetime} />
-        <SummaryCard label="Expired / cancelled" value={summary.expiredCancelled} />
+        <SummaryCard icon={UsersIcon} label="Total users" value={summary.total} />
+        <SummaryCard icon={CreditCardIcon} label="Active paid" value={summary.activePaid} />
+        <SummaryCard icon={GiftIcon} label="Complimentary" value={summary.complimentary} />
+        <SummaryCard icon={InfinityIcon} label="Lifetime" value={summary.lifetime} />
+        <SummaryCard icon={CircleSlashIcon} label="Expired / cancelled" value={summary.expiredCancelled} />
       </div>
 
       <div className="flex items-center gap-1 rounded-full bg-secondary p-1 text-sm w-fit">
@@ -103,10 +113,21 @@ export function AdminDashboard({
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: number }) {
+function SummaryCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: number;
+}) {
   return (
     <Card className="shadow-soft">
       <CardContent className="pt-5">
+        <span className="mb-1.5 grid size-8 place-items-center rounded-lg bg-secondary text-muted-foreground">
+          <Icon className="size-4" aria-hidden />
+        </span>
         <p className="tnum font-display text-2xl">{value}</p>
         <p className="text-[11px] text-muted-foreground">{label}</p>
       </CardContent>

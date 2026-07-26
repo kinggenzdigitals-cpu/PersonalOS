@@ -6,6 +6,15 @@ import {
   KeyRoundIcon,
   CreditCardIcon,
   SparklesIcon,
+  UserIcon,
+  AtSignIcon,
+  MailIcon,
+  BadgeCheckIcon,
+  ActivityIcon,
+  RepeatIcon,
+  CalendarIcon,
+  CalendarClockIcon,
+  type LucideIcon,
 } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
 import { getEntitlement } from "@/lib/entitlement";
@@ -61,9 +70,9 @@ export default async function AccountPage() {
       {/* Account */}
       <Card className="shadow-card">
         <CardContent className="space-y-1 pt-6">
-          <Row label="Full name" value={profile.display_name ?? "—"} />
-          <Row label="Username" value={profile.username ? `@${profile.username}` : "—"} />
-          <Row label="Email" value={ent.email ?? "—"} />
+          <Row icon={UserIcon} label="Full name" value={profile.display_name ?? "—"} />
+          <Row icon={AtSignIcon} label="Username" value={profile.username ? `@${profile.username}` : "—"} />
+          <Row icon={MailIcon} label="Email" value={ent.email ?? "—"} />
         </CardContent>
       </Card>
 
@@ -93,26 +102,30 @@ export default async function AccountPage() {
           </div>
 
           <div className="space-y-1 border-t border-border pt-3">
-            <Row label="Access type" value={label} />
-            {sub?.status && <Row label="Subscription status" value={sub.status} />}
+            <Row icon={BadgeCheckIcon} label="Access type" value={label} />
+            {sub?.status && (
+              <Row icon={ActivityIcon} label="Subscription status" value={sub.status} />
+            )}
             {sub?.interval && !complimentary && (
-              <Row label="Billing cycle" value={sub.interval} />
+              <Row icon={RepeatIcon} label="Billing cycle" value={sub.interval} />
             )}
             {sub?.created_at && !complimentary && (
               <Row
+                icon={CalendarIcon}
                 label="Started"
                 value={new Date(sub.created_at).toLocaleDateString()}
               />
             )}
-            {/* Renewal: only paid subscribers see a renewal/expiry date. */}
             {!complimentary && renewal && (
               <Row
+                icon={CalendarClockIcon}
                 label="Renews / expires"
                 value={new Date(renewal).toLocaleDateString()}
               />
             )}
             {ent.accessType === "complimentary_pro" && sub?.access_expires_at && (
               <Row
+                icon={CalendarClockIcon}
                 label="Access until"
                 value={new Date(sub.access_expires_at).toLocaleDateString()}
               />
@@ -168,10 +181,23 @@ export default async function AccountPage() {
   );
 }
 
-function Row({ label, value }: { label: string; value: ReactNode }) {
+function Row({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: ReactNode;
+}) {
   return (
-    <div className="flex items-center justify-between gap-3 py-1 text-sm">
-      <span className="text-muted-foreground">{label}</span>
+    <div className="flex items-center justify-between gap-3 py-1.5 text-sm">
+      <span className="flex items-center gap-2 text-muted-foreground">
+        <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-secondary text-muted-foreground">
+          <Icon className="size-4" aria-hidden />
+        </span>
+        {label}
+      </span>
       <span className="font-medium capitalize">{value}</span>
     </div>
   );
