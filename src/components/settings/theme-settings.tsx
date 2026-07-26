@@ -7,6 +7,7 @@ import {
   PlusIcon,
   XIcon,
   CheckIcon,
+  ChevronDownIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,13 +25,6 @@ import {
 } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
-const ROLES: { id: ThemeRole; label: string }[] = [
-  { id: "primary", label: "Primary" },
-  { id: "secondary", label: "Secondary" },
-  { id: "accent", label: "Accent" },
-  { id: "tab", label: "Tab" },
-];
-
 export function ThemeSettings() {
   const {
     config,
@@ -42,19 +36,8 @@ export function ThemeSettings() {
     shuffle,
     reset,
   } = useThemeCustomizer();
-  const [activeRole, setActiveRole] = React.useState<ThemeRole>("primary");
-  const [hexInput, setHexInput] = React.useState("");
-
+  const [advanced, setAdvanced] = React.useState(false);
   const colors = config.enabled ? config.colors : DEFAULT_COLORS;
-  const current = config.colors[activeRole];
-
-  function commitHex(value: string, alsoSave: boolean) {
-    if (!isValidHex(value)) return;
-    const hex = normalizeHex(value);
-    setRoleColor(activeRole, hex);
-    if (alsoSave) addSaved(hex);
-    setHexInput("");
-  }
 
   return (
     <Card className="shadow-card">
@@ -92,7 +75,7 @@ export function ThemeSettings() {
             {/* Presets */}
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground">
-                Preset palettes
+                Preset theme
               </p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {PRESETS.map((preset) => (
@@ -103,15 +86,13 @@ export function ThemeSettings() {
                     className="flex items-center gap-2 rounded-xl border border-border p-2 text-left transition-colors hover:bg-secondary"
                   >
                     <span className="flex -space-x-1">
-                      {(["primary", "secondary", "accent", "tab"] as const).map(
-                        (r) => (
-                          <span
-                            key={r}
-                            className="size-4 rounded-full border border-card"
-                            style={{ backgroundColor: preset.colors[r] }}
-                          />
-                        ),
-                      )}
+                      {(["primary", "accent", "tab"] as const).map((r) => (
+                        <span
+                          key={r}
+                          className="size-4 rounded-full border border-card"
+                          style={{ backgroundColor: preset.colors[r] }}
+                        />
+                      ))}
                     </span>
                     <span className="truncate text-xs font-medium">
                       {preset.name}
@@ -121,95 +102,12 @@ export function ThemeSettings() {
               </div>
             </div>
 
-            {/* Role selector */}
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">
-                Choose a role to edit
-              </p>
-              <div className="grid grid-cols-4 gap-1 rounded-full bg-secondary p-1">
-                {ROLES.map((role) => (
-                  <button
-                    key={role.id}
-                    type="button"
-                    onClick={() => setActiveRole(role.id)}
-                    className={cn(
-                      "flex items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-medium transition-colors",
-                      activeRole === role.id
-                        ? "bg-card text-foreground shadow-soft"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    <span
-                      className="size-3 rounded-full"
-                      style={{ backgroundColor: config.colors[role.id] }}
-                    />
-                    {role.label}
-                  </button>
-                ))}
-              </div>
+            {/* Simple color controls */}
+            <div className="space-y-3">
+              <ColorRow role="primary" label="Primary color" onSet={setRoleColor} value={config.colors.primary} />
+              <ColorRow role="accent" label="Accent color" onSet={setRoleColor} value={config.colors.accent} />
+              <ColorRow role="tab" label="Active tab color" onSet={setRoleColor} value={config.colors.tab} />
             </div>
-
-            {/* Color picker + hex input */}
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                aria-label={`Pick ${activeRole} color`}
-                value={current}
-                onChange={(e) => setRoleColor(activeRole, e.target.value)}
-                className="size-10 shrink-0 cursor-pointer rounded-lg border border-border bg-transparent p-0.5"
-              />
-              <Input
-                value={hexInput}
-                onChange={(e) => setHexInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") commitHex(hexInput, false);
-                }}
-                placeholder={current}
-                aria-label="Hex color"
-                className="font-mono"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label="Add to saved colors"
-                onClick={() =>
-                  commitHex(isValidHex(hexInput) ? hexInput : current, true)
-                }
-              >
-                <PlusIcon className="size-4" />
-              </Button>
-            </div>
-
-            {/* Saved colors */}
-            {config.saved.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Saved colors — tap to apply to {activeRole}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {config.saved.map((hex) => (
-                    <div key={hex} className="group relative">
-                      <button
-                        type="button"
-                        onClick={() => setRoleColor(activeRole, hex)}
-                        aria-label={`Apply ${hex}`}
-                        className="size-8 rounded-lg border border-border"
-                        style={{ backgroundColor: hex }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeSaved(hex)}
-                        aria-label={`Remove ${hex}`}
-                        className="absolute -right-1.5 -top-1.5 grid size-4 place-items-center rounded-full bg-foreground text-background"
-                      >
-                        <XIcon className="size-2.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Live preview */}
             <div className="space-y-2">
@@ -225,12 +123,6 @@ export function ThemeSettings() {
                   }}
                 >
                   Primary
-                </span>
-                <span
-                  className="text-sm font-medium underline"
-                  style={{ color: colors.secondary }}
-                >
-                  A link
                 </span>
                 <span
                   className="rounded-full px-3 py-1 text-xs font-medium"
@@ -250,14 +142,47 @@ export function ThemeSettings() {
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" onClick={shuffle}>
-                <ShuffleIcon className="size-4" /> Shuffle colors
-              </Button>
-              <Button type="button" variant="ghost" onClick={reset}>
-                <RotateCcwIcon className="size-4" /> Reset to default
-              </Button>
+            <Button type="button" variant="ghost" onClick={reset}>
+              <RotateCcwIcon className="size-4" /> Reset to default
+            </Button>
+
+            {/* Advanced */}
+            <div className="border-t border-border pt-3">
+              <button
+                type="button"
+                onClick={() => setAdvanced((v) => !v)}
+                className="flex w-full items-center justify-between text-sm font-medium"
+              >
+                Advanced customization
+                <ChevronDownIcon
+                  className={cn(
+                    "size-4 transition-transform",
+                    advanced && "rotate-180",
+                  )}
+                />
+              </button>
+              {advanced && (
+                <div className="mt-3 space-y-4">
+                  <ColorRow
+                    role="secondary"
+                    label="Secondary / links"
+                    onSet={setRoleColor}
+                    value={config.colors.secondary}
+                  />
+
+                  <SavedColors
+                    saved={config.saved}
+                    onAdd={addSaved}
+                    onRemove={removeSaved}
+                    onApply={(hex) => setRoleColor("primary", hex)}
+                    current={config.colors.primary}
+                  />
+
+                  <Button type="button" variant="outline" onClick={shuffle}>
+                    <ShuffleIcon className="size-4" /> Shuffle colors
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -270,5 +195,105 @@ export function ThemeSettings() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function ColorRow({
+  role,
+  label,
+  value,
+  onSet,
+}: {
+  role: ThemeRole;
+  label: string;
+  value: string;
+  onSet: (role: ThemeRole, hex: string) => void;
+}) {
+  // Show the live prop value when not editing; a local draft while typing —
+  // so presets/shuffle stay reflected without a set-state-in-effect sync.
+  const [draft, setDraft] = React.useState<string | null>(null);
+  const commit = (v: string) => {
+    if (isValidHex(v)) onSet(role, normalizeHex(v));
+    setDraft(null);
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      <input
+        type="color"
+        aria-label={label}
+        value={value}
+        onChange={(e) => onSet(role, e.target.value)}
+        className="size-10 shrink-0 cursor-pointer rounded-lg border border-border bg-transparent p-0.5"
+      />
+      <div className="flex-1">
+        <p className="text-sm font-medium">{label}</p>
+      </div>
+      <Input
+        value={draft ?? value}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => draft !== null && commit(draft)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && draft !== null) commit(draft);
+        }}
+        aria-label={`${label} hex`}
+        className="w-28 font-mono"
+      />
+    </div>
+  );
+}
+
+function SavedColors({
+  saved,
+  current,
+  onAdd,
+  onRemove,
+  onApply,
+}: {
+  saved: string[];
+  current: string;
+  onAdd: (hex: string) => void;
+  onRemove: (hex: string) => void;
+  onApply: (hex: string) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-muted-foreground">
+          Saved colors
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onAdd(current)}
+        >
+          <PlusIcon className="size-4" /> Save current
+        </Button>
+      </div>
+      {saved.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {saved.map((hex) => (
+            <div key={hex} className="group relative">
+              <button
+                type="button"
+                onClick={() => onApply(hex)}
+                aria-label={`Apply ${hex}`}
+                className="size-8 rounded-lg border border-border"
+                style={{ backgroundColor: hex }}
+              />
+              <button
+                type="button"
+                onClick={() => onRemove(hex)}
+                aria-label={`Remove ${hex}`}
+                className="absolute -right-1.5 -top-1.5 grid size-4 place-items-center rounded-full bg-foreground text-background"
+              >
+                <XIcon className="size-2.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
