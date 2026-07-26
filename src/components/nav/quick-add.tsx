@@ -18,12 +18,12 @@ import {
   Loader2Icon,
 } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { TransactionForm } from "@/components/money/transaction-form";
@@ -121,14 +121,14 @@ export function QuickAdd({
   }
 
   return (
-    <Sheet
+    <Dialog
       open={open}
       onOpenChange={(o) => {
         setOpen(o);
         if (!o) reset();
       }}
     >
-      <SheetTrigger asChild>
+      <DialogTrigger asChild>
         {variant === "fab" ? (
           <button
             type="button"
@@ -152,13 +152,10 @@ export function QuickAdd({
             <PlusIcon className="size-4" /> Quick add
           </button>
         )}
-      </SheetTrigger>
-      <SheetContent
-        side="bottom"
-        className="max-h-[90dvh] overflow-y-auto rounded-t-2xl"
-      >
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2 font-display">
+      </DialogTrigger>
+      <DialogContent className="flex max-h-[85vh] flex-col gap-0 p-0 sm:max-w-[520px]">
+        <DialogHeader className="shrink-0 border-b border-border px-4 py-3 pr-12 text-left">
+          <DialogTitle className="flex items-center gap-2 font-display">
             {view !== "menu" && (
               <button
                 type="button"
@@ -170,9 +167,10 @@ export function QuickAdd({
               </button>
             )}
             {TITLES[view]}
-          </SheetTitle>
-        </SheetHeader>
+          </DialogTitle>
+        </DialogHeader>
 
+        <div className="min-h-0 flex-1 overflow-y-auto">
         {view === "menu" && (
           <div className="grid grid-cols-3 gap-3 p-4">
             {ACTIONS.map((action) => (
@@ -245,8 +243,9 @@ export function QuickAdd({
             <EventForm onDone={() => setOpen(false)} />
           </div>
         )}
-      </SheetContent>
-    </Sheet>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
