@@ -5,7 +5,22 @@ import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/pwa/register-sw";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { getSiteURL } from "@/lib/site";
+import { supabaseAnonKey, supabaseUrl } from "@/lib/supabase/env";
 import { cn } from "@/lib/utils";
+
+/**
+ * Public Supabase config, resolved on the server at runtime and injected into
+ * the page. This makes the browser client independent of build-time
+ * NEXT_PUBLIC_* inlining (which silently fails if the env var wasn't present at
+ * build). The anon key is public by design — access is guarded by RLS.
+ */
+function supabaseRuntimeConfig() {
+  try {
+    return { url: supabaseUrl(), key: supabaseAnonKey() };
+  } catch {
+    return null;
+  }
+}
 
 const fraunces = Fraunces({
   variable: "--font-display",
@@ -61,12 +76,23 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const sb = supabaseRuntimeConfig();
   return (
     <html
       lang="en"
       suppressHydrationWarning
       className={cn("h-full antialiased", fraunces.variable, karla.variable)}
     >
+      <head>
+        {sb && (
+          <script
+            // Runtime Supabase config for the browser client (see helper above).
+            dangerouslySetInnerHTML={{
+              __html: `window.__SB__=${JSON.stringify(sb)};`,
+            }}
+          />
+        )}
+      </head>
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
         <ThemeProvider
           attribute="class"
