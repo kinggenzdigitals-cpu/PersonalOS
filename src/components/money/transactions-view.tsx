@@ -29,6 +29,7 @@ import { TransactionForm } from "@/components/money/transaction-form";
 import {
   fetchTransactionsAction,
   deleteTransaction,
+  restoreTransaction,
 } from "@/app/(app)/money/actions";
 import type { Transaction, TransactionType } from "@/lib/supabase/types";
 import { toast } from "sonner";
@@ -325,11 +326,21 @@ export function TransactionsView({
                 variant="ghost"
                 className="w-full text-error hover:text-error"
                 onClick={async () => {
-                  const id = selected.id;
+                  const snapshot = selected;
                   setSelected(null);
-                  const res = await deleteTransaction(id);
+                  const res = await deleteTransaction(snapshot.id);
                   if (!res.ok) return toast.error(res.error);
-                  toast.success("Transaction deleted");
+                  toast.success("Transaction deleted", {
+                    action: {
+                      label: "Undo",
+                      onClick: async () => {
+                        const r = await restoreTransaction(snapshot);
+                        if (!r.ok) return toast.error(r.error);
+                        refetch();
+                        router.refresh();
+                      },
+                    },
+                  });
                   refetch();
                   router.refresh();
                 }}

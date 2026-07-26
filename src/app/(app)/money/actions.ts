@@ -102,6 +102,30 @@ export async function updateTransaction(
   return { ok: true, id };
 }
 
+/** Re-inserts a just-deleted transaction (for Undo). */
+export async function restoreTransaction(
+  t: Transaction,
+): Promise<ActionResult> {
+  const { supabase, user } = await auth();
+  if (!user) return { ok: false, error: "You're not signed in." };
+  const { error } = await supabase.from("transactions").insert({
+    id: t.id,
+    user_id: user.id,
+    type: t.type,
+    amount: t.amount,
+    category_id: t.category_id,
+    account_id: t.account_id,
+    to_account_id: t.to_account_id,
+    direction: t.direction,
+    occurred_at: t.occurred_at,
+    merchant: t.merchant,
+    notes: t.notes,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidateMoney();
+  return { ok: true, id: t.id };
+}
+
 export async function deleteTransaction(id: string): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
