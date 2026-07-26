@@ -19,6 +19,9 @@ export type Entitlement = {
   isSuperAdmin: boolean;
 };
 
+/** Platform owner email(s) — always Super Admin, in addition to the DB role. */
+const OWNER_EMAILS = ["kingfmgonzales@gmail.com"];
+
 const ANON: Entitlement = {
   userId: null,
   email: null,
@@ -55,12 +58,14 @@ export async function getEntitlement(): Promise<Entitlement> {
   const role: UserRole = profile?.role ?? "user";
   const accountStatus: AccountStatus = profile?.status ?? "active";
 
-  // Bootstrap: the owner email is treated as super admin even before the DB
-  // role is set, so the very first admin can always get in.
+  // Owner accounts are always super admin — no DB role or env var required,
+  // so the platform owner can never be locked out of the admin dashboard.
+  const email = user.email?.toLowerCase();
   const bootstrapEmail = process.env.SUPER_ADMIN_EMAIL?.toLowerCase();
   const isSuperAdmin =
     role === "super_admin" ||
-    (!!bootstrapEmail && user.email?.toLowerCase() === bootstrapEmail);
+    (!!bootstrapEmail && email === bootstrapEmail) ||
+    (!!email && OWNER_EMAILS.includes(email));
 
   if (isSuperAdmin) {
     return {

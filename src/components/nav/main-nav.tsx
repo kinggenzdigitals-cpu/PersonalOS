@@ -117,16 +117,18 @@ function SidebarBody({
   pathname,
   moneyBadge,
   onNavigate,
+  isAdmin,
 }: {
   pathname: string;
   moneyBadge: number;
   onNavigate?: () => void;
+  isAdmin?: boolean;
 }) {
   const profile = useProfile();
   const initial =
     profile.display_name?.trim()?.charAt(0)?.toUpperCase() ?? "?";
-  const secondary =
-    profile.role === "super_admin" ? [...SECONDARY, ADMIN_ITEM] : SECONDARY;
+  const admin = isAdmin || profile.role === "super_admin";
+  const secondary = admin ? [...SECONDARY, ADMIN_ITEM] : SECONDARY;
 
   return (
     <>
@@ -193,7 +195,13 @@ function SidebarBody({
 }
 
 /** Persistent left sidebar (tablet/desktop). */
-export function DesktopSidebar({ moneyBadge = 0 }: { moneyBadge?: number }) {
+export function DesktopSidebar({
+  moneyBadge = 0,
+  isAdmin = false,
+}: {
+  moneyBadge?: number;
+  isAdmin?: boolean;
+}) {
   const pathname = usePathname();
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border bg-card px-4 py-6 md:flex">
@@ -204,7 +212,7 @@ export function DesktopSidebar({ moneyBadge = 0 }: { moneyBadge?: number }) {
       <div className="mb-4">
         <QuickAdd variant="sidebar" />
       </div>
-      <SidebarBody pathname={pathname} moneyBadge={moneyBadge} />
+      <SidebarBody pathname={pathname} moneyBadge={moneyBadge} isAdmin={isAdmin} />
     </aside>
   );
 }
@@ -225,7 +233,13 @@ export function MobileTopBar() {
 }
 
 /** Mobile bottom navigation: Today · Money · Habits · Focus · More. */
-export function MobileBottomNav({ moneyBadge = 0 }: { moneyBadge?: number }) {
+export function MobileBottomNav({
+  moneyBadge = 0,
+  isAdmin = false,
+}: {
+  moneyBadge?: number;
+  isAdmin?: boolean;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
   const moreActive = !BOTTOM.some((t) => isActive(pathname, t.href));
@@ -281,6 +295,7 @@ export function MobileBottomNav({ moneyBadge = 0 }: { moneyBadge?: number }) {
             pathname={pathname}
             moneyBadge={moneyBadge}
             onNavigate={() => setOpen(false)}
+            isAdmin={isAdmin}
           />
         </SheetContent>
       </Sheet>
