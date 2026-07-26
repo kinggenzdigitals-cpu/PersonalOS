@@ -13,6 +13,8 @@ import {
   SettingsIcon,
   ListTodoIcon,
   TimerIcon,
+  MessageSquareIcon,
+  ShieldCheckIcon,
   MenuIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -38,8 +40,15 @@ const NAV: NavItem[] = [
   { href: "/tasks", label: "Tasks", icon: ListTodoIcon },
   { href: "/focus", label: "Focus", icon: TimerIcon },
   { href: "/reports", label: "Reports", icon: BarChart3Icon },
+  { href: "/feedback", label: "Feedback", icon: MessageSquareIcon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
+
+const ADMIN_ITEM: NavItem = {
+  href: "/admin",
+  label: "Subscribers & Users",
+  icon: ShieldCheckIcon,
+};
 
 function isActive(pathname: string, href: string) {
   if (href === "/home") return pathname === "/home";
@@ -72,12 +81,14 @@ function SidebarBody({
   const profile = useProfile();
   const initial =
     profile.display_name?.trim()?.charAt(0)?.toUpperCase() ?? "?";
+  const navItems =
+    profile.role === "super_admin" ? [...NAV, ADMIN_ITEM] : NAV;
 
   return (
     <>
       <nav aria-label="Primary" className="flex-1">
         <ul className="space-y-1">
-          {NAV.map((item) => {
+          {navItems.map((item) => {
             const active = isActive(pathname, item.href);
             const Icon = item.icon;
             return (
