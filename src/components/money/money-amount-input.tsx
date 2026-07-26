@@ -35,6 +35,16 @@ export function MoneyAmountInput({
     onChange(next);
   }
 
+  // Display the raw value with thousands separators (e.g. 1000 → 1,000) while
+  // keeping the stored value raw for calculations.
+  function display(v: string): string {
+    if (!v) return "";
+    const [whole, dec] = v.split(".");
+    const wholeFmt =
+      whole === "" ? "" : Number(whole).toLocaleString("en-US");
+    return dec !== undefined ? `${wholeFmt}.${dec}` : wholeFmt;
+  }
+
   return (
     <div
       className={cn(
@@ -48,7 +58,7 @@ export function MoneyAmountInput({
       <input
         inputMode="decimal"
         autoFocus={autoFocus}
-        value={value}
+        value={display(value)}
         onChange={(e) => handle(e.target.value)}
         placeholder="0.00"
         aria-label="Amount"
