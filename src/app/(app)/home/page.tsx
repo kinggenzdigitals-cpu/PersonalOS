@@ -11,7 +11,8 @@ import { requireOnboardedProfile } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { greeting, longDate } from "@/lib/greeting";
-import { formatMoney, formatMoneyCompact } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
+import { Money } from "@/components/ui/money";
 import { dayRange } from "@/lib/date";
 import {
   getBudgetsWithSpending,
@@ -246,7 +247,7 @@ export default async function HomePage() {
             <WalletIcon className="size-3.5" /> Spent today
           </p>
           <p className="tnum mt-1 font-display text-lg">
-            {formatMoney(spentToday, currency)}
+            <Money value={spentToday} currency={currency} />
           </p>
         </div>
         <Link
@@ -255,9 +256,15 @@ export default async function HomePage() {
         >
           <p className="text-xs text-muted-foreground">Next bill</p>
           <p className="tnum mt-1 font-display text-lg">
-            {nextBill
-              ? formatMoneyCompact(Number(nextBill.bill.amount), currency)
-              : "—"}
+            {nextBill ? (
+              <Money
+                value={Number(nextBill.bill.amount)}
+                currency={currency}
+                compact
+              />
+            ) : (
+              "—"
+            )}
           </p>
           {nextBill && (
             <p className="truncate text-[11px] text-muted-foreground">

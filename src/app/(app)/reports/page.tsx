@@ -5,7 +5,8 @@ import { requireOnboardedProfile } from "@/lib/auth";
 import { reportsMonthsLimit } from "@/lib/plan-guard";
 import { getReport, type ReportPeriod } from "@/lib/queries/reports";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatMoney } from "@/lib/format";
+import type { ReactNode } from "react";
+import { Money } from "@/components/ui/money";
 import { LIFE_AREA_MAP } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { LifeArea } from "@/lib/supabase/types";
@@ -118,18 +119,26 @@ export default async function ReportsPage({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-3 gap-2 text-center">
-            <Stat label="Income" value={formatMoney(report.money.income, currency)} className="text-money-up" />
-            <Stat label="Expenses" value={formatMoney(report.money.expense, currency)} className="text-money-down" />
+            <Stat
+              label="Income"
+              value={<Money value={report.money.income} currency={currency} />}
+              className="text-money-up"
+            />
+            <Stat
+              label="Expenses"
+              value={<Money value={report.money.expense} currency={currency} />}
+              className="text-money-down"
+            />
             <Stat
               label="Net"
-              value={formatMoney(report.money.net, currency, { sign: true })}
+              value={<Money value={report.money.net} currency={currency} sign />}
               className={report.money.net >= 0 ? "text-money-up" : "text-money-down"}
             />
           </div>
           <div className="flex items-center justify-between rounded-xl bg-secondary/50 px-3 py-2 text-sm">
             <span className="text-muted-foreground">Into savings</span>
             <span className="tnum font-medium text-sage">
-              {formatMoney(report.money.savingsInflow, currency)}
+              <Money value={report.money.savingsInflow} currency={currency} />
             </span>
           </div>
 
@@ -143,7 +152,7 @@ export default async function ReportsPage({
                   <div className="flex justify-between text-xs">
                     <span>{c.name}</span>
                     <span className="tnum text-muted-foreground">
-                      {formatMoney(c.amount, currency)}
+                      <Money value={c.amount} currency={currency} />
                     </span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
@@ -167,7 +176,7 @@ export default async function ReportsPage({
                   <li key={m.name} className="flex justify-between">
                     <span className="truncate">{m.name}</span>
                     <span className="tnum text-muted-foreground">
-                      {formatMoney(m.amount, currency)}
+                      <Money value={m.amount} currency={currency} />
                     </span>
                   </li>
                 ))}
@@ -297,7 +306,7 @@ function Stat({
   className,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   className?: string;
 }) {
   return (

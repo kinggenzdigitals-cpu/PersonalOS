@@ -5,7 +5,8 @@ import { localDateKey } from "@/lib/date";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { HandCoinsIcon } from "lucide-react";
-import { formatMoney } from "@/lib/format";
+import type { ReactNode } from "react";
+import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 import { LedgerCard } from "@/components/money/ledger-card";
 import { AddLedgerButton } from "@/components/money/add-ledger-button";
@@ -29,25 +30,27 @@ export default async function OwedPage() {
       <div className="grid grid-cols-2 gap-3">
         <StatCard
           label="Total Receivable"
-          value={formatMoney(summary.totalReceivable, currency)}
+          value={<Money value={summary.totalReceivable} currency={currency} />}
           sub="Owed to you"
           tone="up"
         />
         <StatCard
           label="Overdue"
-          value={formatMoney(summary.overdueReceivable, currency)}
+          value={
+            <Money value={summary.overdueReceivable} currency={currency} />
+          }
           sub="Past due date"
           tone={summary.overdueReceivable > 0 ? "warn" : "muted"}
         />
         <StatCard
           label="Total Payable"
-          value={formatMoney(summary.totalPayable, currency)}
+          value={<Money value={summary.totalPayable} currency={currency} />}
           sub="You owe"
           tone="down"
         />
         <StatCard
           label="Overdue"
-          value={formatMoney(summary.overduePayable, currency)}
+          value={<Money value={summary.overduePayable} currency={currency} />}
           sub="Past due date"
           tone={summary.overduePayable > 0 ? "warn" : "muted"}
         />
@@ -113,7 +116,7 @@ function StatCard({
   tone,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   sub: string;
   tone: "up" | "down" | "warn" | "muted";
 }) {

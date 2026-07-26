@@ -8,7 +8,8 @@ import {
 } from "@/lib/queries/money";
 import { getLedgerSummary } from "@/lib/queries/ledger";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatMoney } from "@/lib/format";
+import type { ReactNode } from "react";
+import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 import { MoneyQuickActions } from "@/components/money/money-quick-actions";
 import { NetPositionCard } from "@/components/money/net-position";
@@ -89,22 +90,32 @@ export default async function MoneyOverviewPage() {
         <div className="grid grid-cols-2 gap-3">
           <LedgerStat
             label="Total Receivable"
-            value={formatMoney(ledger.totalReceivable, currency)}
+            value={<Money value={ledger.totalReceivable} currency={currency} />}
             sub={
-              ledger.overdueReceivable > 0
-                ? `${formatMoney(ledger.overdueReceivable, currency)} overdue`
-                : "Owed to you"
+              ledger.overdueReceivable > 0 ? (
+                <>
+                  <Money value={ledger.overdueReceivable} currency={currency} />{" "}
+                  overdue
+                </>
+              ) : (
+                "Owed to you"
+              )
             }
             overdue={ledger.overdueReceivable > 0}
             tone="up"
           />
           <LedgerStat
             label="Total Payable"
-            value={formatMoney(ledger.totalPayable, currency)}
+            value={<Money value={ledger.totalPayable} currency={currency} />}
             sub={
-              ledger.overduePayable > 0
-                ? `${formatMoney(ledger.overduePayable, currency)} overdue`
-                : "You owe"
+              ledger.overduePayable > 0 ? (
+                <>
+                  <Money value={ledger.overduePayable} currency={currency} />{" "}
+                  overdue
+                </>
+              ) : (
+                "You owe"
+              )
             }
             overdue={ledger.overduePayable > 0}
             tone="down"
@@ -121,17 +132,19 @@ export default async function MoneyOverviewPage() {
           <div className="grid grid-cols-3 gap-2 text-center">
             <Stat
               label="Income"
-              value={formatMoney(overview.monthIncome, currency)}
+              value={<Money value={overview.monthIncome} currency={currency} />}
               className="text-money-up"
             />
             <Stat
               label="Expenses"
-              value={formatMoney(overview.monthExpense, currency)}
+              value={
+                <Money value={overview.monthExpense} currency={currency} />
+              }
               className="text-money-down"
             />
             <Stat
               label="Net"
-              value={formatMoney(net, currency, { sign: true })}
+              value={<Money value={net} currency={currency} sign />}
               className={net >= 0 ? "text-money-up" : "text-money-down"}
             />
           </div>
@@ -158,7 +171,7 @@ function Stat({
   className,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   className?: string;
 }) {
   return (
@@ -179,8 +192,8 @@ function LedgerStat({
   tone,
 }: {
   label: string;
-  value: string;
-  sub: string;
+  value: ReactNode;
+  sub: ReactNode;
   overdue: boolean;
   tone: "up" | "down";
 }) {

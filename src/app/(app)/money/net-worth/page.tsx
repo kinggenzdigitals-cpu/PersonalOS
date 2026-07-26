@@ -3,7 +3,8 @@ import { requireOnboardedProfile } from "@/lib/auth";
 import { getNetWorth } from "@/lib/queries/networth";
 import { hasProFeature } from "@/lib/plan-guard";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatMoney } from "@/lib/format";
+import type { ReactNode } from "react";
+import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 import { NetWorthSection } from "@/components/money/networth-section";
 import { ProGate } from "@/components/settings/pro-gate";
@@ -48,31 +49,42 @@ export default async function NetWorthPage() {
               nw.netWorth < 0 && "text-money-down",
             )}
           >
-            {formatMoney(nw.netWorth, currency)}
+            <Money value={nw.netWorth} currency={currency} />
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Everything you own minus everything you owe
           </p>
 
           <dl className="mt-4 space-y-1.5 text-sm">
-            <Row label="Cash (liquid)" value={formatMoney(nw.liquid, currency)} />
+            <Row
+              label="Cash (liquid)"
+              value={<Money value={nw.liquid} currency={currency} />}
+            />
             <Row
               label="Assets (non-liquid)"
-              value={formatMoney(nw.assetsTotal, currency)}
+              value={<Money value={nw.assetsTotal} currency={currency} />}
             />
             <Row
               label="Owed to you"
-              value={formatMoney(nw.receivable, currency)}
+              value={<Money value={nw.receivable} currency={currency} />}
               tone="up"
             />
             <Row
               label="You owe"
-              value={`− ${formatMoney(nw.payable, currency)}`}
+              value={
+                <>
+                  − <Money value={nw.payable} currency={currency} />
+                </>
+              }
               tone="down"
             />
             <Row
               label="Liabilities"
-              value={`− ${formatMoney(nw.liabilitiesTotal, currency)}`}
+              value={
+                <>
+                  − <Money value={nw.liabilitiesTotal} currency={currency} />
+                </>
+              }
               tone="down"
             />
           </dl>
@@ -110,7 +122,7 @@ function Row({
   tone,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   tone?: "up" | "down";
 }) {
   return (
