@@ -22,11 +22,11 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CalendarIcon } from "lucide-react";
@@ -404,16 +404,14 @@ function ItemDetail({
   onChanged: () => void;
 }) {
   return (
-    <Sheet open={!!item} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent
-        side="bottom"
-        className="max-h-[90dvh] overflow-y-auto rounded-t-2xl"
-      >
-        <SheetHeader>
-          <SheetTitle className="font-display">
+    <Dialog open={!!item} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="flex max-h-[85vh] flex-col gap-0 p-0 sm:max-w-[560px]">
+        <DialogHeader className="shrink-0 border-b border-border px-4 py-3 pr-12 text-left">
+          <DialogTitle className="font-display">
             {item ? SOURCE_META[item.source].label.replace(/s$/, "") : ""}
-          </SheetTitle>
-        </SheetHeader>
+          </DialogTitle>
+        </DialogHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto">
         {item && (
           <div className="p-4 pt-2">
             {item.source === "event" && item.event && (
@@ -453,7 +451,8 @@ function ItemDetail({
             )}
           </div>
         )}
-      </SheetContent>
-    </Sheet>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

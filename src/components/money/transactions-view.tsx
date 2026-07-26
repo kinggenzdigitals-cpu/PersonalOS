@@ -16,7 +16,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { WalletIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -289,21 +294,16 @@ export function TransactionsView({
       )}
 
       {/* Detail / edit sheet */}
-      <Sheet
-        open={!!selected}
-        onOpenChange={(o) => !o && setSelected(null)}
-      >
-        <SheetContent
-          side="bottom"
-          className="max-h-[90dvh] overflow-y-auto rounded-t-2xl"
-        >
-          <SheetHeader>
-            <SheetTitle className="font-display">
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent className="flex max-h-[85vh] flex-col gap-0 p-0 sm:max-w-[560px]">
+          <DialogHeader className="shrink-0 border-b border-border px-4 py-3 pr-12 text-left">
+            <DialogTitle className="font-display">
               {selected?.type === "income" || selected?.type === "expense"
                 ? "Edit transaction"
                 : "Transaction"}
-            </SheetTitle>
-          </SheetHeader>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto">
           {selected && (
             <div className="space-y-4 p-4 pt-2">
               {selected.type === "income" || selected.type === "expense" ? (
@@ -349,8 +349,9 @@ export function TransactionsView({
               </Button>
             </div>
           )}
-        </SheetContent>
-      </Sheet>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

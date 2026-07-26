@@ -6,11 +6,11 @@ import { TargetIcon, PencilIcon, Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AddTaskButton } from "@/components/tasks/add-task-button";
 import { cn } from "@/lib/utils";
@@ -151,15 +151,12 @@ function PriorityPicker({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="bottom"
-        className="max-h-[90dvh] overflow-y-auto rounded-t-2xl"
-      >
-        <SheetHeader>
-          <SheetTitle className="font-display">Pick today&apos;s top 3</SheetTitle>
-        </SheetHeader>
-        <div className="space-y-3 p-4 pt-2">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[85vh] flex-col gap-0 p-0 sm:max-w-[520px]">
+        <DialogHeader className="shrink-0 border-b border-border px-4 py-3 pr-12 text-left">
+          <DialogTitle className="font-display">Pick today&apos;s top 3</DialogTitle>
+        </DialogHeader>
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 pt-2">
           {list.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
               No open tasks yet. Add one below.
@@ -195,7 +192,7 @@ function PriorityPicker({
             Save priorities
           </Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }

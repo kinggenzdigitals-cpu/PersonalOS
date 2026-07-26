@@ -1,6 +1,14 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ChevronLeftIcon, ChevronRightIcon, LockIcon } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  LockIcon,
+  WalletIcon,
+  SparklesIcon,
+  SmileIcon,
+  ListTodoIcon,
+} from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
 import { reportsMonthsLimit } from "@/lib/plan-guard";
 import { getReport, type ReportPeriod } from "@/lib/queries/reports";
@@ -115,7 +123,9 @@ export default async function ReportsPage({
       {/* Money */}
       <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="text-base">Money</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <WalletIcon className="size-4 text-brand-2" /> Money
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-3 gap-2 text-center">
@@ -198,7 +208,9 @@ export default async function ReportsPage({
       {/* Habits */}
       <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="text-base">Habits</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <SparklesIcon className="size-4 text-brand" /> Habits
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-center">
@@ -250,7 +262,9 @@ export default async function ReportsPage({
       {/* Mood */}
       <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="text-base">Mood</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <SmileIcon className="size-4 text-accent-brand" /> Mood
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {report.mood.entries === 0 ? (
@@ -279,7 +293,9 @@ export default async function ReportsPage({
       {/* Tasks */}
       <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="text-base">Tasks</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ListTodoIcon className="size-4 text-chart-4" /> Tasks
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-2 text-center">
