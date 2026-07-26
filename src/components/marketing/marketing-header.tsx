@@ -8,7 +8,7 @@ export function MarketingHeader() {
           <span className="grid size-9 place-items-center rounded-xl bg-brand text-primary-foreground shadow-soft">
             <span className="font-display text-lg leading-none">L</span>
           </span>
-          <span className="font-display text-lg tracking-tight">Life OS</span>
+          <span className="font-display text-lg tracking-tight">Finance & Habit Tracker</span>
         </Link>
         <nav className="hidden items-center gap-7 text-sm text-muted-foreground sm:flex">
           <Link href="/#features" className="transition-colors hover:text-foreground">

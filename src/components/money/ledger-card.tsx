@@ -5,7 +5,7 @@ import { FormSheet } from "@/components/money/form-sheet";
 import { LedgerForm } from "@/components/money/ledger-form";
 import { SettleLedgerForm } from "@/components/money/settle-ledger-form";
 import { useCurrency } from "@/components/providers/profile-provider";
-import { formatMoney } from "@/lib/format";
+import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 import type { LedgerEntry } from "@/lib/supabase/types";
 
@@ -54,7 +54,7 @@ export function LedgerCard({
             receivable ? "text-money-up" : "text-money-down",
           )}
         >
-          {formatMoney(Number(entry.amount), currency)}
+          <Money value={Number(entry.amount)} currency={currency} />
         </span>
       </div>
 

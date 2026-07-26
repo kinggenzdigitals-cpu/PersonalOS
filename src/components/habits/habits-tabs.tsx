@@ -31,7 +31,7 @@ export function HabitsTabs() {
             className={cn(
               "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
               active
-                ? "bg-card text-foreground shadow-soft"
+                ? "bg-tab-active text-tab-active-foreground shadow-soft"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >

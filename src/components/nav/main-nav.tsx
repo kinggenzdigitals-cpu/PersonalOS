@@ -12,12 +12,14 @@ import {
   BarChart3Icon,
   SettingsIcon,
   ListTodoIcon,
+  TimerIcon,
   MenuIcon,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuickAdd } from "@/components/nav/quick-add";
 import { ThemeToggle } from "@/components/nav/theme-toggle";
+import { SidebarControls } from "@/components/nav/sidebar-controls";
 import {
   Sheet,
   SheetContent,
@@ -34,6 +36,7 @@ const NAV: NavItem[] = [
   { href: "/habits", label: "Habits", icon: SparklesIcon },
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/tasks", label: "Tasks", icon: ListTodoIcon },
+  { href: "/focus", label: "Focus", icon: TimerIcon },
   { href: "/reports", label: "Reports", icon: BarChart3Icon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
@@ -46,10 +49,12 @@ function isActive(pathname: string, href: string) {
 function Brand() {
   return (
     <Link href="/home" className="flex items-center gap-2">
-      <span className="grid size-9 place-items-center rounded-xl bg-brand text-primary-foreground shadow-soft">
-        <span className="font-display text-lg leading-none">L</span>
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand text-primary-foreground shadow-soft">
+        <span className="font-display text-lg leading-none">F</span>
       </span>
-      <span className="font-display text-lg tracking-tight">Life OS</span>
+      <span className="font-display text-base leading-tight tracking-tight">
+        Finance &amp; Habit Tracker
+      </span>
     </Link>
   );
 }
@@ -105,7 +110,11 @@ function SidebarBody({
         </ul>
       </nav>
 
-      <div className="mt-4 flex items-center gap-3 border-t border-border pt-4">
+      <div className="mt-4 border-t border-border pt-3">
+        <SidebarControls />
+      </div>
+
+      <div className="mt-3 flex items-center gap-3 border-t border-border pt-4">
         <span className="grid size-9 place-items-center rounded-full bg-sage-soft text-sm font-semibold text-sage">
           {initial}
         </span>

@@ -8,8 +8,8 @@ import { PricingCards } from "@/components/marketing/pricing-cards";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Start free, upgrade to Pro when you're ready. Simple, honest pricing for Life OS.",
-  openGraph: { title: "Life OS — Pricing", type: "website" },
+    "Start free, upgrade to Pro when you're ready. Simple, honest pricing for Finance & Habit Tracker.",
+  openGraph: { title: "Finance & Habit Tracker — Pricing", type: "website" },
 };
 
 const FAQS = [

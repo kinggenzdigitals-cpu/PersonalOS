@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { FormSheet } from "@/components/money/form-sheet";
 import { GoalForm } from "@/components/money/goal-form";
 import { useCurrency } from "@/components/providers/profile-provider";
-import { currencySymbol, formatMoney } from "@/lib/format";
+import { currencySymbol } from "@/lib/format";
+import { Money } from "@/components/ui/money";
 import { contributeToGoal } from "@/app/(app)/money/goals-actions";
 import type { SavingsGoal } from "@/lib/supabase/types";
 import { toast } from "sonner";
@@ -42,7 +43,8 @@ export function GoalCard({ goal }: { goal: SavingsGoal }) {
           {(close) => <GoalForm initial={goal} onDone={close} />}
         </FormSheet>
         <span className="tnum shrink-0 text-sm text-muted-foreground">
-          {formatMoney(saved, currency)} / {formatMoney(target, currency)}
+          <Money value={saved} currency={currency} /> /{" "}
+          <Money value={target} currency={currency} />
         </span>
       </div>
 

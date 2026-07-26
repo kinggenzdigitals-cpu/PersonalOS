@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { FormSheet } from "@/components/money/form-sheet";
 import { NetWorthItemForm } from "@/components/money/networth-item-form";
 import { useCurrency } from "@/components/providers/profile-provider";
-import { formatMoney } from "@/lib/format";
+import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 import type { Asset, Liability } from "@/lib/supabase/types";
 
@@ -68,7 +68,7 @@ export function NetWorthSection({
                       )}
                     >
                       {isAsset ? "" : "−"}
-                      {formatMoney(Number(amount), currency)}
+                      <Money value={Number(amount)} currency={currency} />
                     </span>
                   </button>
                 }

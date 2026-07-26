@@ -21,6 +21,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { WalletIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
+import { usePrivacyHidden } from "@/components/ui/money";
 import { categoryIcon } from "@/lib/category-icons";
 import { useReference } from "@/components/providers/reference-provider";
 import { useProfile } from "@/components/providers/profile-provider";
@@ -50,6 +51,7 @@ export function TransactionsView({
 }) {
   const router = useRouter();
   const { accounts, categories } = useReference();
+  const hidden = usePrivacyHidden();
   const profile = useProfile();
   const currency = profile.currency;
 
@@ -247,7 +249,9 @@ export function TransactionsView({
                       g.net > 0 ? "text-money-up" : "text-money-down",
                     )}
                   >
-                    {formatMoney(g.net, currency, { sign: true })}
+                    {hidden
+                      ? "₱••••••"
+                      : formatMoney(g.net, currency, { sign: true })}
                   </span>
                 )}
               </div>
@@ -378,8 +382,10 @@ function Row({
       }`
     : (accountName.get(t.account_id) ?? "");
 
-  const amountText =
-    t.type === "income"
+  const hidden = usePrivacyHidden();
+  const amountText = hidden
+    ? "₱••••••"
+    : t.type === "income"
       ? formatMoney(Number(t.amount), currency, { sign: true })
       : t.type === "expense"
         ? formatMoney(-Number(t.amount), currency, { sign: true })
@@ -437,9 +443,13 @@ function ReadOnlyDetail({
   currency: string;
   accountName: Map<string, string>;
 }) {
+  const hidden = usePrivacyHidden();
   return (
     <dl className="space-y-2 rounded-xl bg-secondary/50 p-3 text-sm">
-      <Line label="Amount" value={formatMoney(Number(t.amount), currency)} />
+      <Line
+        label="Amount"
+        value={hidden ? "₱••••••" : formatMoney(Number(t.amount), currency)}
+      />
       <Line label="Type" value={t.type} />
       {t.type === "transfer" ? (
         <>

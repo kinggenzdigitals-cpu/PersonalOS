@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Life OS — your whole life, in one calm place";
+export const alt = "Finance & Habit Tracker — your whole life, in one calm place";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -43,7 +43,7 @@ export default function OpengraphImage() {
               color: "#2D2A26",
             }}
           >
-            Life OS
+            Finance & Habit Tracker
           </div>
         </div>
 

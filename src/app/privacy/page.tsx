@@ -33,7 +33,7 @@ export default function PrivacyPage() {
       <section>
         <h2>How we use it</h2>
         <p>
-          Only to provide Life OS to you: to show your dashboard, compute your
+          Only to provide Finance & Habit Tracker to you: to show your dashboard, compute your
           reports, and keep your account secure. We do <strong>not</strong> sell
           your data or use it for advertising.
         </p>

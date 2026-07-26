@@ -8,7 +8,7 @@ export function MarketingFooter() {
           <span className="grid size-7 place-items-center rounded-lg bg-brand text-primary-foreground">
             <span className="font-display text-sm leading-none">L</span>
           </span>
-          <span className="font-medium text-foreground">Life OS</span>
+          <span className="font-medium text-foreground">Finance & Habit Tracker</span>
           <span className="text-muted-foreground">
             · Your whole life, in one calm place.
           </span>

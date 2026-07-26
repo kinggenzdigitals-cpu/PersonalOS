@@ -1,4 +1,4 @@
-// Life OS service worker — minimal, offline fallback only.
+// Finance & Habit Tracker service worker — minimal, offline fallback only.
 // Offline *writes* are out of scope; we just show a friendly offline page
 // and serve cached static assets when the network is unavailable.
 

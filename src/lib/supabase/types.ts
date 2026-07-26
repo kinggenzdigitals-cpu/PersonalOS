@@ -239,6 +239,20 @@ export type Subscription = Owned & {
   current_period_end: string | null;
 } & Timestamps;
 
+export type FocusSessionType = "focus" | "short_break" | "long_break";
+
+export type FocusSession = Owned & {
+  session_type: FocusSessionType;
+  task_id: string | null;
+  habit_id: string | null;
+  planned_minutes: number;
+  actual_seconds: number;
+  completed: boolean;
+  started_at: string;
+  completed_at: string | null;
+  created_at: string;
+};
+
 // ---- Insert / Update helpers --------------------------------------------
 
 // user_id is required on insert; every other column is optional because the
@@ -308,6 +322,11 @@ export type Database = {
         InsertOf<Subscription>,
         UpdateOf<Subscription>
       >;
+      focus_sessions: TableShape<
+        FocusSession,
+        InsertOf<FocusSession>,
+        UpdateOf<FocusSession>
+      >;
     };
     Views: {
       account_balances: {
@@ -332,6 +351,7 @@ export type Database = {
       asset_kind: AssetKind;
       liability_kind: LiabilityKind;
       subscription_status: SubscriptionStatus;
+      focus_session_type: FocusSessionType;
     };
   };
 };

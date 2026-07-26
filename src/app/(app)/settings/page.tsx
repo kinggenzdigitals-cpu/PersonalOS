@@ -5,9 +5,9 @@ import { requireOnboardedProfile } from "@/lib/auth";
 import { getActivePlan, getSubscription } from "@/lib/queries/billing";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/nav/theme-toggle";
 import { ExportButton } from "@/components/money/export-button";
 import { PlanCard } from "@/components/settings/plan-card";
+import { ThemeSettings } from "@/components/settings/theme-settings";
 import { DangerZone } from "@/components/settings/danger-zone";
 import { SettingsForm } from "./settings-form";
 
@@ -40,7 +40,7 @@ export default async function SettingsPage({
           <p className="font-medium">Payment received — thank you! 🎉</p>
           <p className="text-muted-foreground">
             {plan === "pro"
-              ? "You're on Pro now. Enjoy everything Life OS has to offer."
+              ? "You're on Pro now. Enjoy everything Finance & Habit Tracker has to offer."
               : "Your Pro upgrade will activate in a moment. Refresh this page shortly."}
           </p>
         </div>
@@ -59,17 +59,7 @@ export default async function SettingsPage({
         </CardContent>
       </Card>
 
-      <Card className="shadow-card">
-        <CardContent className="flex items-center justify-between gap-3 pt-6">
-          <div>
-            <p className="text-sm font-medium">Appearance</p>
-            <p className="text-xs text-muted-foreground">
-              Switch between light and dark.
-            </p>
-          </div>
-          <ThemeToggle className="border border-border" />
-        </CardContent>
-      </Card>
+      <ThemeSettings />
 
       <Card className="shadow-card">
         <CardContent className="space-y-3 pt-6">

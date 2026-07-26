@@ -14,11 +14,11 @@ import { MarketingHeader } from "@/components/marketing/marketing-header";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 
 export const metadata: Metadata = {
-  title: "Life OS — your whole life, in one calm place",
+  title: "Finance & Habit Tracker — your whole life, in one calm place",
   description:
     "Money, habits, mood, tasks, and your calendar together at last. A warm, low-friction personal operating system for a calmer everyday.",
   openGraph: {
-    title: "Life OS — your whole life, in one calm place",
+    title: "Finance & Habit Tracker — your whole life, in one calm place",
     description:
       "Money, habits, mood, tasks, and your calendar together at last.",
     type: "website",
@@ -32,7 +32,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "Do I need to connect my bank?",
-    a: "No. Life OS is manual-first and low-friction: you add accounts and log expenses in three taps. No bank linking required.",
+    a: "No. Finance & Habit Tracker is manual-first and low-friction: you add accounts and log expenses in three taps. No bank linking required.",
   },
   {
     q: "Can I use it on my phone?",

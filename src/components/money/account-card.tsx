@@ -6,7 +6,7 @@ import { AccountForm } from "@/components/money/account-form";
 import { Sparkline } from "@/components/money/sparkline";
 import { useReference } from "@/components/providers/reference-provider";
 import { useProfile } from "@/components/providers/profile-provider";
-import { formatMoney } from "@/lib/format";
+import { Money } from "@/components/ui/money";
 import { ACCOUNT_TYPES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { AccountBalance } from "@/lib/supabase/types";
@@ -69,7 +69,7 @@ export function AccountCard({
               Number(balance.balance) < 0 && "text-money-down",
             )}
           >
-            {formatMoney(Number(balance.balance), profile.currency)}
+            <Money value={Number(balance.balance)} currency={profile.currency} />
           </p>
           {series && series.length > 1 && (
             <div className="mt-2 h-7">

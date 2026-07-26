@@ -5,7 +5,8 @@ import { FormSheet } from "@/components/money/form-sheet";
 import { BudgetForm } from "@/components/money/budget-form";
 import { useCurrency } from "@/components/providers/profile-provider";
 import { categoryIcon } from "@/lib/category-icons";
-import { formatMoney, clampPercent } from "@/lib/format";
+import { clampPercent } from "@/lib/format";
+import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 import type { BudgetWithSpending } from "@/lib/queries/planning";
 
@@ -47,8 +48,8 @@ export function BudgetCard({
               {category?.name ?? "Category"}
             </span>
             <span className="tnum text-sm text-muted-foreground">
-              {formatMoney(spent, currency)} /{" "}
-              {formatMoney(Number(budget.amount), currency)}
+              <Money value={spent} currency={currency} /> /{" "}
+              <Money value={Number(budget.amount)} currency={currency} />
             </span>
           </div>
 
@@ -65,9 +66,15 @@ export function BudgetCard({
               state === "over" ? "text-error" : "text-muted-foreground",
             )}
           >
-            {state === "over"
-              ? `Over by ${formatMoney(-remaining, currency)}`
-              : `${formatMoney(remaining, currency)} left`}
+            {state === "over" ? (
+              <>
+                Over by <Money value={-remaining} currency={currency} />
+              </>
+            ) : (
+              <>
+                <Money value={remaining} currency={currency} /> left
+              </>
+            )}
           </p>
         </button>
       }

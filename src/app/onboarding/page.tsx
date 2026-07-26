@@ -31,7 +31,7 @@ export default async function OnboardingPage() {
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-10">
       <div className="mb-6 text-center">
         <h1 className="font-display text-2xl tracking-tight">
-          Let&apos;s set up your Life OS
+          Let&apos;s set up your Finance & Habit Tracker
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           A minute now saves scattered spreadsheets later.

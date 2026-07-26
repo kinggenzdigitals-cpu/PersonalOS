@@ -44,7 +44,7 @@ export async function startProCheckout(
         amount,
         currency: "PHP",
         payer_email: user.email,
-        description: `Life OS Pro — ${interval === "yearly" ? "Yearly" : "Monthly"}`,
+        description: `Finance & Habit Tracker Pro — ${interval === "yearly" ? "Yearly" : "Monthly"}`,
         success_redirect_url: `${site}/settings?upgraded=1`,
         failure_redirect_url: `${site}/settings?checkout=failed`,
       }),

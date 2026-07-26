@@ -49,6 +49,11 @@
   /* brand / semantic extensions */
   --color-brand: var(--brand);
   --color-brand-hover: var(--brand-hover);
+  --color-brand-2: var(--brand-2);
+  --color-brand-2-hover: var(--brand-2-hover);
+  --color-accent-brand: var(--accent-brand);
+  --color-tab-active: var(--tab-active);
+  --color-tab-active-foreground: var(--tab-active-foreground);
   --color-sage: var(--sage);
   --color-sage-soft: var(--sage-soft);
   --color-success: var(--success);
@@ -74,121 +79,132 @@
 }
 
 /* ------------------------------------------------------------------ */
-/*  Terracotta Cream — light (default)                                 */
+/*  Finance & Habit Tracker — light (default brand)                    */
+/*  Ocean Blue #012269 · Azure #017DFE · Yellow-green #94D227 · White  */
 /* ------------------------------------------------------------------ */
 :root {
   --radius: 0.875rem; /* 14px */
 
-  --background: #faf6f1;
-  --foreground: #2d2a26;
+  --background: #ffffff;
+  --foreground: #0c1a33;
 
   --card: #ffffff;
-  --card-foreground: #2d2a26;
+  --card-foreground: #0c1a33;
   --popover: #ffffff;
-  --popover-foreground: #2d2a26;
+  --popover-foreground: #0c1a33;
 
-  /* primary = terracotta accent */
-  --primary: #c4643b;
+  /* primary = Ocean Blue */
+  --primary: #012269;
   --primary-foreground: #ffffff;
 
-  --secondary: #f1e8de;
-  --secondary-foreground: #4a453d;
+  --secondary: #eef2f8;
+  --secondary-foreground: #17223b;
 
-  --muted: #f1e8de;
-  --muted-foreground: #6b6459;
+  --muted: #eef2f8;
+  --muted-foreground: #5a647a;
 
-  /* shadcn "accent" = subtle hover tint (not the brand accent) */
-  --accent: #f3ebe2;
-  --accent-foreground: #2d2a26;
+  /* shadcn "accent" = subtle hover tint (a light azure wash) */
+  --accent: #e7f1ff;
+  --accent-foreground: #012269;
 
-  --destructive: #b3452e;
+  --destructive: #dc2626;
 
-  --border: #eae0d5;
-  --input: #eae0d5;
-  --ring: #c4643b;
+  --border: #e3e8ef;
+  --input: #e3e8ef;
+  --ring: #017dfe;
 
   /* brand extensions */
-  --brand: #c4643b;
-  --brand-hover: #a94f2c;
-  --sage: #7c9082;
-  --sage-soft: #e6ede8;
-  --success: #2f7d5c;
+  --brand: #012269;        /* Ocean Blue — primary brand */
+  --brand-hover: #01184e;
+  --brand-2: #017dfe;      /* Azure — links, hovers, secondary */
+  --brand-2-hover: #0166d1;
+  --accent-brand: #94d227; /* Yellow-green — progress, completed, accents */
+  --tab-active: #017dfe;   /* selected/active tab (Azure by default) */
+  --tab-active-foreground: #ffffff;
+  --sage: #5a8f16;
+  --sage-soft: #eef7dd;
+  --success: #4e8a0f;
   --warning: #d97706;
-  --error: #b3452e;
-  --money-up: #2f7d5c;
-  --money-down: #b3452e;
+  --error: #dc2626;
+  --money-up: #4e8a0f;
+  --money-down: #dc2626;
 
-  /* charts — warm, organic sequence */
-  --chart-1: #c4643b;
-  --chart-2: #7c9082;
-  --chart-3: #d99a5b;
-  --chart-4: #6b7f9e;
-  --chart-5: #b3452e;
+  /* charts — brand sequence */
+  --chart-1: #017dfe;
+  --chart-2: #94d227;
+  --chart-3: #012269;
+  --chart-4: #7c8aa5;
+  --chart-5: #f59e0b;
 
   --sidebar: #ffffff;
-  --sidebar-foreground: #2d2a26;
-  --sidebar-primary: #c4643b;
+  --sidebar-foreground: #0c1a33;
+  --sidebar-primary: #012269;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f1e8de;
-  --sidebar-accent-foreground: #2d2a26;
-  --sidebar-border: #eae0d5;
-  --sidebar-ring: #c4643b;
+  --sidebar-accent: #eef2f8;
+  --sidebar-accent-foreground: #012269;
+  --sidebar-border: #e3e8ef;
+  --sidebar-ring: #017dfe;
 }
 
 /* ------------------------------------------------------------------ */
-/*  Terracotta Cream — dark (warm, low-glare)                          */
+/*  Finance & Habit Tracker — dark (deep navy, low-glare)              */
 /* ------------------------------------------------------------------ */
 .dark {
-  --background: #211d1a;
-  --foreground: #f2ece4;
+  --background: #0b1220;
+  --foreground: #e8edf5;
 
-  --card: #2a2521;
-  --card-foreground: #f2ece4;
-  --popover: #2a2521;
-  --popover-foreground: #f2ece4;
+  --card: #121a2b;
+  --card-foreground: #e8edf5;
+  --popover: #121a2b;
+  --popover-foreground: #e8edf5;
 
-  --primary: #d67a52;
-  --primary-foreground: #211d1a;
+  --primary: #2f7dff;
+  --primary-foreground: #ffffff;
 
-  --secondary: #352e28;
-  --secondary-foreground: #f2ece4;
+  --secondary: #1c2740;
+  --secondary-foreground: #e8edf5;
 
-  --muted: #352e28;
-  --muted-foreground: #b6aa9c;
+  --muted: #1c2740;
+  --muted-foreground: #9aa6bd;
 
-  --accent: #3a322b;
-  --accent-foreground: #f2ece4;
+  --accent: #16233d;
+  --accent-foreground: #e8edf5;
 
-  --destructive: #d9694f;
+  --destructive: #ef4444;
 
-  --border: rgba(242, 236, 228, 0.12);
-  --input: rgba(242, 236, 228, 0.16);
-  --ring: #d67a52;
+  --border: rgba(232, 237, 245, 0.12);
+  --input: rgba(232, 237, 245, 0.16);
+  --ring: #4aa3ff;
 
-  --brand: #d67a52;
-  --brand-hover: #e28c66;
-  --sage: #9bb0a1;
-  --sage-soft: #2e3a33;
-  --success: #58b088;
+  --brand: #5a9dff;        /* Ocean Blue lifts to a readable blue in dark */
+  --brand-hover: #7cb2ff;
+  --brand-2: #38b6ff;      /* Azure */
+  --brand-2-hover: #62c6ff;
+  --accent-brand: #a6e02f; /* Yellow-green */
+  --tab-active: #38b6ff;
+  --tab-active-foreground: #04122e;
+  --sage: #a6d95f;
+  --sage-soft: #23331a;
+  --success: #7bc73f;
   --warning: #e9a13c;
-  --error: #d9694f;
-  --money-up: #58b088;
-  --money-down: #e08a72;
+  --error: #ef6b5c;
+  --money-up: #7bc73f;
+  --money-down: #ef8a72;
 
-  --chart-1: #d67a52;
-  --chart-2: #9bb0a1;
-  --chart-3: #e0a866;
-  --chart-4: #8ea2be;
-  --chart-5: #d9694f;
+  --chart-1: #38b6ff;
+  --chart-2: #a6e02f;
+  --chart-3: #6c9bff;
+  --chart-4: #9aa6bd;
+  --chart-5: #f59e0b;
 
-  --sidebar: #2a2521;
-  --sidebar-foreground: #f2ece4;
-  --sidebar-primary: #d67a52;
-  --sidebar-primary-foreground: #211d1a;
-  --sidebar-accent: #352e28;
-  --sidebar-accent-foreground: #f2ece4;
-  --sidebar-border: rgba(242, 236, 228, 0.12);
-  --sidebar-ring: #d67a52;
+  --sidebar: #121a2b;
+  --sidebar-foreground: #e8edf5;
+  --sidebar-primary: #5a9dff;
+  --sidebar-primary-foreground: #04122e;
+  --sidebar-accent: #1c2740;
+  --sidebar-accent-foreground: #e8edf5;
+  --sidebar-border: rgba(232, 237, 245, 0.12);
+  --sidebar-ring: #4aa3ff;
 }
 
 /* ------------------------------------------------------------------ */
@@ -223,6 +239,25 @@
     font-family: var(--font-display), Georgia, serif;
     letter-spacing: -0.01em;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Hide sensitive info — masks amounts before hydration (no flash).   */
+/*  After hydration the <Money> component renders the mask directly.    */
+/* ------------------------------------------------------------------ */
+html[data-privacy="hidden"] .fht-amount {
+  color: transparent !important;
+  position: relative;
+  user-select: none;
+}
+html[data-privacy="hidden"] .fht-amount::after {
+  content: "••••••";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  color: var(--foreground);
+  letter-spacing: 0.12em;
 }
 
 /* honour reduced-motion preference globally */

@@ -32,6 +32,7 @@ import {
   type DashboardAlert,
 } from "@/components/dashboard/alerts-strip";
 import { DashboardHabits } from "@/components/dashboard/dashboard-habits";
+import { FocusWidget } from "@/components/dashboard/focus-widget";
 import { DashboardPriorities } from "@/components/dashboard/dashboard-priorities";
 import { CarryOver } from "@/components/dashboard/carry-over";
 import { MoodChip } from "@/components/dashboard/mood-chip";
@@ -276,6 +277,9 @@ export default async function HomePage() {
 
       {/* Top 3 priorities */}
       <DashboardPriorities priorities={priorities} candidates={candidates} />
+
+      {/* Focus Timer */}
+      <FocusWidget timezone={profile.timezone} />
 
       {/* Full task list link */}
       <Link

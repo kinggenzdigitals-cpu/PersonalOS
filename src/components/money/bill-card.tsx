@@ -5,7 +5,7 @@ import { FormSheet } from "@/components/money/form-sheet";
 import { BillForm } from "@/components/money/bill-form";
 import { PayBillForm } from "@/components/money/pay-bill-form";
 import { useCurrency } from "@/components/providers/profile-provider";
-import { formatMoney } from "@/lib/format";
+import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 import type { BillWithStatus } from "@/lib/queries/planning";
 
@@ -59,7 +59,7 @@ export function BillCard({ item }: { item: BillWithStatus }) {
         </FormSheet>
 
         <span className="tnum shrink-0 font-display text-lg">
-          {formatMoney(Number(bill.amount), currency)}
+          <Money value={Number(bill.amount)} currency={currency} />
         </span>
       </div>
 

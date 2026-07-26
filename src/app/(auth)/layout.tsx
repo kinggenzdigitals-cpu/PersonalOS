@@ -10,9 +10,9 @@ export default function AuthLayout({
       <div className="w-full max-w-[400px]">
         <Link href="/" className="mb-8 flex items-center justify-center gap-2">
           <span className="grid size-9 place-items-center rounded-xl bg-brand text-primary-foreground shadow-soft">
-            <span className="font-display text-lg leading-none">L</span>
+            <span className="font-display text-lg leading-none">F</span>
           </span>
-          <span className="font-display text-xl tracking-tight">Life OS</span>
+          <span className="font-display text-xl tracking-tight">Finance & Habit Tracker</span>
         </Link>
         {children}
       </div>

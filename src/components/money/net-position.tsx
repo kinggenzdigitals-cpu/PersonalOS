@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatMoney } from "@/lib/format";
+import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 
 /**
@@ -34,23 +35,26 @@ export function NetPositionCard({
             net < 0 && "text-money-down",
           )}
         >
-          {formatMoney(net, currency)}
+          <Money value={net} currency={currency} />
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Cash plus what you&apos;re owed, minus what you owe
         </p>
 
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          <Piece label="Cash on hand" value={formatMoney(cash, currency)} />
+          <Piece
+            label="Cash on hand"
+            value={<Money value={cash} currency={currency} />}
+          />
           <Piece
             label="Owed to you"
-            value={formatMoney(receivable, currency)}
+            value={<Money value={receivable} currency={currency} />}
             tone="up"
             prefix="+"
           />
           <Piece
             label="You owe"
-            value={formatMoney(payable, currency)}
+            value={<Money value={payable} currency={currency} />}
             tone="down"
             prefix="−"
           />
@@ -60,7 +64,7 @@ export function NetPositionCard({
           <div className="mt-3 flex items-center justify-between rounded-xl bg-secondary/60 px-3 py-2 text-sm">
             <span className="text-muted-foreground">Available to spend</span>
             <span className="tnum font-semibold text-sage">
-              {formatMoney(available, currency)}
+              <Money value={available} currency={currency} />
             </span>
           </div>
         )}
@@ -76,7 +80,7 @@ function Piece({
   prefix,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   tone?: "up" | "down";
   prefix?: string;
 }) {

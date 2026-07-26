@@ -2,14 +2,14 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Life OS",
-    short_name: "Life OS",
+    name: "Finance & Habit Tracker",
+    short_name: "Finance Tracker",
     description:
-      "Your personal life operating system — money, habits, mood, tasks, and calendar in one calm place.",
+      "Track your money, habits, mood, tasks, and focus sessions — all in one calm place.",
     start_url: "/home",
     display: "standalone",
-    background_color: "#FAF6F1",
-    theme_color: "#FAF6F1",
+    background_color: "#FFFFFF",
+    theme_color: "#012269",
     orientation: "portrait",
     icons: [
       {

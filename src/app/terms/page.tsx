@@ -8,7 +8,7 @@ export default function TermsPage() {
     <LegalShell title="Terms of Service" updated="July 2026">
       <section>
         <p>
-          Welcome to Life OS. By creating an account or using the service, you
+          Welcome to Finance & Habit Tracker. By creating an account or using the service, you
           agree to these terms. Please read them carefully.
         </p>
       </section>
@@ -16,7 +16,7 @@ export default function TermsPage() {
       <section>
         <h2>1. The service</h2>
         <p>
-          Life OS is a personal life-management app for tracking money, habits,
+          Finance & Habit Tracker is a personal life-management app for tracking money, habits,
           mood, tasks, and your calendar. We may add, change, or remove features
           over time.
         </p>
@@ -27,7 +27,7 @@ export default function TermsPage() {
         <p>
           You&apos;re responsible for keeping your login secure and for all
           activity under your account. You must be old enough to form a binding
-          contract in your country to use Life OS.
+          contract in your country to use Finance & Habit Tracker.
         </p>
       </section>
 
@@ -36,14 +36,14 @@ export default function TermsPage() {
         <ul>
           <li>Don&apos;t misuse, disrupt, or attempt to break the service.</li>
           <li>Don&apos;t access other users&apos; data or accounts.</li>
-          <li>Don&apos;t use Life OS for anything unlawful.</li>
+          <li>Don&apos;t use Finance & Habit Tracker for anything unlawful.</li>
         </ul>
       </section>
 
       <section>
         <h2>4. Plans &amp; billing</h2>
         <p>
-          Life OS offers a Free plan and a paid Pro subscription. Paid plans
+          Finance & Habit Tracker offers a Free plan and a paid Pro subscription. Paid plans
           renew automatically until cancelled. You can cancel anytime and keep
           Pro until the end of the current billing period. Prices may change with
           advance notice.
@@ -62,7 +62,7 @@ export default function TermsPage() {
       <section>
         <h2>6. Disclaimer</h2>
         <p>
-          Life OS is provided &quot;as is&quot; and is not financial, tax, or
+          Finance & Habit Tracker is provided &quot;as is&quot; and is not financial, tax, or
           investment advice. You&apos;re responsible for decisions you make based
           on the information you record.
         </p>

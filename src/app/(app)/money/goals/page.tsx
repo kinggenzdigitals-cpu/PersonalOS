@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FormSheet } from "@/components/money/form-sheet";
 import { GoalForm } from "@/components/money/goal-form";
 import { GoalCard } from "@/components/money/goal-card";
-import { formatMoney } from "@/lib/format";
+import { Money } from "@/components/ui/money";
 
 export const metadata: Metadata = { title: "Savings Goals" };
 
@@ -48,11 +48,11 @@ export default async function GoalsPage() {
                 <div>
                   <p className="text-xs text-muted-foreground">Total saved</p>
                   <p className="tnum font-display text-2xl">
-                    {formatMoney(totalSaved, currency)}
+                    <Money value={totalSaved} currency={currency} />
                   </p>
                 </div>
                 <p className="tnum text-sm text-muted-foreground">
-                  of {formatMoney(totalTarget, currency)}
+                  of <Money value={totalTarget} currency={currency} />
                 </p>
               </div>
               <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-secondary">

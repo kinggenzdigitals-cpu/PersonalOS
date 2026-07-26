@@ -18,7 +18,7 @@ export default async function SignupPage({
     <div className="space-y-6">
       <div className="space-y-1 text-center">
         <h1 className="font-display text-2xl tracking-tight">
-          Start your Life OS
+          Start your Finance & Habit Tracker
         </h1>
         <p className="text-sm text-muted-foreground">
           One calm place for money, habits, mood, and tasks.
