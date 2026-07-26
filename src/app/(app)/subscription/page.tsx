@@ -3,10 +3,12 @@ import type { Metadata } from "next";
 import { ChevronLeftIcon, SparklesIcon, CreditCardIcon } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
 import { getEntitlement } from "@/lib/entitlement";
+import { getUsage } from "@/lib/queries/usage";
 import { PLANS, PLAN_PRICES } from "@/lib/plans";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FeatureComparison } from "@/components/subscription/feature-comparison";
+import { UsageMeters } from "@/components/subscription/usage-meters";
 
 export const metadata: Metadata = { title: "Subscription" };
 
@@ -15,8 +17,11 @@ function peso(n: number) {
 }
 
 export default async function SubscriptionPage() {
-  await requireOnboardedProfile();
-  const ent = await getEntitlement();
+  const profile = await requireOnboardedProfile();
+  const [ent, usage] = await Promise.all([
+    getEntitlement(),
+    getUsage(profile.timezone),
+  ]);
   const planName = PLANS[ent.plan].name;
 
   return (
@@ -106,6 +111,19 @@ export default async function SubscriptionPage() {
           </Button>
         )}
       </div>
+
+      {/* Current usage */}
+      <Card className="shadow-card">
+        <CardContent className="space-y-4 pt-6">
+          <div>
+            <p className="text-sm font-medium">Your usage</p>
+            <p className="text-xs text-muted-foreground">
+              How much of your {planName} plan you&apos;re using right now.
+            </p>
+          </div>
+          <UsageMeters usage={usage} plan={ent.plan} />
+        </CardContent>
+      </Card>
 
       {/* Complete feature comparison */}
       <section className="space-y-3">
