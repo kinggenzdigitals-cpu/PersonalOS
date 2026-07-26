@@ -8,6 +8,7 @@ import {
   MobileTopBar,
   MobileBottomNav,
 } from "@/components/nav/main-nav";
+import { QuickAdd } from "@/components/nav/quick-add";
 
 export default async function AppLayout({
   children,
@@ -31,6 +32,13 @@ export default async function AppLayout({
             {children}
           </main>
           <MobileBottomNav moneyBadge={dueBills} />
+          {/* Floating Quick Add — mobile only, above the bottom nav */}
+          <div
+            className="fixed right-4 z-40 md:hidden"
+            style={{ bottom: "calc(env(safe-area-inset-bottom) + 4.75rem)" }}
+          >
+            <QuickAdd variant="fab" />
+          </div>
         </div>
       </ReferenceProvider>
     </ProfileProvider>

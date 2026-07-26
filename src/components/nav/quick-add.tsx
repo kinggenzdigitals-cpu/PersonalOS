@@ -9,6 +9,9 @@ import {
   SmileIcon,
   ListTodoIcon,
   CalendarPlusIcon,
+  ReceiptTextIcon,
+  PiggyBankIcon,
+  TimerIcon,
   PlusIcon,
   ChevronLeftIcon,
   CheckIcon,
@@ -24,6 +27,8 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { TransactionForm } from "@/components/money/transaction-form";
+import { BillForm } from "@/components/money/bill-form";
+import { GoalForm } from "@/components/money/goal-form";
 import { MoodForm } from "@/components/habits/mood-form";
 import { TaskForm } from "@/components/tasks/task-form";
 import { EventForm } from "@/components/calendar/event-form";
@@ -39,7 +44,16 @@ import { getTodayMoodAction } from "@/app/(app)/habits/mood-actions";
 import type { HabitBoardItem } from "@/lib/queries/habits";
 import type { MoodEntry } from "@/lib/supabase/types";
 
-type View = "menu" | "expense" | "income" | "habit" | "mood" | "task" | "event";
+type View =
+  | "menu"
+  | "expense"
+  | "income"
+  | "bill"
+  | "savings"
+  | "habit"
+  | "mood"
+  | "task"
+  | "event";
 
 type QuickAction = {
   key: string;
@@ -47,15 +61,19 @@ type QuickAction = {
   icon: React.ElementType;
   tint: string;
   view?: View;
+  navigate?: string;
   requiresAccount?: boolean;
 };
 
 const ACTIONS: QuickAction[] = [
-  { key: "expense", label: "Expense", icon: ArrowDownCircleIcon, tint: "var(--error)", view: "expense", requiresAccount: true },
   { key: "income", label: "Income", icon: ArrowUpCircleIcon, tint: "var(--success)", view: "income", requiresAccount: true },
+  { key: "expense", label: "Expense", icon: ArrowDownCircleIcon, tint: "var(--error)", view: "expense", requiresAccount: true },
+  { key: "bill", label: "Bill", icon: ReceiptTextIcon, tint: "var(--warning)", view: "bill", requiresAccount: true },
+  { key: "savings", label: "Savings", icon: PiggyBankIcon, tint: "var(--accent-brand)", view: "savings" },
   { key: "habit", label: "Habit ✓", icon: CircleCheckBigIcon, tint: "var(--sage)", view: "habit" },
-  { key: "mood", label: "Mood", icon: SmileIcon, tint: "var(--brand)", view: "mood" },
   { key: "task", label: "Task", icon: ListTodoIcon, tint: "var(--chart-4)", view: "task" },
+  { key: "focus", label: "Focus", icon: TimerIcon, tint: "var(--brand-2)", navigate: "/focus" },
+  { key: "mood", label: "Mood", icon: SmileIcon, tint: "var(--brand)", view: "mood" },
   { key: "event", label: "Event", icon: CalendarPlusIcon, tint: "var(--chart-3)", view: "event" },
 ];
 
@@ -63,6 +81,8 @@ const TITLES: Record<View, string> = {
   menu: "Quick add",
   expense: "Add expense",
   income: "Add income",
+  bill: "Add bill",
+  savings: "Add savings goal",
   habit: "Log habits",
   mood: "How are you today?",
   task: "Add task",
@@ -78,6 +98,7 @@ export function QuickAdd({
   const [view, setView] = React.useState<View>("menu");
   const { accounts } = useReference();
   const profile = useProfile();
+  const router = useRouter();
   const today = localDateKey(profile.timezone);
 
   function reset() {
@@ -85,18 +106,18 @@ export function QuickAdd({
   }
 
   function handle(action: QuickAction) {
+    if (action.navigate) {
+      setOpen(false);
+      router.push(action.navigate);
+      return;
+    }
     if (action.view) {
       if (action.requiresAccount && accounts.length === 0) {
         toast.error("Add an account first from the Money tab.");
         return;
       }
       setView(action.view);
-      return;
     }
-    setOpen(false);
-    toast(`${action.label} capture is coming soon`, {
-      description: "Arrives with the Tasks and Calendar milestones.",
-    });
   }
 
   return (
@@ -186,6 +207,18 @@ export function QuickAdd({
               allowTypeToggle
               onDone={() => setOpen(false)}
             />
+          </div>
+        )}
+
+        {view === "bill" && (
+          <div className="p-4 pt-2">
+            <BillForm onDone={() => setOpen(false)} />
+          </div>
+        )}
+
+        {view === "savings" && (
+          <div className="p-4 pt-2">
+            <GoalForm onDone={() => setOpen(false)} />
           </div>
         )}
 

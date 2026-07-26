@@ -219,7 +219,6 @@ export function MobileTopBar() {
       <div className="flex-1">
         <Brand />
       </div>
-      <QuickAdd variant="bar" />
       <ThemeToggle />
     </header>
   );
