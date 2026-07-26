@@ -10,7 +10,6 @@ import {
   SparklesIcon,
   LogOutIcon,
   BarChart3Icon,
-  SettingsIcon,
   ListTodoIcon,
   TimerIcon,
   MessageSquareIcon,
@@ -32,16 +31,20 @@ import { useProfile } from "@/components/providers/profile-provider";
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
-const NAV: NavItem[] = [
-  { href: "/home", label: "Home", icon: HomeIcon },
+// Primary destinations (desktop sidebar + mobile bottom bar share the first 4).
+const PRIMARY: NavItem[] = [
+  { href: "/home", label: "Today", icon: HomeIcon },
   { href: "/money", label: "Money", icon: WalletIcon },
   { href: "/habits", label: "Habits", icon: SparklesIcon },
-  { href: "/calendar", label: "Calendar", icon: CalendarIcon },
-  { href: "/tasks", label: "Tasks", icon: ListTodoIcon },
   { href: "/focus", label: "Focus", icon: TimerIcon },
   { href: "/reports", label: "Reports", icon: BarChart3Icon },
   { href: "/feedback", label: "Feedback", icon: MessageSquareIcon },
-  { href: "/settings", label: "Settings", icon: SettingsIcon },
+];
+
+// Kept reachable (features preserved) but out of the primary bar.
+const SECONDARY: NavItem[] = [
+  { href: "/calendar", label: "Calendar", icon: CalendarIcon },
+  { href: "/tasks", label: "Tasks", icon: ListTodoIcon },
 ];
 
 const ADMIN_ITEM: NavItem = {
@@ -49,6 +52,9 @@ const ADMIN_ITEM: NavItem = {
   label: "Subscribers & Users",
   icon: ShieldCheckIcon,
 };
+
+// The four bottom-bar tabs (the fifth is "More").
+const BOTTOM = PRIMARY.slice(0, 4);
 
 function isActive(pathname: string, href: string) {
   if (href === "/home") return pathname === "/home";
@@ -68,7 +74,45 @@ function Brand() {
   );
 }
 
-/** The shared nav body used by both the desktop sidebar and mobile drawer. */
+function NavLink({
+  item,
+  active,
+  moneyBadge,
+  onNavigate,
+}: {
+  item: NavItem;
+  active: boolean;
+  moneyBadge: number;
+  onNavigate?: () => void;
+}) {
+  const Icon = item.icon;
+  return (
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+        active
+          ? "bg-secondary text-brand"
+          : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+      )}
+    >
+      <Icon className="size-[18px]" aria-hidden />
+      {item.label}
+      {item.href === "/money" && moneyBadge > 0 && (
+        <span
+          className="ml-auto grid min-w-5 place-items-center rounded-full bg-error px-1.5 text-[10px] font-semibold leading-5 text-white"
+          aria-label={`${moneyBadge} bills due`}
+        >
+          {moneyBadge}
+        </span>
+      )}
+    </Link>
+  );
+}
+
+/** Shared nav body used by the desktop sidebar and the mobile "More" drawer. */
 function SidebarBody({
   pathname,
   moneyBadge,
@@ -81,44 +125,35 @@ function SidebarBody({
   const profile = useProfile();
   const initial =
     profile.display_name?.trim()?.charAt(0)?.toUpperCase() ?? "?";
-  const navItems =
-    profile.role === "super_admin" ? [...NAV, ADMIN_ITEM] : NAV;
+  const secondary =
+    profile.role === "super_admin" ? [...SECONDARY, ADMIN_ITEM] : SECONDARY;
 
   return (
     <>
-      <nav aria-label="Primary" className="flex-1">
+      <nav aria-label="Primary" className="flex-1 space-y-4">
         <ul className="space-y-1">
-          {navItems.map((item) => {
-            const active = isActive(pathname, item.href);
-            const Icon = item.icon;
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  onClick={onNavigate}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-secondary text-brand"
-                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
-                  )}
-                >
-                  <Icon className="size-[18px]" aria-hidden />
-                  {item.label}
-                  {item.href === "/money" && moneyBadge > 0 && (
-                    <span
-                      className="ml-auto grid min-w-5 place-items-center rounded-full bg-error px-1.5 text-[10px] font-semibold leading-5 text-white"
-                      aria-label={`${moneyBadge} bills due`}
-                    >
-                      {moneyBadge}
-                    </span>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
+          {PRIMARY.map((item) => (
+            <li key={item.href}>
+              <NavLink
+                item={item}
+                active={isActive(pathname, item.href)}
+                moneyBadge={moneyBadge}
+                onNavigate={onNavigate}
+              />
+            </li>
+          ))}
         </ul>
+        <div className="space-y-1 border-t border-border pt-3">
+          {secondary.map((item) => (
+            <NavLink
+              key={item.href}
+              item={item}
+              active={isActive(pathname, item.href)}
+              moneyBadge={moneyBadge}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </div>
       </nav>
 
       <div className="mt-4 border-t border-border pt-3">
@@ -174,34 +209,72 @@ export function DesktopSidebar({ moneyBadge = 0 }: { moneyBadge?: number }) {
   );
 }
 
-/** Mobile top bar with a hamburger that opens the sidebar as a drawer. */
-export function MobileTopBar({ moneyBadge = 0 }: { moneyBadge?: number }) {
-  const pathname = usePathname();
-  const [open, setOpen] = React.useState(false);
-
+/** Mobile top bar: brand + quick add (navigation lives in the bottom bar). */
+export function MobileTopBar() {
   return (
     <header
       className="sticky top-0 z-40 flex items-center gap-2 border-b border-border bg-card/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-card/80 md:hidden"
       style={{ paddingTop: "max(0.625rem, env(safe-area-inset-top))" }}
     >
+      <div className="flex-1">
+        <Brand />
+      </div>
+      <QuickAdd variant="bar" />
+      <ThemeToggle />
+    </header>
+  );
+}
+
+/** Mobile bottom navigation: Today · Money · Habits · Focus · More. */
+export function MobileBottomNav({ moneyBadge = 0 }: { moneyBadge?: number }) {
+  const pathname = usePathname();
+  const [open, setOpen] = React.useState(false);
+  const moreActive = !BOTTOM.some((t) => isActive(pathname, t.href));
+
+  return (
+    <nav
+      aria-label="Primary"
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85 md:hidden"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      {BOTTOM.map((tab) => {
+        const active = isActive(pathname, tab.href);
+        const Icon = tab.icon;
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
+              active ? "text-brand" : "text-muted-foreground",
+            )}
+          >
+            <Icon className="size-5" aria-hidden />
+            {tab.label}
+            {tab.href === "/money" && moneyBadge > 0 && (
+              <span className="absolute right-[22%] top-1 size-2 rounded-full bg-error" />
+            )}
+          </Link>
+        );
+      })}
+
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <button
             type="button"
-            aria-label="Open menu"
-            className="relative grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <MenuIcon className="size-5" />
-            {moneyBadge > 0 && (
-              <span className="absolute right-1 top-1 size-2 rounded-full bg-error" />
+            aria-label="More"
+            className={cn(
+              "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
+              moreActive ? "text-brand" : "text-muted-foreground",
             )}
+          >
+            <MenuIcon className="size-5" aria-hidden />
+            More
           </button>
         </SheetTrigger>
-        <SheetContent
-          side="left"
-          className="flex w-72 flex-col px-4 py-6"
-        >
-          <SheetTitle className="sr-only">Menu</SheetTitle>
+        <SheetContent side="right" className="flex w-72 flex-col px-4 py-6">
+          <SheetTitle className="sr-only">More</SheetTitle>
           <div className="mb-6 px-1">
             <Brand />
           </div>
@@ -212,13 +285,6 @@ export function MobileTopBar({ moneyBadge = 0 }: { moneyBadge?: number }) {
           />
         </SheetContent>
       </Sheet>
-
-      <div className="flex-1">
-        <Brand />
-      </div>
-
-      <QuickAdd variant="bar" />
-      <ThemeToggle />
-    </header>
+    </nav>
   );
 }
