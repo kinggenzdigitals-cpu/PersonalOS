@@ -8,6 +8,7 @@ import {
   XAxis,
 } from "recharts";
 import { formatMoney } from "@/lib/format";
+import { usePrivacyHidden } from "@/components/ui/money";
 
 type Point = { month: string; income: number; expense: number };
 
@@ -23,6 +24,7 @@ export function TrendChart({
   data: Point[];
   currency: string;
 }) {
+  const hidden = usePrivacyHidden();
   const chartData = data.map((d) => ({ ...d, label: monthLabel(d.month) }));
   const hasData = data.some((d) => d.income > 0 || d.expense > 0);
 
@@ -53,7 +55,7 @@ export function TrendChart({
               fontSize: 12,
             }}
             formatter={(value, name) => [
-              formatMoney(Number(value), currency),
+              hidden ? "₱••••••" : formatMoney(Number(value), currency),
               name === "income" ? "Income" : "Expense",
             ]}
             labelFormatter={(l) => String(l)}

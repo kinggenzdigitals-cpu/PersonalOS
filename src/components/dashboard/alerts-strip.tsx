@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   AlertTriangleIcon,
@@ -6,6 +8,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { maskAmountsInText } from "@/lib/format";
+import { usePrivacyHidden } from "@/components/ui/money";
 
 export type AlertLevel = "info" | "warning" | "error";
 
@@ -28,6 +32,7 @@ const LEVEL: Record<
 };
 
 export function AlertsStrip({ alerts }: { alerts: DashboardAlert[] }) {
+  const hidden = usePrivacyHidden();
   if (alerts.length === 0) return null;
 
   return (
@@ -43,7 +48,9 @@ export function AlertsStrip({ alerts }: { alerts: DashboardAlert[] }) {
             )}
           >
             <Icon className="size-4 shrink-0" aria-hidden />
-            <span className="flex-1">{alert.text}</span>
+            <span className="flex-1">
+              {hidden ? maskAmountsInText(alert.text) : alert.text}
+            </span>
           </div>
         );
         return alert.href ? (

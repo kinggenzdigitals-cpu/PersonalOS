@@ -14,7 +14,7 @@ export default function OpengraphImage() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          background: "#FAF6F1",
+          background: "#FFFFFF",
           padding: "72px",
         }}
       >
@@ -25,7 +25,7 @@ export default function OpengraphImage() {
               width: "80px",
               height: "80px",
               borderRadius: "22px",
-              background: "#C4643B",
+              background: "#012269",
               alignItems: "center",
               justifyContent: "center",
               color: "#ffffff",
@@ -33,14 +33,14 @@ export default function OpengraphImage() {
               fontWeight: 700,
             }}
           >
-            L
+            F
           </div>
           <div
             style={{
               marginLeft: "20px",
               fontSize: "40px",
               fontWeight: 600,
-              color: "#2D2A26",
+              color: "#0c1a33",
             }}
           >
             Finance & Habit Tracker
@@ -54,7 +54,7 @@ export default function OpengraphImage() {
               width: "80px",
               height: "8px",
               borderRadius: "99px",
-              background: "#C4643B",
+              background: "#017DFE",
               marginBottom: "28px",
             }}
           />
@@ -62,7 +62,7 @@ export default function OpengraphImage() {
             style={{
               fontSize: "82px",
               fontWeight: 700,
-              color: "#2D2A26",
+              color: "#012269",
               lineHeight: 1.05,
               maxWidth: "980px",
             }}
@@ -71,8 +71,8 @@ export default function OpengraphImage() {
           </div>
         </div>
 
-        <div style={{ display: "flex", fontSize: "32px", color: "#7C9082", fontWeight: 500 }}>
-          Money · Habits · Mood · Tasks · Calendar
+        <div style={{ display: "flex", fontSize: "32px", color: "#017DFE", fontWeight: 500 }}>
+          Money · Habits · Mood · Tasks · Focus
         </div>
       </div>
     ),

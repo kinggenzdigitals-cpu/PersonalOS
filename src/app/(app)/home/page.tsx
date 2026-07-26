@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { greeting, longDate } from "@/lib/greeting";
 import { formatMoney } from "@/lib/format";
-import { Money } from "@/components/ui/money";
+import { Money, MaskAmounts } from "@/components/ui/money";
 import { dayRange } from "@/lib/date";
 import {
   getBudgetsWithSpending,
@@ -378,7 +378,7 @@ export default async function HomePage() {
                     {item.label}
                   </span>
                   <span className="block text-xs text-muted-foreground">
-                    {item.meta}
+                    <MaskAmounts text={item.meta} />
                   </span>
                 </span>
               </div>

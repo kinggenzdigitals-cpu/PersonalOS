@@ -5,6 +5,7 @@ import {
   formatMoney,
   formatMoneyCompact,
   currencySymbol,
+  maskAmountsInText,
 } from "@/lib/format";
 import { subscribe, getHidden, getServerHidden } from "@/lib/privacy-store";
 import { cn } from "@/lib/utils";
@@ -50,4 +51,14 @@ export function Money({
     ? formatMoneyCompact(value, currency)
     : formatMoney(value, currency, { sign, symbol });
   return <span className={cn("fht-amount", className)}>{text}</span>;
+}
+
+/**
+ * Masks currency amounts inside a plain string (e.g. "Bill · ₱1,200") when
+ * "Hide sensitive info" is on. For text that already has the amount baked in.
+ */
+export function MaskAmounts({ text }: { text: string | null | undefined }) {
+  const hidden = usePrivacyHidden();
+  if (!text) return null;
+  return <>{hidden ? maskAmountsInText(text) : text}</>;
 }

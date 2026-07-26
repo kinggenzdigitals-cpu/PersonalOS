@@ -2,6 +2,7 @@
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { formatMoney } from "@/lib/format";
+import { Money, usePrivacyHidden } from "@/components/ui/money";
 
 const PALETTE = [
   "var(--chart-1)",
@@ -29,6 +30,7 @@ export function CategoryDonut({
   data: CategorySlice[];
   currency: string;
 }) {
+  const hidden = usePrivacyHidden();
   const total = data.reduce((s, d) => s + d.amount, 0);
 
   if (total === 0) {
@@ -71,7 +73,7 @@ export function CategoryDonut({
                 fontSize: 12,
               }}
               formatter={(value, name) => [
-                formatMoney(Number(value), currency),
+                hidden ? "₱••••••" : formatMoney(Number(value), currency),
                 name as string,
               ]}
             />
@@ -80,7 +82,7 @@ export function CategoryDonut({
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-xs text-muted-foreground">Spent</span>
           <span className="tnum font-display text-lg">
-            {formatMoney(total, currency)}
+            <Money value={total} currency={currency} />
           </span>
         </div>
       </div>
@@ -94,7 +96,7 @@ export function CategoryDonut({
             />
             <span className="flex-1 truncate">{s.name}</span>
             <span className="tnum text-muted-foreground">
-              {formatMoney(s.amount, currency)}
+              <Money value={s.amount} currency={currency} />
             </span>
           </li>
         ))}

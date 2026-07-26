@@ -49,3 +49,15 @@ export function formatMoneyCompact(amount: number, currency = "PHP") {
 export function clampPercent(n: number) {
   return Math.max(0, Math.min(100, n));
 }
+
+/**
+ * Masks any currency amounts inside a free-text string (e.g. an alert like
+ * "Groceries is over by ₱1,234"). Used with the privacy toggle where the amount
+ * is already baked into a sentence. Keeps the currency symbol, hides digits.
+ */
+export function maskAmountsInText(text: string): string {
+  return text.replace(
+    /(A\$|C\$|S\$|[₱$€£¥])\s?\d[\d,]*(?:\.\d+)?/g,
+    "$1••••••",
+  );
+}
