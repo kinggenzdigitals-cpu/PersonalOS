@@ -126,15 +126,23 @@ function SidebarBody({
       </div>
 
       <div className="mt-3 flex items-center gap-3 border-t border-border pt-4">
-        <span className="grid size-9 place-items-center rounded-full bg-sage-soft text-sm font-semibold text-sage">
-          {initial}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">
-            {profile.display_name ?? "You"}
-          </p>
-          <p className="text-xs text-muted-foreground">{profile.currency}</p>
-        </div>
+        <Link
+          href="/account"
+          onClick={onNavigate}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-lg -m-1 p-1 transition-colors hover:bg-secondary/60"
+        >
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-sage-soft text-sm font-semibold text-sage">
+            {initial}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">
+              {profile.display_name ?? "You"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Account &amp; subscription
+            </p>
+          </div>
+        </Link>
         <form action="/auth/signout" method="post">
           <button
             type="submit"
