@@ -24,7 +24,12 @@ export default async function HabitGridPage() {
         </p>
       </div>
 
-      <HabitGrid initial={grid} />
+      {/* Break out of the narrow content column on desktop so the whole month
+          fits without scrolling. Centered within the content area (viewport
+          minus the 15rem sidebar). On mobile it stays in-flow and scrolls. */}
+      <div className="md:w-[calc(100vw_-_15rem_-_2rem)] md:mx-[calc((100%_-_(100vw_-_15rem_-_2rem))_/_2)]">
+        <HabitGrid initial={grid} />
+      </div>
     </div>
   );
 }

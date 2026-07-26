@@ -73,14 +73,14 @@ export function HabitGrid({ initial }: { initial: HabitGridData }) {
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-border">
-            <th className="sticky left-0 z-10 min-w-40 bg-card px-3 py-2 text-left text-xs font-medium text-muted-foreground">
+            <th className="sticky left-0 z-10 min-w-36 bg-card px-3 py-2 text-left text-xs font-medium text-muted-foreground">
               Habit
             </th>
             {dayNums.map((d) => (
               <th
                 key={d}
                 className={cn(
-                  "w-7 px-0 py-2 text-center text-[10px] font-medium tabular-nums",
+                  "w-6 px-0 py-2 text-center text-[10px] font-medium tabular-nums",
                   d === todayDay
                     ? "bg-brand/10 text-brand"
                     : "text-muted-foreground",
@@ -105,7 +105,7 @@ export function HabitGrid({ initial }: { initial: HabitGridData }) {
             const color = LIFE_AREA_MAP[row.habit.life_area].color;
             return (
               <tr key={row.habit.id} className="border-b border-border last:border-0">
-                <th className="sticky left-0 z-10 min-w-40 bg-card px-3 py-1.5 text-left font-medium">
+                <th className="sticky left-0 z-10 min-w-36 bg-card px-3 py-1.5 text-left font-medium">
                   <span className="flex items-center gap-1.5">
                     <span
                       className="size-2 shrink-0 rounded-full"
