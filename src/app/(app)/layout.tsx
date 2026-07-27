@@ -1,10 +1,11 @@
 import { requireOnboardedProfile } from "@/lib/auth";
-import { isSuperAdmin } from "@/lib/entitlement";
+import { getEntitlement } from "@/lib/entitlement";
 import { getAccounts, getCategories } from "@/lib/queries/money";
 import { getDueBillCount } from "@/lib/queries/planning";
 import { ProfileProvider } from "@/components/providers/profile-provider";
 import { ReferenceProvider } from "@/components/providers/reference-provider";
 import { UpgradeProvider } from "@/components/providers/upgrade-provider";
+import { ActiveUseTimer } from "@/components/providers/active-use-timer";
 import {
   DesktopSidebar,
   MobileTopBar,
@@ -18,17 +19,23 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const profile = await requireOnboardedProfile();
-  const [accounts, categories, dueBills, admin] = await Promise.all([
+  const [accounts, categories, dueBills, ent] = await Promise.all([
     getAccounts(false),
     getCategories(),
     getDueBillCount(profile.timezone),
-    isSuperAdmin(),
+    getEntitlement(),
   ]);
+  const admin = ent.isSuperAdmin;
+  // Free & paid users below Premium (not comp/lifetime/super-admin) may see the
+  // occasional upgrade nudge.
+  const upgradeEligible =
+    !ent.isSuperAdmin && ent.accessType == null && ent.plan !== "premium";
 
   return (
     <ProfileProvider profile={profile}>
       <ReferenceProvider accounts={accounts} categories={categories}>
         <UpgradeProvider>
+        <ActiveUseTimer eligible={upgradeEligible} />
         <div className="min-h-dvh md:pl-60">
           <DesktopSidebar moneyBadge={dueBills} isAdmin={admin} />
           <MobileTopBar />
