@@ -4,26 +4,30 @@ import { ChevronLeftIcon, SparklesIcon, CreditCardIcon } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
 import { getEntitlement } from "@/lib/entitlement";
 import { getUsage } from "@/lib/queries/usage";
+import { getActiveOffer } from "@/lib/promo";
 import { PLANS } from "@/lib/plans";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FeatureComparison } from "@/components/subscription/feature-comparison";
 import { UsageMeters } from "@/components/subscription/usage-meters";
 import { PlanCards } from "@/components/subscription/plan-cards";
+import { PromoOffer } from "@/components/subscription/promo-offer";
 
 export const metadata: Metadata = { title: "Subscription" };
 
 export default async function SubscriptionPage() {
   const profile = await requireOnboardedProfile();
-  const [ent, usage] = await Promise.all([
+  const [ent, usage, offer] = await Promise.all([
     getEntitlement(),
     getUsage(profile.timezone),
+    getActiveOffer(),
   ]);
   const planName = PLANS[ent.plan].name;
   const complimentary =
     ent.isSuperAdmin ||
     ent.accessType === "lifetime_pro" ||
     ent.accessType === "complimentary_pro";
+  const promoEligible = !complimentary && ent.plan !== "premium";
 
   return (
     <div className="space-y-6">
@@ -52,6 +56,11 @@ export default async function SubscriptionPage() {
       </header>
 
       {/* Plan summary cards */}
+      <PromoOffer
+        expiresAt={offer?.expiresAt ?? null}
+        eligible={promoEligible}
+      />
+
       <PlanCards
         currentPlan={ent.plan}
         usage={usage}

@@ -272,6 +272,18 @@ export type Feedback = Owned & {
   archived: boolean;
 } & Timestamps;
 
+export type PromoStatus = "active" | "expired" | "redeemed";
+
+export type PromotionOffer = {
+  id: string;
+  user_id: string;
+  campaign: string;
+  started_at: string;
+  expires_at: string;
+  status: PromoStatus;
+  created_at: string;
+};
+
 export type InvitationStatus = "pending" | "accepted" | "expired" | "revoked";
 
 export type Invitation = {
@@ -405,6 +417,13 @@ export type Database = {
         >,
         Partial<Invitation>
       >;
+      promotion_offers: TableShape<
+        PromotionOffer,
+        { user_id: string; expires_at: string } & Partial<
+          Omit<PromotionOffer, "user_id" | "expires_at">
+        >,
+        Partial<PromotionOffer>
+      >;
     };
     Views: {
       account_balances: {
@@ -436,6 +455,7 @@ export type Database = {
       feedback_category: FeedbackCategory;
       feedback_status: FeedbackStatus;
       invitation_status: InvitationStatus;
+      promo_status: PromoStatus;
     };
   };
 };
