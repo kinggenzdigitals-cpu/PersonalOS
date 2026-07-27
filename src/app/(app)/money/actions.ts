@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { checkCap } from "@/lib/plan-guard";
+import { checkCap, checkTransactionCap } from "@/lib/plan-guard";
 import {
   getTransactions,
   type TransactionFilters,
@@ -55,6 +55,18 @@ export async function createTransaction(
   if (!user) return { ok: false, error: "You're not signed in." };
   if (!(input.amount > 0)) return { ok: false, error: "Enter an amount." };
   if (!input.accountId) return { ok: false, error: "Choose an account." };
+
+  // Enforce the monthly transaction limit for the user's plan.
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
+  const { count } = await supabase
+    .from("transactions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .gte("occurred_at", monthStart.toISOString());
+  const capError = await checkTransactionCap(count ?? 0);
+  if (capError) return { ok: false, error: capError };
 
   const { data, error } = await supabase
     .from("transactions")

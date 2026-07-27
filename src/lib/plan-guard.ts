@@ -25,7 +25,20 @@ export async function checkCap(
   const limit = PLANS[plan].limits[key];
   if (typeof limit !== "number") return null; // unlimited
   if (currentCount >= limit) {
-    return `Your Free plan includes up to ${limit} ${CAP_NOUN[key]}. Upgrade to Pro for unlimited.`;
+    return `Your ${PLANS[plan].name} plan allows up to ${limit} ${CAP_NOUN[key]}. Upgrade for a higher limit.`;
+  }
+  return null;
+}
+
+/** Returns an upgrade message if the monthly transaction cap is reached. */
+export async function checkTransactionCap(
+  currentCount: number,
+): Promise<string | null> {
+  const plan = await getActivePlan();
+  const limit = PLANS[plan].limits.transactionsPerMonth;
+  if (typeof limit !== "number") return null;
+  if (currentCount >= limit) {
+    return `Your ${PLANS[plan].name} plan allows ${limit} transactions per month. Upgrade for a higher limit.`;
   }
   return null;
 }
