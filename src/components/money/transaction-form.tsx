@@ -20,6 +20,7 @@ import {
   type TransactionInput,
 } from "@/app/(app)/money/actions";
 import { toast } from "sonner";
+import { useUpgrade } from "@/components/providers/upgrade-provider";
 
 const LAST_ACCOUNT_KEY = "lifeos:lastAccount";
 
@@ -43,6 +44,7 @@ export function TransactionForm({
   onDone: () => void;
 }) {
   const router = useRouter();
+  const { notify } = useUpgrade();
   const { accounts, expenseCategories, incomeCategories } = useReference();
   const currency = useCurrency();
   const editing = Boolean(initial);
@@ -111,7 +113,7 @@ export function TransactionForm({
       : await createTransaction(payload);
 
     if (!result.ok) {
-      toast.error(result.error);
+      notify(result.error);
       setSaving(false);
       return;
     }

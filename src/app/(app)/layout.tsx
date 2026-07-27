@@ -4,6 +4,7 @@ import { getAccounts, getCategories } from "@/lib/queries/money";
 import { getDueBillCount } from "@/lib/queries/planning";
 import { ProfileProvider } from "@/components/providers/profile-provider";
 import { ReferenceProvider } from "@/components/providers/reference-provider";
+import { UpgradeProvider } from "@/components/providers/upgrade-provider";
 import {
   DesktopSidebar,
   MobileTopBar,
@@ -27,6 +28,7 @@ export default async function AppLayout({
   return (
     <ProfileProvider profile={profile}>
       <ReferenceProvider accounts={accounts} categories={categories}>
+        <UpgradeProvider>
         <div className="min-h-dvh md:pl-60">
           <DesktopSidebar moneyBadge={dueBills} isAdmin={admin} />
           <MobileTopBar />
@@ -42,6 +44,7 @@ export default async function AppLayout({
             <QuickAdd variant="fab" />
           </div>
         </div>
+        </UpgradeProvider>
       </ReferenceProvider>
     </ProfileProvider>
   );

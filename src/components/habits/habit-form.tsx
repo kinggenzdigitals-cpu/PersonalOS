@@ -18,6 +18,7 @@ import { LIFE_AREAS, WEEKDAYS } from "@/lib/constants";
 import { upsertHabit, deleteHabit } from "@/app/(app)/habits/actions";
 import type { Habit, LifeArea } from "@/lib/supabase/types";
 import { toast } from "sonner";
+import { useUpgrade } from "@/components/providers/upgrade-provider";
 
 export function HabitForm({
   initial,
@@ -27,6 +28,7 @@ export function HabitForm({
   onDone: () => void;
 }) {
   const router = useRouter();
+  const { notify } = useUpgrade();
   const editing = Boolean(initial);
 
   const [name, setName] = React.useState(initial?.name ?? "");
@@ -56,7 +58,7 @@ export function HabitForm({
       reminder_time: reminder ? `${reminder}:00` : null,
     });
     if (!result.ok) {
-      toast.error(result.error);
+      notify(result.error);
       setSaving(false);
       return;
     }
@@ -70,7 +72,7 @@ export function HabitForm({
     setSaving(true);
     const result = await deleteHabit(initial.id);
     if (!result.ok) {
-      toast.error(result.error);
+      notify(result.error);
       setSaving(false);
       return;
     }

@@ -24,6 +24,7 @@ import {
   setAccountArchived,
 } from "@/app/(app)/money/actions";
 import { toast } from "sonner";
+import { useUpgrade } from "@/components/providers/upgrade-provider";
 
 export function AccountForm({
   initial,
@@ -33,6 +34,7 @@ export function AccountForm({
   onDone: () => void;
 }) {
   const router = useRouter();
+  const { notify } = useUpgrade();
   const currency = useCurrency();
   const editing = Boolean(initial);
 
@@ -63,7 +65,7 @@ export function AccountForm({
       : await createAccount(payload);
 
     if (!result.ok) {
-      toast.error(result.error);
+      notify(result.error);
       setSaving(false);
       return;
     }
@@ -77,7 +79,7 @@ export function AccountForm({
     setSaving(true);
     const result = await setAccountArchived(initial.id, !initial.archived);
     if (!result.ok) {
-      toast.error(result.error);
+      notify(result.error);
       setSaving(false);
       return;
     }

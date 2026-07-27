@@ -15,6 +15,7 @@ import {
 } from "@/app/(app)/money/goals-actions";
 import type { SavingsGoal } from "@/lib/supabase/types";
 import { toast } from "sonner";
+import { useUpgrade } from "@/components/providers/upgrade-provider";
 
 export const GOAL_COLORS = [
   "#C4643B",
@@ -35,6 +36,7 @@ export function GoalForm({
   onDone: () => void;
 }) {
   const router = useRouter();
+  const { notify } = useUpgrade();
   const currency = useCurrency();
   const editing = Boolean(initial);
 
@@ -62,7 +64,7 @@ export function GoalForm({
       color,
     });
     if (!result.ok) {
-      toast.error(result.error);
+      notify(result.error);
       setSaving(false);
       return;
     }
@@ -76,7 +78,7 @@ export function GoalForm({
     setSaving(true);
     const result = await deleteSavingsGoal(initial.id);
     if (!result.ok) {
-      toast.error(result.error);
+      notify(result.error);
       setSaving(false);
       return;
     }

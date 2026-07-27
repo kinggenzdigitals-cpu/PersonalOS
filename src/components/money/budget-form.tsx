@@ -19,6 +19,7 @@ import { currencySymbol } from "@/lib/format";
 import { upsertBudget, deleteBudget } from "@/app/(app)/money/planning-actions";
 import type { Budget } from "@/lib/supabase/types";
 import { toast } from "sonner";
+import { useUpgrade } from "@/components/providers/upgrade-provider";
 
 export function BudgetForm({
   initial,
@@ -30,6 +31,7 @@ export function BudgetForm({
   onDone: () => void;
 }) {
   const router = useRouter();
+  const { notify } = useUpgrade();
   const { expenseCategories } = useReference();
   const currency = useCurrency();
   const editing = Boolean(initial);
@@ -58,7 +60,7 @@ export function BudgetForm({
       amount: value,
     });
     if (!result.ok) {
-      toast.error(result.error);
+      notify(result.error);
       setSaving(false);
       return;
     }
@@ -72,7 +74,7 @@ export function BudgetForm({
     setSaving(true);
     const result = await deleteBudget(initial.id);
     if (!result.ok) {
-      toast.error(result.error);
+      notify(result.error);
       setSaving(false);
       return;
     }
