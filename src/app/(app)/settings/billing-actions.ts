@@ -2,19 +2,31 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getSiteURL } from "@/lib/site";
-import { PLANS } from "@/lib/plans";
+import { PLAN_PRICES, type BillingPeriod } from "@/lib/plans";
+import { getActiveOffer } from "@/lib/promo";
+import { PROMO } from "@/lib/promo-config";
 
 export type CheckoutResult =
   | { ok: true; url: string }
   | { ok: false; error: string };
 
+type PaidPlan = "pro" | "premium";
+
+const PERIOD_LABEL: Record<BillingPeriod, string> = {
+  monthly: "Monthly",
+  quarterly: "3 months",
+  semiannual: "6 months",
+  annual: "1 year",
+};
+
 /**
- * Starts a Xendit hosted-invoice checkout for Pro. Returns the invoice URL to
- * redirect the user to (they pay with GCash / Maya / card / bank). On success,
- * Xendit calls our webhook which activates the subscription.
+ * Starts a Xendit hosted-invoice checkout for any paid tier + billing period.
+ * The charged amount always matches what the UI shows, and a genuine active
+ * annual promo is applied server-side so the promo price is what's billed.
  */
-export async function startProCheckout(
-  interval: "monthly" | "yearly",
+export async function startCheckout(
+  plan: PaidPlan,
+  period: BillingPeriod,
 ): Promise<CheckoutResult> {
   const secret = process.env.XENDIT_SECRET_KEY;
   if (!secret) {
@@ -27,10 +39,16 @@ export async function startProCheckout(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You're not signed in." };
 
-  const amount =
-    interval === "yearly" ? PLANS.pro.priceYearly : PLANS.pro.priceMonthly;
-  const externalId = `sub_${user.id}_${interval}_${Date.now()}`;
+  let amount = PLAN_PRICES[plan][period].total;
+  // Honor a genuine, still-active annual promo (charged price = shown price).
+  if (period === "annual") {
+    const offer = await getActiveOffer();
+    if (offer) amount = PROMO.offers[plan].promo;
+  }
+
+  const externalId = `sub_${user.id}_${plan}_${period}_${Date.now()}`;
   const site = getSiteURL();
+  const planName = plan === "premium" ? "Premium" : "Pro";
 
   try {
     const res = await fetch("https://api.xendit.co/v2/invoices", {
@@ -44,7 +62,7 @@ export async function startProCheckout(
         amount,
         currency: "PHP",
         payer_email: user.email,
-        description: `Finance & Habit Tracker Pro — ${interval === "yearly" ? "Yearly" : "Monthly"}`,
+        description: `Finance & Habit Tracker ${planName} — ${PERIOD_LABEL[period]}`,
         success_redirect_url: `${site}/settings?upgraded=1`,
         failure_redirect_url: `${site}/settings?checkout=failed`,
       }),

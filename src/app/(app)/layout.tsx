@@ -29,7 +29,10 @@ export default async function AppLayout({
   // Free & paid users below Premium (not comp/lifetime/super-admin) may see the
   // occasional upgrade nudge.
   const upgradeEligible =
-    !ent.isSuperAdmin && ent.accessType == null && ent.plan !== "premium";
+    !ent.isSuperAdmin &&
+    ent.accessType !== "complimentary_pro" &&
+    ent.accessType !== "lifetime_pro" &&
+    ent.plan !== "premium";
 
   return (
     <ProfileProvider profile={profile}>

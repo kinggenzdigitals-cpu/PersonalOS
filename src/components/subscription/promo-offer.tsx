@@ -1,13 +1,13 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { SparklesIcon, TimerIcon, Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PROMO } from "@/lib/promo-config";
 import { claimOffer } from "@/app/(app)/subscription/promo-actions";
+import { startCheckout } from "@/app/(app)/settings/billing-actions";
 
 function peso(n: number) {
   return `₱${n.toLocaleString("en-PH", { maximumFractionDigits: 2 })}`;
@@ -28,6 +28,18 @@ export function PromoOffer({
   const router = useRouter();
   const [now, setNow] = React.useState(0);
   const [busy, setBusy] = React.useState(false);
+  const [subscribing, setSubscribing] = React.useState<string | null>(null);
+
+  async function subscribe(plan: "pro" | "premium") {
+    setSubscribing(plan);
+    const res = await startCheckout(plan, "annual");
+    if (!res.ok) {
+      toast.error(res.error);
+      setSubscribing(null);
+      return;
+    }
+    window.location.assign(res.url);
+  }
 
   React.useEffect(() => {
     if (!expiresAt) return;
@@ -101,15 +113,23 @@ export function PromoOffer({
                 Save {peso(o.save)} · {peso(o.monthly)}/mo · renews at{" "}
                 {peso(o.regular)}/yr unless cancelled
               </p>
+              <Button
+                size="sm"
+                className="mt-2 w-full"
+                disabled={subscribing !== null}
+                onClick={() => subscribe(id)}
+              >
+                {subscribing === id ? (
+                  <Loader2Icon className="size-4 animate-spin" />
+                ) : (
+                  <SparklesIcon className="size-4" />
+                )}
+                Get {o.name} for {peso(o.promo)}
+              </Button>
             </div>
           );
         })}
       </div>
-      <Button asChild className="mt-3 w-full">
-        <Link href="/settings">
-          <SparklesIcon className="size-4" /> Subscribe now
-        </Link>
-      </Button>
     </div>
   );
 }
