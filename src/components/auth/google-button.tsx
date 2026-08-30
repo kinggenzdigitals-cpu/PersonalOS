@@ -5,6 +5,7 @@ import { Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { getSiteURL } from "@/lib/site";
+import { friendlyAuthError } from "@/lib/auth-errors";
 import { toast } from "sonner";
 
 export function GoogleButton({ next }: { next?: string }) {
@@ -12,16 +13,22 @@ export function GoogleButton({ next }: { next?: string }) {
 
   async function signIn() {
     setLoading(true);
-    const supabase = createClient();
-    const params = next ? `?next=${encodeURIComponent(next)}` : "";
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${getSiteURL()}/auth/callback${params}`,
-      },
-    });
-    if (error) {
-      toast.error(error.message);
+    try {
+      const supabase = createClient();
+      const params = next ? `?next=${encodeURIComponent(next)}` : "";
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${getSiteURL()}/auth/callback${params}`,
+        },
+      });
+      if (error) {
+        toast.error(friendlyAuthError(error.message));
+        setLoading(false);
+      }
+      // On success the browser redirects to Google; keep the loading state.
+    } catch {
+      toast.error(friendlyAuthError("Failed to fetch"));
       setLoading(false);
     }
   }

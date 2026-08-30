@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { createClient } from "@/lib/supabase/client";
 import { getSiteURL } from "@/lib/site";
+import { friendlyAuthError } from "@/lib/auth-errors";
 import { toast } from "sonner";
 
 type Mode = "login" | "signup";
@@ -41,46 +42,48 @@ export function AuthForm({ mode, next }: { mode: Mode; next?: string }) {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
 
-    if (mode === "signup") {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: `${getSiteURL()}/auth/callback` },
-      });
-      if (error) {
-        toast.error(error.message);
-        setLoading(false);
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: `${getSiteURL()}/auth/callback` },
+        });
+        if (error) {
+          toast.error(friendlyAuthError(error.message));
+          setLoading(false);
+          return;
+        }
+        // If email confirmation is required, no session is returned.
+        const { data } = await supabase.auth.getSession();
+        if (!data.session) {
+          setSentConfirmation(true);
+          setLoading(false);
+          return;
+        }
+        router.replace(next ?? "/home");
+        router.refresh();
         return;
       }
-      // If email confirmation is required, no session is returned.
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        setSentConfirmation(true);
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) {
+        toast.error(friendlyAuthError(error.message));
         setLoading(false);
         return;
       }
       router.replace(next ?? "/home");
       router.refresh();
-      return;
-    }
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) {
-      toast.error(
-        error.message === "Invalid login credentials"
-          ? "That email or password doesn't match our records."
-          : error.message,
-      );
+    } catch {
+      // Network / paused-project failure that threw instead of returning.
+      toast.error(friendlyAuthError("Failed to fetch"));
       setLoading(false);
-      return;
     }
-    router.replace(next ?? "/home");
-    router.refresh();
   }
 
   if (sentConfirmation) {
