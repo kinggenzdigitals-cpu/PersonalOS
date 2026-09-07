@@ -11,6 +11,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { createClient } from "@/lib/supabase/client";
 import { getSiteURL } from "@/lib/site";
 import { friendlyAuthError } from "@/lib/auth-errors";
+import { recordLogin } from "@/app/auth/actions";
 import { toast } from "sonner";
 
 type Mode = "login" | "signup";
@@ -77,6 +78,7 @@ export function AuthForm({ mode, next }: { mode: Mode; next?: string }) {
         setLoading(false);
         return;
       }
+      await recordLogin();
       router.replace(next ?? "/home");
       router.refresh();
     } catch {

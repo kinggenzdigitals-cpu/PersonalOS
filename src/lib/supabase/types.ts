@@ -63,6 +63,12 @@ type TableShape<Row, Insert, Update> = {
 // ---- Row types -----------------------------------------------------------
 
 export type UserRole = "user" | "super_admin";
+
+/**
+ * How a super_admin role was granted. "bootstrap" is revoked automatically once
+ * the account's email leaves the allow-list; "manual" never is.
+ */
+export type RoleSource = "bootstrap" | "manual";
 export type AccessType = "paid" | "complimentary_pro" | "lifetime_pro";
 export type AccountStatus = "active" | "suspended" | "revoked";
 
@@ -80,7 +86,14 @@ export type Profile = {
   status: AccountStatus;
   must_change_password: boolean;
   last_login_at: string | null;
+  dashboard_prefs: DashboardPrefs;
+  role_source: RoleSource | null;
 } & Timestamps;
+
+/** Per-user dashboard card visibility. Empty/absent = everything visible. */
+export type DashboardPrefs = {
+  hidden?: string[];
+};
 
 export type Account = Owned & {
   name: string;
@@ -132,6 +145,31 @@ export type Budget = Owned & {
   amount: number;
   period: BudgetPeriod;
   active: boolean;
+  carryover: boolean; // roll unspent budget into the next month
+} & Timestamps;
+
+export type MonthlyBudget = Owned & {
+  period_start: string; // YYYY-MM-DD (first day of the budget month, local)
+  total_amount: number;
+  savings_target: number;
+} & Timestamps;
+
+/** Per-user learned merchant → category mapping (never shared across users). */
+export type MerchantCategory = Owned & {
+  merchant_key: string;
+  category_id: string;
+  hit_count: number;
+} & Timestamps;
+
+/** A saved, frequently-used transaction for one-tap re-entry. */
+export type TransactionFavorite = Owned & {
+  label: string;
+  type: "income" | "expense";
+  amount: number | null;
+  category_id: string | null;
+  account_id: string | null;
+  merchant: string | null;
+  sort_order: number;
 } & Timestamps;
 
 export type Bill = Owned & {
@@ -237,6 +275,7 @@ export type SavingsGoal = Owned & {
   color: string | null;
   notes: string | null;
   sort_order: number;
+  target_date: string | null; // YYYY-MM-DD; set → the goal is a sinking fund
 } & Timestamps;
 
 export type Subscription = Owned & {
@@ -249,6 +288,9 @@ export type Subscription = Owned & {
   access_type: AccessType | null;
   access_expires_at: string | null;
   granted_by: string | null;
+  /** "Don't renew" — access continues until current_period_end, then lapses. */
+  cancel_at_period_end: boolean;
+  canceled_at: string | null;
 } & Timestamps;
 
 export type FeedbackCategory = "bug" | "feature" | "recommendation" | "other";
@@ -271,6 +313,18 @@ export type Feedback = Owned & {
   is_duplicate: boolean;
   archived: boolean;
 } & Timestamps;
+
+/** One recorded payment-provider callback, for webhook idempotency. */
+export type BillingEvent = {
+  id: string;
+  provider: string;
+  event_id: string;
+  external_id: string | null;
+  user_id: string | null;
+  status: string;
+  amount: number | null;
+  processed_at: string;
+};
 
 export type PromoStatus = "active" | "expired" | "redeemed";
 
@@ -356,6 +410,27 @@ export type Database = {
         UpdateOf<Transaction>
       >;
       budgets: TableShape<Budget, InsertOf<Budget>, UpdateOf<Budget>>;
+      monthly_budgets: TableShape<
+        MonthlyBudget,
+        { user_id: string; period_start: string } & Partial<
+          Omit<MonthlyBudget, "user_id" | "period_start">
+        >,
+        UpdateOf<MonthlyBudget>
+      >;
+      merchant_categories: TableShape<
+        MerchantCategory,
+        { user_id: string; merchant_key: string; category_id: string } & Partial<
+          Omit<MerchantCategory, "user_id" | "merchant_key" | "category_id">
+        >,
+        UpdateOf<MerchantCategory>
+      >;
+      transaction_favorites: TableShape<
+        TransactionFavorite,
+        { user_id: string; label: string } & Partial<
+          Omit<TransactionFavorite, "user_id" | "label">
+        >,
+        UpdateOf<TransactionFavorite>
+      >;
       bills: TableShape<Bill, InsertOf<Bill>, UpdateOf<Bill>>;
       bill_payments: TableShape<
         BillPayment,
@@ -416,6 +491,13 @@ export type Database = {
           Omit<Invitation, "email" | "token_hash" | "invitation_expires_at">
         >,
         Partial<Invitation>
+      >;
+      billing_events: TableShape<
+        BillingEvent,
+        { event_id: string; status: string } & Partial<
+          Omit<BillingEvent, "event_id" | "status">
+        >,
+        Partial<BillingEvent>
       >;
       promotion_offers: TableShape<
         PromotionOffer,

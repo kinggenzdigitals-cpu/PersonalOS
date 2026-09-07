@@ -1,3 +1,6 @@
+// Importing this module from a client component is a build error — the
+// service-role key must never reach the browser.
+import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { supabaseUrl } from "./env";

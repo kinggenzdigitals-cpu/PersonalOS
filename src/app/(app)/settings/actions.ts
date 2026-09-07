@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { DASHBOARD_CARDS } from "@/lib/dashboard-cards";
+import { isSchemaMissing, migrationRequired } from "@/lib/supabase/errors";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -41,6 +43,98 @@ export async function updateSettings(
   return { ok: true };
 }
 
+/** Save which dashboard cards this user has switched off. */
+export async function updateDashboardPrefs(
+  hidden: string[],
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You're not signed in." };
+
+  const valid = new Set(DASHBOARD_CARDS.map((c) => c.key as string));
+  const clean = [...new Set(hidden)].filter((k) => valid.has(k));
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ dashboard_prefs: { hidden: clean } })
+    .eq("user_id", user.id);
+
+  if (error) {
+    if (isSchemaMissing(error)) {
+      return { ok: false, error: migrationRequired("Dashboard preferences", "0015") };
+    }
+    return { ok: false, error: error.message };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Every table a user owns rows in, for the "download my data" export. */
+const OWNED_TABLES = [
+  "profiles",
+  "accounts",
+  "categories",
+  "transactions",
+  "transaction_favorites",
+  "merchant_categories",
+  "budgets",
+  "monthly_budgets",
+  "bills",
+  "bill_payments",
+  "ledger_entries",
+  "assets",
+  "liabilities",
+  "savings_goals",
+  "habits",
+  "habit_logs",
+  "mood_entries",
+  "tasks",
+  "calendar_events",
+  "focus_sessions",
+  "feedback",
+  "subscriptions",
+  "promotion_offers",
+] as const;
+
+export type DataExport = {
+  exportedAt: string;
+  tables: Record<string, unknown[]>;
+};
+
+export type ExportDataResult =
+  | { ok: true; data: DataExport }
+  | { ok: false; error: string };
+
+/**
+ * A full copy of the user's own data. Available on every plan — this is a
+ * personal-data control, not a paid feature. RLS scopes every read to the
+ * caller, so no row from another account can be returned.
+ */
+export async function exportAllData(): Promise<ExportDataResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You're not signed in." };
+
+  const tables: Record<string, unknown[]> = {};
+  for (const table of OWNED_TABLES) {
+    const { data, error } = await supabase.from(table).select("*");
+    // Tolerate tables that don't exist yet (migrations not applied).
+    if (error && !isSchemaMissing(error)) {
+      return { ok: false, error: `${table}: ${error.message}` };
+    }
+    tables[table] = data ?? [];
+  }
+
+  return {
+    ok: true,
+    data: { exportedAt: new Date().toISOString(), tables },
+  };
+}
+
 /**
  * Deletes all of the user's data and resets them to a fresh (un-onboarded)
  * state. Their login is kept — removing the account itself requires elevated
@@ -54,12 +148,18 @@ export async function deleteAllData(): Promise<ActionResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You're not signed in." };
 
+  // Children before parents (foreign keys). Keep this list in step with
+  // /supabase/migrations — a table missing here silently survives a reset.
   const tables = [
     "bill_payments",
+    "focus_sessions",
     "transactions",
+    "transaction_favorites",
+    "merchant_categories",
     "ledger_entries",
     "bills",
     "budgets",
+    "monthly_budgets",
     "habit_logs",
     "habits",
     "mood_entries",
@@ -68,6 +168,7 @@ export async function deleteAllData(): Promise<ActionResult> {
     "assets",
     "liabilities",
     "savings_goals",
+    "feedback",
     "accounts",
   ] as const;
 
@@ -76,8 +177,8 @@ export async function deleteAllData(): Promise<ActionResult> {
       .from(table)
       .delete()
       .eq("user_id", user.id);
-    // Tolerate tables that don't exist yet (migrations not applied) — 42P01.
-    if (error && error.code !== "42P01") {
+    // Tolerate tables that don't exist yet (migrations not applied).
+    if (error && !isSchemaMissing(error)) {
       return { ok: false, error: `${table}: ${error.message}` };
     }
   }

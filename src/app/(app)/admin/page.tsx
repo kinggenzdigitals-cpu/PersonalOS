@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireSuperAdmin } from "@/lib/entitlement";
 import { listAdminUsers, summarize } from "@/lib/admin/users";
+import { listAuditLog } from "@/lib/admin/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
 import type { Feedback, Invitation } from "@/lib/supabase/types";
@@ -9,19 +10,26 @@ import { Card, CardContent } from "@/components/ui/card";
 export const metadata: Metadata = { title: "Subscribers & Users" };
 
 export default async function AdminPage() {
-  await requireSuperAdmin();
+  const me = await requireSuperAdmin();
+  // A provisional (allow-list) grant is read + triage only; the server enforces
+  // this regardless, but hiding the controls avoids inviting a failed action.
+  const canManageAccounts = me.adminTier !== "provisional";
+
+  // Keeps main's resilience: a missing service-role key or an unapplied
+  // migration renders an explanatory card instead of crashing the page.
   let data:
     | {
         users: Awaited<ReturnType<typeof listAdminUsers>>;
         feedback: Feedback[];
         invitations: Invitation[];
+        auditLog: Awaited<ReturnType<typeof listAuditLog>>;
       }
     | null = null;
 
   try {
     const users = await listAdminUsers();
     const admin = createAdminClient();
-    const [feedbackRes, invitesRes] = await Promise.all([
+    const [feedbackRes, invitesRes, auditLog] = await Promise.all([
       admin
         .from("feedback")
         .select("*")
@@ -32,6 +40,16 @@ export default async function AdminPage() {
         .select("*")
         .order("created_at", { ascending: false })
         .limit(200),
+      // Reuse the emails already fetched above rather than paging auth.users
+      // a second time for the same render.
+      listAuditLog(
+        200,
+        new Map(
+          users
+            .filter((u): u is typeof u & { email: string } => Boolean(u.email))
+            .map((u) => [u.userId, u.email]),
+        ),
+      ),
     ]);
     if (feedbackRes.error || invitesRes.error) {
       throw new Error("Unable to load admin dashboard data.");
@@ -40,6 +58,7 @@ export default async function AdminPage() {
       users,
       feedback: (feedbackRes.data as Feedback[] | null) ?? [],
       invitations: (invitesRes.data as Invitation[] | null) ?? [],
+      auditLog,
     };
   } catch {
     data = null;
@@ -54,6 +73,14 @@ export default async function AdminPage() {
         <p className="text-sm text-muted-foreground">
           Manage accounts, complimentary access, and feedback.
         </p>
+        {!canManageAccounts && (
+          <p className="rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-sm text-foreground">
+            <span className="font-medium">View-only admin access.</span> Your
+            role was granted automatically from the email allow-list, so account
+            actions and invitations are disabled. Ask the platform owner to make
+            the grant permanent.
+          </p>
+        )}
       </header>
       {data ? (
         <AdminDashboard
@@ -61,6 +88,8 @@ export default async function AdminPage() {
           summary={summarize(data.users)}
           feedback={data.feedback}
           invitations={data.invitations}
+          auditLog={data.auditLog}
+          canManageAccounts={canManageAccounts}
         />
       ) : (
         <Card className="border-error/30 bg-error/5 shadow-card">

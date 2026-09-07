@@ -73,7 +73,7 @@ export default async function SubscriptionPage() {
             <SparklesIcon className="size-4" /> Explore all plans
           </Link>
         </Button>
-        {ent.plan !== "premium" && !ent.isSuperAdmin && (
+        {!ent.isSuperAdmin && (
           <Button variant="outline" asChild>
             <Link href="/settings">
               <CreditCardIcon className="size-4" /> Manage subscription
@@ -100,8 +100,9 @@ export default async function SubscriptionPage() {
         <h2 className="font-display text-lg">Compare plans</h2>
         <FeatureComparison currentPlan={ent.plan} />
         <p className="text-xs text-muted-foreground">
-          Paid plans auto-renew at the shown price unless cancelled. Cancel
-          anytime and keep access until the end of the paid period.
+          Paid plans are one-off payments for the period you choose — no card is
+          stored and nothing renews automatically. You keep access until the end
+          of the period you paid for, and can renew any time to extend it.
         </p>
       </section>
     </div>

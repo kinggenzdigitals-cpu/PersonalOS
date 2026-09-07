@@ -2,6 +2,7 @@
 
 import { createHash } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isOwnerEmail } from "@/lib/entitlement";
 import type { Invitation } from "@/lib/supabase/types";
 
 export type AcceptResult = { ok: true } | { ok: false; error: string };
@@ -36,7 +37,20 @@ export async function acceptInvitation(
   }
 
   const email = inv.email;
-  let uid: string;
+
+  // Belt and braces: never honour an invitation aimed at an owner-allow-list
+  // address, however the row was minted. The create-time check upstream can be
+  // bypassed (rows predating it, or an address allow-listed after the fact).
+  if (isOwnerEmail(email)) {
+    return { ok: false, error: "This invitation can't be used." };
+  }
+
+  // CREATE-ONLY. This endpoint is UNAUTHENTICATED — anyone holding a token
+  // reaches it. The old fallback "email already exists → set the chosen
+  // password" turned any invitation row into an arbitrary password reset for
+  // an existing account, so minting a row for someone else's address (via the
+  // admin UI, or straight through PostgREST under the admin RLS policy) was a
+  // full account takeover. An invitation may only ever create a NEW account.
   const { data: created, error: createErr } = await admin.auth.admin.createUser(
     {
       email,
@@ -46,22 +60,13 @@ export async function acceptInvitation(
     },
   );
   if (createErr || !created?.user) {
-    // Email may already exist — reuse it and set the chosen password.
-    const { data: list } = await admin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-    const found = list?.users.find(
-      (u) => u.email?.toLowerCase() === email.toLowerCase(),
-    );
-    if (!found) {
-      return { ok: false, error: createErr?.message ?? "Couldn't create your account." };
-    }
-    uid = found.id;
-    await admin.auth.admin.updateUserById(uid, { password });
-  } else {
-    uid = created.user.id;
+    return {
+      ok: false,
+      error:
+        "An account already exists for this address. Sign in instead — an invitation can't change an existing account's password.",
+    };
   }
+  const uid = created.user.id;
 
   await admin
     .from("profiles")

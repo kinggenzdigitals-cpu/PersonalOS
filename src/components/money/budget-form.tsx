@@ -6,6 +6,7 @@ import { Loader2Icon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -42,6 +43,9 @@ export function BudgetForm({
   const [amount, setAmount] = React.useState(
     initial ? String(initial.amount) : "",
   );
+  const [carryover, setCarryover] = React.useState(
+    initial?.carryover ?? false,
+  );
   const [saving, setSaving] = React.useState(false);
 
   const available = expenseCategories.filter(
@@ -58,6 +62,7 @@ export function BudgetForm({
       id: initial?.id,
       categoryId,
       amount: value,
+      carryover,
     });
     if (!result.ok) {
       notify(result.error);
@@ -120,6 +125,20 @@ export function BudgetForm({
             className="pl-7 tnum"
           />
         </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+        <div className="space-y-0.5">
+          <Label htmlFor="budget-carryover">Carry over unspent</Label>
+          <p className="text-xs text-muted-foreground">
+            Roll last month&rsquo;s leftover (or overspend) into this month.
+          </p>
+        </div>
+        <Switch
+          id="budget-carryover"
+          checked={carryover}
+          onCheckedChange={setCarryover}
+        />
       </div>
 
       <div className="flex gap-2 pt-2">

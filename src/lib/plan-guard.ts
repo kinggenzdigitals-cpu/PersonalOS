@@ -8,6 +8,7 @@ const CAP_NOUN = {
   goals: "savings goals",
   habits: "habits",
   budgets: "budgets",
+  recurring: "recurring bills",
 } as const;
 
 export type CapKey = keyof typeof CAP_NOUN;
@@ -49,6 +50,16 @@ export async function hasProFeature(
 ): Promise<boolean> {
   const plan = await getActivePlan();
   return PLANS[plan].limits[feature] === true;
+}
+
+/** Upgrade message when a boolean Pro feature is locked, otherwise null. */
+export async function requireProFeature(
+  feature: "csvExport" | "netWorth",
+  label: string,
+): Promise<string | null> {
+  const plan = await getActivePlan();
+  if (PLANS[plan].limits[feature] === true) return null;
+  return `${label} isn't included in your ${PLANS[plan].name} plan. Upgrade to unlock it.`;
 }
 
 /** How many months of report history the user's plan can view (null = all). */

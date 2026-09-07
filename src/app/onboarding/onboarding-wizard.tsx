@@ -66,6 +66,12 @@ export function OnboardingWizard({
     new Set(["Prayer", "Exercise", "Gratitude"]),
   );
 
+  // Finance setup (step 2) — entirely optional.
+  const [monthlyBudget, setMonthlyBudget] = React.useState("");
+  const [savingsTarget, setSavingsTarget] = React.useState("");
+  const [goalName, setGoalName] = React.useState("Emergency fund");
+  const [goalTarget, setGoalTarget] = React.useState("");
+
   const sym = currencySymbol(currency);
 
   function addSuggestedAccount(name: string) {
@@ -120,6 +126,15 @@ export function OnboardingWizard({
       habits: SUGGESTED_HABITS.filter((h) => selectedHabits.has(h.name)).map(
         (h) => ({ name: h.name, life_area: h.life_area }),
       ),
+      monthlyBudget: Number.parseFloat(monthlyBudget) || null,
+      savingsTarget: Number.parseFloat(savingsTarget) || null,
+      savingsGoal:
+        goalName.trim() && Number.parseFloat(goalTarget) > 0
+          ? {
+              name: goalName.trim(),
+              targetAmount: Number.parseFloat(goalTarget),
+            }
+          : null,
     });
 
     if (!result.ok) {
@@ -137,7 +152,7 @@ export function OnboardingWizard({
 
   return (
     <div className="space-y-6">
-      <StepDots step={step} total={3} />
+      <StepDots step={step} total={4} />
 
       {step === 0 && (
         <Card className="shadow-card">
@@ -334,6 +349,114 @@ export function OnboardingWizard({
         <Card className="shadow-card">
           <CardContent className="space-y-5 pt-6">
             <div className="space-y-1">
+              <h2 className="font-display text-xl">Set your monthly budget</h2>
+              <p className="text-sm text-muted-foreground">
+                Optional — you can set this up later from the Budgets tab.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="ob-budget">Monthly budget</Label>
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
+                  {sym}
+                </span>
+                <Input
+                  id="ob-budget"
+                  inputMode="decimal"
+                  value={monthlyBudget}
+                  onChange={(e) =>
+                    setMonthlyBudget(e.target.value.replace(/[^0-9.]/g, ""))
+                  }
+                  placeholder="e.g. 40000"
+                  className="pl-7 tnum"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="ob-savings">Savings allocation</Label>
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
+                  {sym}
+                </span>
+                <Input
+                  id="ob-savings"
+                  inputMode="decimal"
+                  value={savingsTarget}
+                  onChange={(e) =>
+                    setSavingsTarget(e.target.value.replace(/[^0-9.]/g, ""))
+                  }
+                  placeholder="e.g. 8000"
+                  className="pl-7 tnum"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Set aside as savings before other spending.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="ob-goal">First savings goal</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  id="ob-goal"
+                  value={goalName}
+                  onChange={(e) => setGoalName(e.target.value)}
+                  placeholder="Emergency fund"
+                />
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
+                    {sym}
+                  </span>
+                  <Input
+                    inputMode="decimal"
+                    value={goalTarget}
+                    onChange={(e) =>
+                      setGoalTarget(e.target.value.replace(/[^0-9.]/g, ""))
+                    }
+                    placeholder="Target"
+                    className="pl-7 tnum"
+                    aria-label="Goal target amount"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                className="flex-1"
+                onClick={() => setStep(1)}
+                disabled={saving}
+              >
+                Back
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setMonthlyBudget("");
+                  setSavingsTarget("");
+                  setGoalTarget("");
+                  setStep(3);
+                }}
+                disabled={saving}
+              >
+                Skip
+              </Button>
+              <Button className="flex-1" onClick={() => setStep(3)} disabled={saving}>
+                Continue
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {step === 3 && (
+        <Card className="shadow-card">
+          <CardContent className="space-y-5 pt-6">
+            <div className="space-y-1">
               <h2 className="font-display text-xl">Pick a few habits</h2>
               <p className="text-sm text-muted-foreground">
                 Choose what you want to track. You can change these anytime.
@@ -373,7 +496,7 @@ export function OnboardingWizard({
               <Button
                 variant="ghost"
                 className="flex-1"
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
                 disabled={saving}
               >
                 Back

@@ -4,6 +4,7 @@ import {
   CalendarClockIcon,
   SparklesIcon,
   WalletIcon,
+  ChevronDownIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
@@ -15,9 +16,12 @@ import { formatMoney } from "@/lib/format";
 import { Money, MaskAmounts } from "@/components/ui/money";
 import { dayRange } from "@/lib/date";
 import {
-  getBudgetsWithSpending,
+  getBudgetSummary,
+  getCashFlowForecast,
   getBills,
 } from "@/lib/queries/planning";
+import { getSinkingFunds, getSavingsGoals } from "@/lib/queries/goals";
+import { getTransactions, getCategories } from "@/lib/queries/money";
 import { getHabitsBoard, localToday } from "@/lib/queries/habits";
 import { getTodayMood } from "@/lib/queries/mood";
 import { getLedgerSummary } from "@/lib/queries/ledger";
@@ -28,11 +32,23 @@ import {
   getCarryOverTasks,
   getTasksByView,
 } from "@/lib/queries/tasks";
+import { computeFinancialHealth } from "@/lib/financial-health";
+import { isCardVisible, readPrefs } from "@/lib/dashboard-cards";
 import { NetPositionCard } from "@/components/money/net-position";
 import {
   AlertsStrip,
   type DashboardAlert,
 } from "@/components/dashboard/alerts-strip";
+import {
+  BudgetSummaryCard,
+  CashAvailableCard,
+  UpcomingBillsCard,
+  RecentTransactionsCard,
+} from "@/components/dashboard/finance-cards";
+import { HealthScoreCard } from "@/components/dashboard/health-score-card";
+import { DashboardCustomizer } from "@/components/dashboard/dashboard-customizer";
+import { CashFlowCard } from "@/components/money/cash-flow-card";
+import { SinkingFundsCard } from "@/components/money/sinking-funds-card";
 import { DashboardHabits } from "@/components/dashboard/dashboard-habits";
 import { FocusWidget } from "@/components/dashboard/focus-widget";
 import { GoalsWidget } from "@/components/dashboard/goals-widget";
@@ -48,13 +64,21 @@ export default async function HomePage() {
   const today = dayRange(profile.timezone);
   const todayKey = format(localToday(profile.timezone), "yyyy-MM-dd");
   const currency = profile.currency;
+  const prefs = readPrefs(profile.dashboard_prefs);
+  const show = (key: Parameters<typeof isCardVisible>[0]) =>
+    isCardVisible(key, prefs);
 
   const [
     { data: balances },
     board,
     { data: todayExpenses },
-    budgets,
+    summary,
+    forecast,
     bills,
+    funds,
+    goals,
+    recentTx,
+    categories,
     todayMood,
     priorities,
     candidates,
@@ -76,8 +100,13 @@ export default async function HomePage() {
       .gte("occurred_at", today.start)
       .lte("occurred_at", today.end)
       .returns<Pick<Transaction, "amount">[]>(),
-    getBudgetsWithSpending(profile.timezone),
+    getBudgetSummary(profile.timezone, currency),
+    getCashFlowForecast(profile.timezone),
     getBills(profile.timezone, true),
+    getSinkingFunds(profile.timezone),
+    getSavingsGoals(),
+    getTransactions({ limit: 5, offset: 0 }),
+    getCategories(),
     getTodayMood(profile.timezone),
     getTodayPriorities(profile.timezone),
     getPriorityCandidates(profile.timezone),
@@ -88,6 +117,7 @@ export default async function HomePage() {
   ]);
 
   const accounts = balances ?? [];
+  const budgets = summary.items;
   const total = accounts.reduce((sum, a) => sum + Number(a.balance), 0);
   const available = accounts
     .filter((a) => a.is_spending)
@@ -98,6 +128,15 @@ export default async function HomePage() {
   );
 
   const nextBill = bills[0] ?? null;
+  const overdueBills = bills.filter((b) => b.status === "overdue").length;
+
+  const health = computeFinancialHealth({
+    budget: summary,
+    forecast,
+    goals,
+    overdueBills,
+    totalBills: bills.length,
+  });
 
   // Build dashboard alerts (budgets, bills, low balances)
   const alerts: DashboardAlert[] = [];
@@ -117,6 +156,12 @@ export default async function HomePage() {
         text: `${b.category?.name ?? "A budget"} is at ${Math.round(b.pct)}% of budget`,
         href: "/money/budgets",
       });
+    }
+  }
+  // Over-allocation / over-total warnings from the monthly budget itself.
+  for (const r of summary.recommendations) {
+    if (r.tone === "warn") {
+      alerts.push({ level: "warning", text: r.text, href: "/money/budgets" });
     }
   }
   for (const b of bills) {
@@ -161,9 +206,7 @@ export default async function HomePage() {
   const progressDenom = scheduledHabits.length + priorities.length;
   const progressDone = completedHabits + donePriorities;
   const progressPct =
-    progressDenom > 0
-      ? Math.round((progressDone / progressDenom) * 100)
-      : 0;
+    progressDenom > 0 ? Math.round((progressDone / progressDenom) * 100) : 0;
 
   // Weekly (Sunday) / monthly (1st) review nudge
   const todayDate = new Date(`${todayKey}T12:00:00`);
@@ -182,7 +225,12 @@ export default async function HomePage() {
       : null;
 
   // Today's schedule: bill due dates + task deadlines (events arrive with the calendar)
-  type ScheduleItem = { key: string; label: string; meta: string; kind: "bill" | "task" };
+  type ScheduleItem = {
+    key: string;
+    label: string;
+    meta: string;
+    kind: "bill" | "task";
+  };
   const schedule: ScheduleItem[] = [];
   for (const b of bills) {
     if (b.bill.next_due_date === todayKey) {
@@ -209,13 +257,16 @@ export default async function HomePage() {
     <div className="space-y-6">
       {/* Greeting */}
       <header className="space-y-2">
-        <div className="space-y-0.5">
-          <h1 className="font-display text-2xl tracking-tight">
-            {greeting(profile.timezone, profile.display_name)}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {longDate(profile.timezone)}
-          </p>
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-0.5">
+            <h1 className="font-display text-2xl tracking-tight">
+              {greeting(profile.timezone, profile.display_name)}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {longDate(profile.timezone)}
+            </p>
+          </div>
+          <DashboardCustomizer prefs={prefs} />
         </div>
         <MoodChip today={todayKey} entry={todayMood} />
       </header>
@@ -233,9 +284,15 @@ export default async function HomePage() {
       )}
 
       {/* Alerts */}
-      <AlertsStrip alerts={alerts} />
+      {show("alerts") && <AlertsStrip alerts={alerts} />}
 
-      {/* Money — net position */}
+      {/* ---- Finance first ---- */}
+
+      {show("monthly_budget") && (
+        <BudgetSummaryCard summary={summary} currency={currency} />
+      )}
+
+      {/* Net position */}
       <Link
         href="/money"
         className="block transition-transform hover:-translate-y-0.5"
@@ -288,17 +345,45 @@ export default async function HomePage() {
         </Link>
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-2">
+        {show("cash_available") && (
+          <CashAvailableCard
+            accounts={accounts}
+            currency={currency}
+            lowThreshold={profile.low_balance_threshold}
+          />
+        )}
+        {show("cash_flow") && <CashFlowCard forecast={forecast} />}
+        {show("upcoming_bills") && (
+          <UpcomingBillsCard bills={forecast.upcomingBills} currency={currency} />
+        )}
+        {show("health_score") && <HealthScoreCard health={health} />}
+      </div>
+
+      {show("savings") && <GoalsWidget currency={currency} />}
+
+      {show("sinking_funds") && funds.length > 0 && (
+        <SinkingFundsCard funds={funds} todayKey={todayKey} />
+      )}
+
+      {show("recent_transactions") && (
+        <RecentTransactionsCard
+          transactions={recentTx}
+          categories={categories}
+          currency={currency}
+        />
+      )}
+
+      {/* ---- Life ---- */}
+
       {/* Carry-over prompt */}
       <CarryOver count={carryOver.length} />
 
-      {/* Top 3 priorities */}
-      <DashboardPriorities priorities={priorities} candidates={candidates} />
+      {show("priorities") && (
+        <DashboardPriorities priorities={priorities} candidates={candidates} />
+      )}
 
-      {/* Savings goal progress */}
-      <GoalsWidget currency={currency} />
-
-      {/* Focus Timer */}
-      <FocusWidget timezone={profile.timezone} />
+      {show("focus") && <FocusWidget timezone={profile.timezone} />}
 
       {/* Full task list link */}
       <Link
@@ -312,98 +397,111 @@ export default async function HomePage() {
         <span className="text-muted-foreground">→</span>
       </Link>
 
-      {/* Today's habits */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-lg">Today&apos;s habits</h2>
-          <Link
-            href="/habits"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            View all
-          </Link>
-        </div>
-        {board.length > 0 ? (
-          <DashboardHabits
-            key={board.map((b) => b.habit.id).join(",")}
-            initial={board}
-            today={todayKey}
-          />
-        ) : (
-          <EmptyState
-            icon={SparklesIcon}
-            title="No habits yet"
-            description="Add a habit to start building momentum."
-            action={
-              <Button size="sm" variant="outline" asChild>
-                <Link href="/habits">Go to Habits</Link>
-              </Button>
-            }
-          />
-        )}
-      </section>
+      {/* Today's habits — collapsible, and switchable off in Customise */}
+      {show("habits") && (
+        <details open className="group space-y-3">
+          <summary className="flex cursor-pointer list-none items-center justify-between">
+            <h2 className="flex items-center gap-1.5 font-display text-lg">
+              <ChevronDownIcon
+                className="size-4 text-muted-foreground transition-transform group-open:rotate-180"
+                aria-hidden
+              />
+              Today&apos;s habits
+            </h2>
+            <Link
+              href="/habits"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              View all
+            </Link>
+          </summary>
+          <div className="mt-3 space-y-3">
+            {board.length > 0 ? (
+              <DashboardHabits
+                key={board.map((b) => b.habit.id).join(",")}
+                initial={board}
+                today={todayKey}
+              />
+            ) : (
+              <EmptyState
+                icon={SparklesIcon}
+                title="No habits yet"
+                description="Add a habit to start building momentum."
+                action={
+                  <Button size="sm" variant="outline" asChild>
+                    <Link href="/habits">Go to Habits</Link>
+                  </Button>
+                }
+              />
+            )}
 
-      {/* Daily progress */}
-      {progressDenom > 0 && (
-        <section className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <h2 className="font-display text-lg">Today&apos;s progress</h2>
-            <span className="tnum text-muted-foreground">
-              {progressDone}/{progressDenom} done
-            </span>
+            {progressDenom > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Today&apos;s progress
+                  </span>
+                  <span className="tnum text-muted-foreground">
+                    {progressDone}/{progressDenom} done
+                  </span>
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full bg-sage transition-all"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-secondary">
-            <div
-              className="h-full rounded-full bg-sage transition-all"
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-        </section>
+        </details>
       )}
 
       {/* Today's schedule */}
-      <section className="space-y-3">
-        <h2 className="font-display text-lg">Today&apos;s schedule</h2>
-        {schedule.length > 0 ? (
-          <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-            {schedule.map((item) => (
-              <div
-                key={item.key}
-                className="flex items-center gap-3 px-3 py-2.5"
-              >
-                <span
-                  className={cn(
-                    "grid size-8 shrink-0 place-items-center rounded-full",
-                    item.kind === "bill"
-                      ? "bg-warning/10 text-warning"
-                      : "bg-secondary text-muted-foreground",
-                  )}
+      {show("schedule") && (
+        <section className="space-y-3">
+          <h2 className="font-display text-lg">Today&apos;s schedule</h2>
+          {schedule.length > 0 ? (
+            <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+              {schedule.map((item) => (
+                <div
+                  key={item.key}
+                  className="flex items-center gap-3 px-3 py-2.5"
                 >
-                  {item.kind === "bill" ? (
-                    <ReceiptTextIcon className="size-4" />
-                  ) : (
-                    <CircleCheckBigIcon className="size-4" />
-                  )}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">
-                    {item.label}
+                  <span
+                    className={cn(
+                      "grid size-8 shrink-0 place-items-center rounded-full",
+                      item.kind === "bill"
+                        ? "bg-warning/10 text-warning"
+                        : "bg-secondary text-muted-foreground",
+                    )}
+                  >
+                    {item.kind === "bill" ? (
+                      <ReceiptTextIcon className="size-4" />
+                    ) : (
+                      <CircleCheckBigIcon className="size-4" />
+                    )}
                   </span>
-                  <span className="block text-xs text-muted-foreground">
-                    <MaskAmounts text={item.meta} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">
+                      {item.label}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      <MaskAmounts text={item.meta} />
+                    </span>
                   </span>
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            icon={CalendarClockIcon}
-            title="Nothing scheduled"
-            description="Bills and task deadlines for today will show up here."
-          />
-        )}
-      </section>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={CalendarClockIcon}
+              title="Nothing scheduled"
+              description="Bills and task deadlines for today will show up here."
+            />
+          )}
+        </section>
+      )}
     </div>
   );
 }

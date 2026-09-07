@@ -1,5 +1,25 @@
 import { createClient } from "@/lib/supabase/server";
+import { localDateKey } from "@/lib/date";
+import { sinkingFundMath, type SinkingFundMath } from "@/lib/sinking-funds";
 import type { SavingsGoal } from "@/lib/supabase/types";
+
+export type SinkingFund = { goal: SavingsGoal; math: SinkingFundMath };
+
+/** Savings goals that have a target date, with their contribution maths. */
+export async function getSinkingFunds(timezone: string): Promise<SinkingFund[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("savings_goals")
+    .select("*")
+    .not("target_date", "is", null)
+    .order("target_date")
+    .returns<SavingsGoal[]>();
+  const todayKey = localDateKey(timezone);
+  return (data ?? []).map((goal) => ({
+    goal,
+    math: sinkingFundMath(goal, todayKey),
+  }));
+}
 
 export type GoalsSummary = {
   goals: SavingsGoal[];

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { TargetIcon } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
+import { localDateKey } from "@/lib/date";
 import { getSavingsGoals } from "@/lib/queries/goals";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -15,6 +16,7 @@ export default async function GoalsPage() {
   const { goals, totalTarget, totalSaved, overallPct } =
     await getSavingsGoals();
   const currency = profile.currency;
+  const todayKey = localDateKey(profile.timezone);
 
   return (
     <div className="space-y-5">
@@ -24,7 +26,7 @@ export default async function GoalsPage() {
           title="No savings goals yet"
           description="Set goals like an emergency fund, a vacation, or a business fund — and watch them fill up."
           className="py-10"
-          action={<GoalCreateButton empty />}
+          action={<GoalCreateButton empty todayKey={todayKey} />}
         />
       ) : (
         <>
@@ -56,11 +58,11 @@ export default async function GoalsPage() {
 
           <div className="space-y-3">
             {goals.map((goal) => (
-              <GoalCard key={goal.id} goal={goal} />
+              <GoalCard key={goal.id} goal={goal} todayKey={todayKey} />
             ))}
           </div>
 
-          <GoalCreateButton />
+          <GoalCreateButton todayKey={todayKey} />
         </>
       )}
     </div>

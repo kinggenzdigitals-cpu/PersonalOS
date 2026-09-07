@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { SparklesIcon, CheckIcon, Loader2Icon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,10 @@ import {
   type BillingPeriod,
 } from "@/lib/plans";
 import { startCheckout } from "@/app/(app)/settings/billing-actions";
+import {
+  cancelSubscription,
+  resumeSubscription,
+} from "@/app/(app)/settings/subscription-actions";
 import { toast } from "sonner";
 
 function peso(n: number) {
@@ -22,25 +27,49 @@ function peso(n: number) {
 
 export function PlanCard({
   plan,
-  periodEnd = null,
+  periodEndLabel = null,
+  cancelAtPeriodEnd = false,
+  canManageRenewal = false,
 }: {
   plan: PlanId;
-  periodEnd?: string | null;
+  /** Pre-formatted on the server — formatting here would mismatch on hydration. */
+  periodEndLabel?: string | null;
+  cancelAtPeriodEnd?: boolean;
+  /** Only a genuinely paid subscription can be cancelled or resumed. */
+  canManageRenewal?: boolean;
 }) {
+  const router = useRouter();
   const isFree = plan === "free";
   const [tier, setTier] = React.useState<"pro" | "premium">(
     plan === "free" ? "pro" : "premium",
   );
   const [period, setPeriod] = React.useState<BillingPeriod>("annual");
   const [busy, setBusy] = React.useState(false);
+  const [lifecycleBusy, setLifecycleBusy] = React.useState(false);
 
-  const renewLabel = periodEnd
-    ? new Date(periodEnd).toLocaleDateString("en-PH", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-    : null;
+  /** Returns whether the change actually went through. */
+  async function setRenewal(on: boolean): Promise<boolean> {
+    setLifecycleBusy(true);
+    try {
+      const res = on ? await resumeSubscription() : await cancelSubscription();
+      if (!res.ok) {
+        toast.error(res.error);
+        return false;
+      }
+      router.refresh();
+      toast.success(res.message);
+      return true;
+    } catch {
+      // A rejected action (network drop, server throw) must still release the
+      // button — otherwise both dialog controls stay disabled with no message.
+      toast.error("Something went wrong. Please try again.");
+      return false;
+    } finally {
+      setLifecycleBusy(false);
+    }
+  }
+
+  const renewLabel = periodEndLabel;
 
   async function checkout() {
     setBusy(true);
@@ -105,8 +134,8 @@ export function PlanCard({
           </p>
           <p className="text-xs text-muted-foreground">
             {peso(price.monthlyEq)}/mo
-            {price.save > 0 && ` · save ${peso(price.save)}`} · renews at{" "}
-            {peso(price.total)} unless cancelled
+            {price.save > 0 && ` · save ${peso(price.save)}`} · one-off payment,
+            no card stored
           </p>
         </div>
 
@@ -162,9 +191,23 @@ export function PlanCard({
         <div className="mt-4 space-y-3">
           {renewLabel && !isFree && (
             <p className="text-xs text-muted-foreground">
-              Access active until{" "}
-              <span className="font-medium text-foreground">{renewLabel}</span>.
-              Renew anytime to extend.
+              {cancelAtPeriodEnd ? (
+                <>
+                  Renewal is off. You keep {PLANS[plan].name} until{" "}
+                  <span className="font-medium text-foreground">
+                    {renewLabel}
+                  </span>
+                  , then move to Free.
+                </>
+              ) : (
+                <>
+                  Access active until{" "}
+                  <span className="font-medium text-foreground">
+                    {renewLabel}
+                  </span>
+                  . Renew anytime to extend — you keep any remaining time.
+                </>
+              )}
             </p>
           )}
           <FormSheet
@@ -179,6 +222,80 @@ export function PlanCard({
           >
             {checkoutBody}
           </FormSheet>
+
+          {!isFree && canManageRenewal && (
+            <>
+              {cancelAtPeriodEnd ? (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setRenewal(true)}
+                  disabled={lifecycleBusy}
+                >
+                  {lifecycleBusy && (
+                    <Loader2Icon className="size-4 animate-spin" aria-hidden />
+                  )}
+                  Keep my plan
+                </Button>
+              ) : (
+                <FormSheet
+                  title="Turn off renewal"
+                  size="sm"
+                  trigger={
+                    <Button
+                      variant="ghost"
+                      className="w-full text-muted-foreground"
+                    >
+                      Cancel subscription
+                    </Button>
+                  }
+                >
+                  {(close) => (
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        You keep full {PLANS[plan].name} access
+                        {renewLabel ? ` until ${renewLabel}` : ""}, then move to
+                        the Free plan. Nothing is charged and nothing is
+                        refunded — your payment already covers this period.
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Your data stays exactly as it is. You can turn renewal
+                        back on at any time.
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={close}
+                          disabled={lifecycleBusy}
+                        >
+                          Keep my plan
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          className="flex-1"
+                          disabled={lifecycleBusy}
+                          onClick={async () => {
+                            // Only dismiss when it actually worked, so a
+                            // failure stays visible in context.
+                            if (await setRenewal(false)) close();
+                          }}
+                        >
+                          {lifecycleBusy && (
+                            <Loader2Icon
+                              className="size-4 animate-spin"
+                              aria-hidden
+                            />
+                          )}
+                          Turn off renewal
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </FormSheet>
+              )}
+            </>
+          )}
         </div>
       </CardContent>
     </Card>
