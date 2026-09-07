@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { recordLogin } from "@/app/auth/actions";
 
 /**
  * OAuth / email-link redirect handler: exchanges the auth code for a session
@@ -40,5 +41,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(errorUrl);
   }
 
+  await recordLogin();
   return NextResponse.redirect(`${origin}${next}`);
 }

@@ -36,6 +36,8 @@ import {
 import { STATUS_LABELS, STATUS_ORDER, CATEGORY_LABELS } from "@/lib/feedback";
 import type { AdminUser, AdminSummary } from "@/lib/admin/users";
 import { InvitationsPanel } from "@/components/admin/invitations-panel";
+import { AuditPanel } from "@/components/admin/audit-panel";
+import type { AuditEntry } from "@/lib/admin/audit";
 import type {
   AccessType,
   Feedback,
@@ -43,18 +45,39 @@ import type {
   Invitation,
 } from "@/lib/supabase/types";
 
-type Tab = "users" | "invitations" | "feedback";
+type Tab = "users" | "invitations" | "feedback" | "audit";
+
+/**
+ * Fixed locale + timezone. `toLocaleDateString()` with no arguments resolves
+ * differently on the server (Node, UTC) and in the browser, producing hydration
+ * mismatches like "11/3/2026" vs "03/11/2026".
+ */
+function adminDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
 
 export function AdminDashboard({
   users,
   summary,
   feedback,
   invitations,
+  auditLog,
+  canManageAccounts = true,
 }: {
   users: AdminUser[];
   summary: AdminSummary;
   feedback: Feedback[];
   invitations: Invitation[];
+  auditLog: AuditEntry[];
+  /** False for a provisional (allow-list) admin — read + triage only. */
+  canManageAccounts?: boolean;
 }) {
   const [tab, setTab] = React.useState<Tab>("users");
   const [q, setQ] = React.useState("");
@@ -80,7 +103,7 @@ export function AdminDashboard({
       </div>
 
       <div className="flex items-center gap-1 rounded-full bg-secondary p-1 text-sm w-fit">
-        {(["users", "invitations", "feedback"] as const).map((t) => (
+        {(["users", "invitations", "feedback", "audit"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -106,15 +129,21 @@ export function AdminDashboard({
               placeholder="Search name, username, or email"
               className="max-w-xs"
             />
-            <CreateComplimentary />
+            {canManageAccounts && <CreateComplimentary />}
           </div>
-          <UsersTable users={filtered} />
+          <UsersTable users={filtered} canManage={canManageAccounts} />
         </div>
       )}
-      {tab === "invitations" && <InvitationsPanel invitations={invitations} />}
+      {tab === "invitations" && (
+        <InvitationsPanel
+          invitations={invitations}
+          canManage={canManageAccounts}
+        />
+      )}
       {tab === "feedback" && (
         <FeedbackTriage feedback={feedback} users={users} />
       )}
+      {tab === "audit" && <AuditPanel entries={auditLog} />}
     </div>
   );
 }
@@ -142,18 +171,35 @@ function SummaryCard({
 }
 
 function planBadge(u: AdminUser): { label: string; className: string } {
-  if (u.role === "super_admin")
-    return { label: "Super Admin", className: "bg-brand text-primary-foreground" };
-  if (u.accessType === "lifetime_pro")
-    return { label: "Lifetime Pro", className: "bg-brand/10 text-brand" };
-  if (u.accessType === "complimentary_pro" && u.plan === "pro")
+  if (u.role === "super_admin") {
+    return {
+      // "auto" = granted from the email allow-list, and withdrawn again if the
+      // address is removed. An unmarked Super Admin was granted deliberately.
+      label:
+        u.roleSource === "bootstrap" ? "Super Admin · auto" : "Super Admin",
+      className: "bg-brand text-primary-foreground",
+    };
+  }
+  const paid = u.plan !== "free";
+  const tier = u.plan === "premium" ? "Premium" : "Pro";
+  if (u.accessType === "lifetime_pro" && paid)
+    return { label: `Lifetime ${tier}`, className: "bg-brand/10 text-brand" };
+  if (u.accessType === "complimentary_pro" && paid)
     return { label: "Complimentary", className: "bg-brand-2/15 text-brand-2" };
+  if (u.plan === "premium")
+    return { label: "Premium", className: "bg-brand/15 text-brand" };
   if (u.plan === "pro")
     return { label: "Pro", className: "bg-success/15 text-success" };
   return { label: "Free", className: "bg-secondary text-muted-foreground" };
 }
 
-function UsersTable({ users }: { users: AdminUser[] }) {
+function UsersTable({
+  users,
+  canManage = true,
+}: {
+  users: AdminUser[];
+  canManage?: boolean;
+}) {
   if (users.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
@@ -176,7 +222,7 @@ function UsersTable({ users }: { users: AdminUser[] }) {
         </thead>
         <tbody>
           {users.map((u) => (
-            <UserRow key={u.userId} u={u} />
+            <UserRow key={u.userId} u={u} canManage={canManage} />
           ))}
         </tbody>
       </table>
@@ -184,7 +230,13 @@ function UsersTable({ users }: { users: AdminUser[] }) {
   );
 }
 
-function UserRow({ u }: { u: AdminUser }) {
+function UserRow({
+  u,
+  canManage = true,
+}: {
+  u: AdminUser;
+  canManage?: boolean;
+}) {
   const router = useRouter();
   const [busy, setBusy] = React.useState(false);
   const badge = planBadge(u);
@@ -227,15 +279,24 @@ function UserRow({ u }: { u: AdminUser }) {
         </span>
       </td>
       <td className="px-3 py-2 text-xs text-muted-foreground">
-        {u.renewalOrExpiry
-          ? new Date(u.renewalOrExpiry).toLocaleDateString()
-          : "—"}
+        {u.renewalOrExpiry ? (
+          <>
+            {adminDate(u.renewalOrExpiry)}
+            {u.cancelAtPeriodEnd && (
+              <span className="ml-1.5 rounded-full bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-warning">
+                not renewing
+              </span>
+            )}
+          </>
+        ) : (
+          "—"
+        )}
       </td>
       <td className="px-3 py-2 text-xs text-muted-foreground">
-        {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : "—"}
+        {u.lastLoginAt ? adminDate(u.lastLoginAt) : "—"}
       </td>
       <td className="px-3 py-2 text-right">
-        {u.role === "super_admin" ? (
+        {u.role === "super_admin" || !canManage ? (
           <span className="text-xs text-muted-foreground">—</span>
         ) : (
           <DropdownMenu>

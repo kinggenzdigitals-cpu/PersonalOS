@@ -127,7 +127,10 @@ function SidebarBody({
   const profile = useProfile();
   const initial =
     profile.display_name?.trim()?.charAt(0)?.toUpperCase() ?? "?";
-  const admin = isAdmin || profile.role === "super_admin";
+  // The server-side entitlement is the only authority. ORing the raw profile
+  // role kept the Admin link visible for a request after a demotion, and
+  // permanently if the demotion write ever fails.
+  const admin = isAdmin;
   const secondary = admin ? [...SECONDARY, ADMIN_ITEM] : SECONDARY;
 
   return (

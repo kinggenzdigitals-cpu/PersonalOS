@@ -51,14 +51,23 @@ function copy(link: string) {
   );
 }
 
-export function InvitationsPanel({ invitations }: { invitations: Invitation[] }) {
+export function InvitationsPanel({
+  invitations,
+  canManage = true,
+}: {
+  invitations: Invitation[];
+  /** False for a provisional (allow-list) admin — invitations mint credentials. */
+  canManage?: boolean;
+}) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Invite a friend or family member to complimentary access.
+          {canManage
+            ? "Invite a friend or family member to complimentary access."
+            : "Invitations are managed by permanent administrators."}
         </p>
-        <InviteForm />
+        {canManage && <InviteForm />}
       </div>
 
       {invitations.length === 0 ? (
@@ -79,7 +88,7 @@ export function InvitationsPanel({ invitations }: { invitations: Invitation[] })
             </thead>
             <tbody>
               {invitations.map((inv) => (
-                <InviteRow key={inv.id} inv={inv} />
+                <InviteRow key={inv.id} inv={inv} canManage={canManage} />
               ))}
             </tbody>
           </table>
@@ -89,7 +98,13 @@ export function InvitationsPanel({ invitations }: { invitations: Invitation[] })
   );
 }
 
-function InviteRow({ inv }: { inv: Invitation }) {
+function InviteRow({
+  inv,
+  canManage = true,
+}: {
+  inv: Invitation;
+  canManage?: boolean;
+}) {
   const router = useRouter();
   const [busy, setBusy] = React.useState(false);
 
@@ -117,7 +132,8 @@ function InviteRow({ inv }: { inv: Invitation }) {
       </td>
       <td className="px-3 py-2 text-right">
         <div className="flex justify-end gap-1">
-          {inv.status !== "accepted" && inv.status !== "revoked" && (
+          {!canManage && <span className="text-xs text-muted-foreground">—</span>}
+          {canManage && inv.status !== "accepted" && inv.status !== "revoked" && (
             <Button
               size="sm"
               variant="outline"
@@ -139,7 +155,7 @@ function InviteRow({ inv }: { inv: Invitation }) {
               Copy link
             </Button>
           )}
-          {inv.status !== "revoked" && (
+          {canManage && inv.status !== "revoked" && (
             <Button
               size="sm"
               variant="ghost"

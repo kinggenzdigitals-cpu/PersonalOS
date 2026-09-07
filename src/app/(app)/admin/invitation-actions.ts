@@ -3,7 +3,11 @@
 import { randomBytes, createHash } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireSuperAdmin } from "@/lib/entitlement";
+import {
+  requireSuperAdmin,
+  isOwnerEmail,
+  provisionalAdminBlock,
+} from "@/lib/entitlement";
 import { getSiteURL } from "@/lib/site";
 import type { AccessType } from "@/lib/supabase/types";
 
@@ -70,10 +74,21 @@ export async function createInvitation(input: {
   message?: string;
 }): Promise<InviteResult> {
   const me = await requireSuperAdmin();
+  // Invitations mint credentials — permanent administrators only.
+  const limited = provisionalAdminBlock(me);
+  if (limited) return { ok: false, error: limited };
   const admin = createAdminClient();
   const email = input.email.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { ok: false, error: "Enter a valid email address." };
+  }
+  // An invitation for an existing account doubles as a password-reset primitive
+  // (see acceptInvitation), so it must never target the owner allow-list.
+  if (isOwnerEmail(email)) {
+    return {
+      ok: false,
+      error: "That address is on the owner allow-list and can't be invited.",
+    };
   }
 
   // Existing account → apply the complimentary plan directly.
@@ -154,7 +169,31 @@ export async function createInvitation(input: {
 
 export async function resendInvitation(id: string): Promise<InviteResult> {
   const me = await requireSuperAdmin();
+  const limited = provisionalAdminBlock(me);
+  if (limited) return { ok: false, error: limited };
   const admin = createAdminClient();
+
+  // Only a still-pending invitation may be re-issued. Re-opening an ACCEPTED
+  // one minted a fresh token for an account that already exists, and
+  // acceptInvitation resets an existing account's password — so this was a
+  // route to take over any user, including the owner. The UI hid the button for
+  // accepted rows, but the server action is directly invocable.
+  const { data: inv } = await admin
+    .from("user_invitations")
+    .select("status, email")
+    .eq("id", id)
+    .maybeSingle<{ status: string; email: string }>();
+  if (!inv) return { ok: false, error: "Invitation not found." };
+  if (inv.status !== "pending") {
+    return {
+      ok: false,
+      error: `That invitation is ${inv.status} and can't be resent. Create a new one instead.`,
+    };
+  }
+  if (isOwnerEmail(inv.email)) {
+    return { ok: false, error: "That address can't be invited." };
+  }
+
   const { token, hash } = newToken();
   const { error } = await admin
     .from("user_invitations")
@@ -165,7 +204,8 @@ export async function resendInvitation(id: string): Promise<InviteResult> {
         Date.now() + 7 * 24 * 60 * 60 * 1000,
       ).toISOString(),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("status", "pending");
   if (error) return { ok: false, error: error.message };
   await audit(admin, me.userId!, null, "invite_resent", { id });
   revalidatePath("/admin");
@@ -178,6 +218,8 @@ export async function resendInvitation(id: string): Promise<InviteResult> {
 
 export async function revokeInvitation(id: string): Promise<InviteResult> {
   const me = await requireSuperAdmin();
+  const limited = provisionalAdminBlock(me);
+  if (limited) return { ok: false, error: limited };
   const admin = createAdminClient();
   const { data: inv } = await admin
     .from("user_invitations")

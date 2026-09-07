@@ -4,6 +4,7 @@ import type { PlanId } from "@/lib/plans";
 import type {
   AccessType,
   AccountStatus,
+  RoleSource,
   UserRole,
 } from "@/lib/supabase/types";
 
@@ -24,6 +25,9 @@ export type AdminUser = {
   renewalOrExpiry: string | null;
   lastLoginAt: string | null;
   createdAt: string | null;
+  cancelAtPeriodEnd: boolean;
+  /** How a super_admin role was granted — "bootstrap" grants self-revoke. */
+  roleSource: RoleSource | null;
 };
 
 type ProfileRow = {
@@ -34,6 +38,7 @@ type ProfileRow = {
   status: AccountStatus;
   created_at: string;
   last_login_at: string | null;
+  role_source?: RoleSource | null;
 };
 
 type SubRow = {
@@ -45,23 +50,40 @@ type SubRow = {
   access_expires_at: string | null;
   current_period_end: string | null;
   created_at: string;
+  cancel_at_period_end?: boolean | null;
 };
 
+/**
+ * Mirrors src/lib/entitlement.ts. Premium must be handled explicitly — treating
+ * only "pro" as paid used to report every Premium subscriber as Free.
+ */
 function effectivePlan(
   role: UserRole,
   status: AccountStatus,
   sub: SubRow | undefined,
   now: number,
 ): PlanValue {
-  if (status !== "active" && role !== "super_admin") return "free";
-  if (role === "super_admin") return "pro";
+  // Status is checked first, for everyone: a suspended super admin is not
+  // entitled to anything (mirrors the same ordering in entitlement.ts).
+  if (status !== "active") return "free";
+  if (role === "super_admin") return "premium";
   const at = sub?.access_type ?? null;
+  // Null = "no end date", valid only for a granted access_type.
   const live = (iso: string | null | undefined) =>
     !iso || new Date(iso).getTime() > now;
-  if (at === "lifetime_pro") return "pro";
-  if (at === "complimentary_pro") return live(sub?.access_expires_at) ? "pro" : "free";
-  if (sub?.plan === "pro" && sub?.status === "active")
-    return live(sub?.current_period_end) ? "pro" : "free";
+  // A paid period must have a real end date — see entitlement.ts.
+  const periodLive = (iso: string | null | undefined) =>
+    !!iso && new Date(iso).getTime() > now;
+  const tier: PlanValue = sub?.plan === "premium" ? "premium" : "pro";
+  if (at === "lifetime_pro") return tier;
+  if (at === "complimentary_pro")
+    return live(sub?.access_expires_at) ? tier : "free";
+  if (
+    (sub?.plan === "pro" || sub?.plan === "premium") &&
+    sub?.status === "active"
+  ) {
+    return periodLive(sub?.current_period_end) ? tier : "free";
+  }
   return "free";
 }
 
@@ -70,16 +92,12 @@ export async function listAdminUsers(): Promise<AdminUser[]> {
   const admin = createAdminClient();
   const [authRes, profRes, subRes] = await Promise.all([
     admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
-    admin
-      .from("profiles")
-      .select(
-        "user_id, display_name, username, role, status, created_at, last_login_at",
-      ),
-    admin
-      .from("subscriptions")
-      .select(
-        "user_id, plan, status, interval, access_type, access_expires_at, current_period_end, created_at",
-      ),
+    // `*` so a not-yet-applied migration (e.g. 0018's role_source) can't turn
+    // this into an unknown-column error.
+    admin.from("profiles").select("*"),
+    // `*` rather than an explicit list so a not-yet-applied migration (e.g.
+    // 0017's cancel_at_period_end) can't turn this into an unknown-column error.
+    admin.from("subscriptions").select("*"),
   ]);
 
   const profiles = (profRes.data as ProfileRow[] | null) ?? [];
@@ -108,6 +126,8 @@ export async function listAdminUsers(): Promise<AdminUser[]> {
       renewalOrExpiry: s?.access_expires_at ?? s?.current_period_end ?? null,
       lastLoginAt: u.last_sign_in_at ?? p?.last_login_at ?? null,
       createdAt: u.created_at ?? p?.created_at ?? null,
+      cancelAtPeriodEnd: s?.cancel_at_period_end === true,
+      roleSource: p?.role_source ?? null,
     };
   });
 }
@@ -126,17 +146,22 @@ export function summarize(users: AdminUser[]): AdminSummary {
   let lifetime = 0;
   let expiredCancelled = 0;
   for (const u of users) {
-    if (u.accessType === "lifetime_pro") lifetime++;
-    else if (u.accessType === "complimentary_pro" && u.plan === "pro")
-      complimentary++;
-    else if (u.plan === "pro" && u.accessType === "paid") activePaid++;
-    else if (u.plan === "pro" && u.accessType == null && u.subStatus === "active")
-      activePaid++;
-    if (
-      (u.subStatus === "canceled" || u.subStatus === "past_due") &&
-      u.plan === "free"
-    )
+    // Bucket on EFFECTIVE access (`plan !== "free"` covers Pro and Premium),
+    // so a suspended lifetime user isn't counted as an active lifetime one.
+    const paid = u.plan !== "free";
+    if (paid) {
+      if (u.accessType === "lifetime_pro") lifetime++;
+      else if (u.accessType === "complimentary_pro") complimentary++;
+      else activePaid++;
+    } else if (
+      // Had something, has nothing now: lapsed payer, expired comp grant, or
+      // an admin-revoked account (revoke writes status 'canceled').
+      u.accessType != null ||
+      u.subStatus === "canceled" ||
+      u.subStatus === "past_due"
+    ) {
       expiredCancelled++;
+    }
   }
   return {
     total: users.length,
