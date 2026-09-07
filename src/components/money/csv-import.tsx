@@ -81,9 +81,14 @@ export function CsvImport() {
     reader.onload = () => {
       const parsed = parseCsv(String(reader.result ?? ""));
       if (parsed.headers.length === 0 || parsed.rows.length === 0) {
-        toast.error("Couldn't find any rows in that file.");
+        toast.error(
+          parsed.warning ?? "Couldn't find any rows in that file.",
+        );
         return;
       }
+      // A malformed file can still parse into *some* rows — say so loudly
+      // rather than letting the user import a silently truncated statement.
+      if (parsed.warning) toast.warning(parsed.warning, { duration: 10000 });
       const detected = autoDetectColumns(parsed.headers);
       setTable(parsed);
       setMap(detected);
@@ -125,6 +130,7 @@ export function CsvImport() {
         type: r.type,
         categoryId: categoryFor(r),
         fingerprint: r.fingerprint,
+        reference: r.reference,
       })),
     });
     setBusy(false);

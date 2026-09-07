@@ -1,5 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
-import { bestMatch, MAX_DAYS_APART, type Candidate, type ScoredMatch } from "@/lib/reconcile";
+import {
+  assignMatches,
+  MAX_DAYS_APART,
+  type Candidate,
+  type ScoredMatch,
+} from "@/lib/reconcile";
 import type { Category, Transaction } from "@/lib/supabase/types";
 
 export type ReconcileItem = {
@@ -59,13 +64,23 @@ export async function getReconciliation(
   const from = new Date(Math.min(...dates) - pad).toISOString();
   const to = new Date(Math.max(...dates) + pad).toISOString();
 
+  // Narrow the candidate set to the exact amounts present in the imported
+  // rows. Without this the query is unbounded and PostgREST's default row cap
+  // truncates it in arbitrary order, so matches are missed nondeterministically
+  // for anyone with a long history.
+  const amounts = [...new Set(imported.map((t) => Number(t.amount)))];
+
   const [{ data: manual }, { data: categories }] = await Promise.all([
     supabase
       .from("transactions")
       .select("*")
       .is("import_fingerprint", null)
+      .is("reconciled_at", null)
+      .in("amount", amounts)
       .gte("occurred_at", from)
       .lte("occurred_at", to)
+      .order("occurred_at", { ascending: false })
+      .limit(1000)
       .returns<Transaction[]>(),
     supabase.from("categories").select("*").returns<Category[]>(),
   ]);
@@ -74,30 +89,33 @@ export async function getReconciliation(
   const manualById = new Map((manual ?? []).map((t) => [t.id, t]));
   const candidates = (manual ?? []).map(toCandidate);
 
-  const items: ReconcileItem[] = [];
-  let unmatched = 0;
+  // Exclusive pairing: each manual row may back at most one suggestion, or
+  // confirming several pairs in turn would delete several real transactions
+  // against a single hand-entered one.
+  const paired = assignMatches(
+    imported.map((t) => ({ id: t.id, tx: t, candidate: toCandidate(t) })),
+    candidates,
+  );
 
-  for (const t of imported) {
-    const match = bestMatch(toCandidate(t), candidates);
-    if (!match) {
-      unmatched++;
-      continue;
-    }
+  const items: ReconcileItem[] = paired.map(({ item, match }) => {
     const other = manualById.get(match.candidate.id);
-    items.push({
-      imported: t,
+    return {
+      imported: item.tx,
       match,
-      importedCategory: t.category_id ? (catName.get(t.category_id) ?? null) : null,
-      candidateCategory:
-        other?.category_id ? (catName.get(other.category_id) ?? null) : null,
-    });
-  }
+      importedCategory: item.tx.category_id
+        ? (catName.get(item.tx.category_id) ?? null)
+        : null,
+      candidateCategory: other?.category_id
+        ? (catName.get(other.category_id) ?? null)
+        : null,
+    };
+  });
 
   items.sort((a, b) => b.match.score - a.match.score);
 
   return {
     items,
-    unmatchedCount: unmatched,
+    unmatchedCount: imported.length - items.length,
     pendingCount: items.length,
   };
 }

@@ -12,6 +12,10 @@ export type CsvTable = {
   headers: string[];
   rows: string[][];
   delimiter: string;
+  /** Source line number (1-based, whole file) for each row in `rows`. */
+  lineNumbers: number[];
+  /** Set when the file is malformed in a way that loses data silently. */
+  warning: string | null;
 };
 
 /** RFC-4180-ish: quoted fields, escaped quotes, embedded newlines, CRLF. */
@@ -20,9 +24,12 @@ export function parseCsv(text: string): CsvTable {
   const delimiter = detectDelimiter(clean);
 
   const rows: string[][] = [];
+  const rowLines: number[] = [];
   let field = "";
   let row: string[] = [];
   let inQuotes = false;
+  let line = 1;
+  let rowStartLine = 1;
 
   for (let i = 0; i < clean.length; i++) {
     const ch = clean[i];
@@ -36,7 +43,10 @@ export function parseCsv(text: string): CsvTable {
           inQuotes = false;
         }
       } else {
-        field += ch;
+        if (ch === "\n") line++;
+        // Normalise CRLF inside a quoted field too, or a stray \r ends up in
+        // the merchant text and therefore in the fingerprint.
+        if (ch !== "\r") field += ch;
       }
       continue;
     }
@@ -49,8 +59,11 @@ export function parseCsv(text: string): CsvTable {
     } else if (ch === "\n") {
       row.push(field);
       rows.push(row);
+      rowLines.push(rowStartLine);
       row = [];
       field = "";
+      line++;
+      rowStartLine = line;
     } else if (ch === "\r") {
       // handled by the \n branch
     } else {
@@ -60,32 +73,82 @@ export function parseCsv(text: string): CsvTable {
   if (field.length > 0 || row.length > 0) {
     row.push(field);
     rows.push(row);
+    rowLines.push(rowStartLine);
   }
 
-  // Drop fully blank lines, and any preamble before the widest row (banks
-  // often prefix statements with account-holder metadata).
-  const meaningful = rows.filter((r) => r.some((c) => c.trim() !== ""));
-  if (meaningful.length === 0) return { headers: [], rows: [], delimiter };
+  // An unbalanced quote swallows everything after it into one field. Silently
+  // returning that as "one row" hides an arbitrary amount of missing data.
+  const warning = inQuotes
+    ? "This file has an unclosed quotation mark, so part of it could not be read. Check the file and re-export it."
+    : null;
 
-  const widest = Math.max(...meaningful.map((r) => r.length));
-  const headerIdx = meaningful.findIndex((r) => r.length === widest);
-  const headers = meaningful[headerIdx].map((h) => h.trim());
-  const body = meaningful
-    .slice(headerIdx + 1)
-    .filter((r) => r.length >= Math.min(2, widest));
+  const keep = rows
+    .map((r, i) => ({ r, line: rowLines[i] }))
+    .filter(({ r }) => r.some((c) => c.trim() !== ""));
+  if (keep.length === 0) {
+    return { headers: [], rows: [], delimiter, lineNumbers: [], warning };
+  }
 
-  return { headers, rows: body, delimiter };
+  // Header = the first row of the MOST COMMON width. Using the widest row let
+  // a single data row containing an unquoted delimiter become the header,
+  // which silently discarded the real header and every row above it.
+  const freq = new Map<number, number>();
+  for (const { r } of keep) freq.set(r.length, (freq.get(r.length) ?? 0) + 1);
+  let width = keep[0].r.length;
+  let bestFreq = 0;
+  for (const [len, n] of freq) {
+    if (n > bestFreq || (n === bestFreq && len > width)) {
+      bestFreq = n;
+      width = len;
+    }
+  }
+
+  const headerIdx = keep.findIndex(({ r }) => r.length === width);
+  const headers = keep[headerIdx].r.map((h) => h.trim());
+  const body = keep.slice(headerIdx + 1);
+
+  return {
+    headers,
+    // Pad short rows so a mapped index never reads undefined off the end.
+    rows: body.map(({ r }) =>
+      r.length >= width ? r : [...r, ...Array(width - r.length).fill("")],
+    ),
+    delimiter,
+    lineNumbers: body.map(({ line: l }) => l),
+    warning,
+  };
 }
 
+/**
+ * Delimiter frequency counted OUTSIDE quoted fields only — a Particulars
+ * column full of "REF;123;POS" would otherwise make a comma-separated file
+ * look semicolon-separated.
+ */
 function detectDelimiter(text: string): string {
-  const sample = text.slice(0, 5000);
-  const candidates = [",", ";", "\t", "|"];
+  const sample = text.slice(0, 20000);
+  const counts = new Map<string, number>([
+    [",", 0],
+    [";", 0],
+    ["\t", 0],
+    ["|", 0],
+  ]);
+  let inQuotes = false;
+  for (let i = 0; i < sample.length; i++) {
+    const ch = sample[i];
+    if (ch === '"') {
+      if (inQuotes && sample[i + 1] === '"') i++;
+      else inQuotes = !inQuotes;
+      continue;
+    }
+    if (inQuotes) continue;
+    const n = counts.get(ch);
+    if (n !== undefined) counts.set(ch, n + 1);
+  }
   let best = ",";
   let bestCount = 0;
-  for (const d of candidates) {
-    const count = sample.split(d).length - 1;
-    if (count > bestCount) {
-      bestCount = count;
+  for (const [d, n] of counts) {
+    if (n > bestCount) {
+      bestCount = n;
       best = d;
     }
   }
@@ -169,10 +232,14 @@ export function parseAmount(raw: string | undefined): number | null {
     s = s.slice(1);
   }
 
-  // "1.234,56" (comma decimal) vs "1,234.56" (dot decimal)
-  const lastComma = s.lastIndexOf(",");
-  const lastDot = s.lastIndexOf(".");
-  if (lastComma > lastDot) {
+  // Decimal separator. A comma is only a DECIMAL point when it is followed by
+  // exactly one or two digits at the end ("1.234,56"); otherwise it is a
+  // thousands separator ("1,234").
+  //
+  // The naive `lastComma > lastDot` test gets this catastrophically wrong for
+  // "1,234", which has no dot at all (lastDot === -1): it becomes "1.234",
+  // i.e. the amount silently divided by a thousand.
+  if (/,\d{1,2}$/.test(s)) {
     s = s.replace(/\./g, "").replace(",", ".");
   } else {
     s = s.replace(/,/g, "");
@@ -301,9 +368,15 @@ export function buildRows(
 ): { rows: ParsedRow[]; errors: RowError[] } {
   const rows: ParsedRow[] = [];
   const errors: RowError[] = [];
+  // Two genuinely distinct statement lines can be identical (two ₱50 jeepney
+  // fares on one day). Without an occurrence counter they'd share a
+  // fingerprint, and the partial unique index would reject the WHOLE batch.
+  // The counter is deterministic in file order, so re-importing the same file
+  // still produces the same fingerprints and still dedupes correctly.
+  const seen = new Map<string, number>();
 
   table.rows.forEach((cells, i) => {
-    const line = i + 1;
+    const line = table.lineNumbers[i] ?? i + 1;
     const get = (idx: number | null) =>
       idx === null ? undefined : cells[idx];
 
@@ -336,6 +409,16 @@ export function buildRows(
     const amount = Math.abs(signed);
     const reference = (get(map.reference) ?? "").trim() || null;
 
+    const base = fingerprint({
+      accountId: opts.accountId,
+      date,
+      amount,
+      type,
+      description,
+    });
+    const occurrence = (seen.get(base) ?? 0) + 1;
+    seen.set(base, occurrence);
+
     rows.push({
       line,
       date,
@@ -343,13 +426,7 @@ export function buildRows(
       amount,
       type,
       reference,
-      fingerprint: fingerprint({
-        accountId: opts.accountId,
-        date,
-        amount,
-        type,
-        description,
-      }),
+      fingerprint: occurrence === 1 ? base : `${base}#${occurrence}`,
     });
   });
 

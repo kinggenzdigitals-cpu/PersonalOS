@@ -14,6 +14,8 @@ export type ImportRow = {
   type: "income" | "expense";
   categoryId: string | null;
   fingerprint: string;
+  /** Bank reference number, stored in notes so a charge can be traced later. */
+  reference?: string | null;
 };
 
 export type ImportResult =
@@ -88,18 +90,31 @@ export async function importTransactions(input: {
     return { ok: false, error: "None of those rows could be read." };
   }
 
-  // ---- Plan cap, once for the whole batch --------------------------------
+  // ---- Plan gate + cap, once for the whole batch --------------------------
   const plan = await getActivePlan();
+
+  // The page also checks this, but a page-level check is a hint: this action
+  // is directly POST-addressable and survives a downgrade.
+  if (PLANS[plan].limits.csvExport !== true) {
+    return {
+      ok: false,
+      error: `Statement import isn't included in your ${PLANS[plan].name} plan. Upgrade to unlock it.`,
+    };
+  }
+
   const limit = PLANS[plan].limits.transactionsPerMonth;
   if (typeof limit === "number") {
     const monthStart = new Date();
     monthStart.setUTCDate(1);
     monthStart.setUTCHours(0, 0, 0, 0);
+    // Counted on created_at, not occurred_at. Statement rows carry PAST dates,
+    // so an occurred_at window would let a user import unlimited history a
+    // month at a time without ever touching the cap.
     const { count } = await supabase
       .from("transactions")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .gte("occurred_at", monthStart.toISOString());
+      .gte("created_at", monthStart.toISOString());
     const used = count ?? 0;
     if (used + clean.length > limit) {
       const room = Math.max(0, limit - used);
@@ -177,6 +192,7 @@ export async function importTransactions(input: {
       // Noon local-ish; statements carry a date, not a time.
       occurred_at: new Date(`${r.date}T12:00:00Z`).toISOString(),
       merchant: r.description || null,
+      notes: r.reference ? `Ref: ${r.reference}` : null,
       import_batch_id: batch.id,
       import_fingerprint: r.fingerprint,
     })),

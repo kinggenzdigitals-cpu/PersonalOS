@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSchemaMissing, migrationRequired } from "@/lib/supabase/errors";
+import { sameAmount, daysBetween, MAX_DAYS_APART } from "@/lib/reconcile";
 
 export type ReconcileResult =
   | { ok: true; message: string }
@@ -68,9 +69,22 @@ export async function mergeDuplicate(input: {
   // crafted request can't delete an unrelated transaction.
   const { data: rows, error: readErr } = await supabase
     .from("transactions")
-    .select("id, import_fingerprint")
+    .select(
+      "id, import_fingerprint, reconciled_at, bill_id, amount, account_id, type, occurred_at",
+    )
     .in("id", [input.importedId, input.manualId])
-    .returns<{ id: string; import_fingerprint: string | null }[]>();
+    .returns<
+      {
+        id: string;
+        import_fingerprint: string | null;
+        reconciled_at: string | null;
+        bill_id: string | null;
+        amount: number;
+        account_id: string;
+        type: string;
+        occurred_at: string;
+      }[]
+    >();
 
   if (readErr) {
     if (isSchemaMissing(readErr)) {
@@ -90,10 +104,50 @@ export async function mergeDuplicate(input: {
   if (manualRow.import_fingerprint) {
     return { ok: false, error: "Both of those rows were imported." };
   }
+  if (importedRow.reconciled_at || manualRow.reconciled_at) {
+    return {
+      ok: false,
+      error: "That pair was already reviewed. Refresh to see the current list.",
+    };
+  }
+
+  // Re-verify the pair on the server. The panel can be stale (another tab, or
+  // an already-resolved pair), and this action must never delete a row on the
+  // strength of a client-supplied pairing alone.
+  if (!sameAmount(Number(importedRow.amount), Number(manualRow.amount))) {
+    return { ok: false, error: "Those transactions aren't the same amount." };
+  }
+  if (importedRow.account_id !== manualRow.account_id) {
+    return { ok: false, error: "Those transactions are in different accounts." };
+  }
+  if (importedRow.type !== manualRow.type) {
+    return { ok: false, error: "Those transactions aren't the same kind." };
+  }
+  const apart = daysBetween(
+    importedRow.occurred_at.slice(0, 10),
+    manualRow.occurred_at.slice(0, 10),
+  );
+  if (apart > MAX_DAYS_APART) {
+    return { ok: false, error: "Those transactions are too far apart in time." };
+  }
 
   const deleteId =
     input.keep === "imported" ? input.manualId : input.importedId;
   const keepId = input.keep === "imported" ? input.importedId : input.manualId;
+  const deletingRow = input.keep === "imported" ? manualRow : importedRow;
+
+  // bill_payments.transaction_id is ON DELETE CASCADE (0001), so removing a
+  // transaction that settled a bill would silently destroy the payment record
+  // — taking with it the bill's last-paid date AND the unique key that stops
+  // the same bill being paid twice for one period. Refuse rather than
+  // quietly corrupt bill history.
+  if (deletingRow.bill_id) {
+    return {
+      ok: false,
+      error:
+        "That transaction is linked to a bill payment, so removing it would erase the bill's payment history. Keep both, or unlink the bill first.",
+    };
+  }
 
   const { error: delErr } = await supabase
     .from("transactions")
@@ -101,12 +155,21 @@ export async function mergeDuplicate(input: {
     .eq("id", deleteId);
   if (delErr) return { ok: false, error: delErr.message };
 
-  // Mark the survivor reviewed. If we kept the manual row it has no
-  // fingerprint, so this simply stops it being offered again.
-  await supabase
+  // Mark the survivor reviewed. If this fails the row is simply offered again
+  // next time, which is safe — but the delete already happened, so surface it
+  // rather than reporting unqualified success.
+  const { error: markErr } = await supabase
     .from("transactions")
     .update({ reconciled_at: new Date().toISOString() })
     .eq("id", keepId);
+  if (markErr) {
+    revalidatePath("/", "layout");
+    return {
+      ok: true,
+      message:
+        "Duplicate removed, but the pair may be suggested again — refresh and dismiss it if so.",
+    };
+  }
 
   revalidatePath("/", "layout");
   return {

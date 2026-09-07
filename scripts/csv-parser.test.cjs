@@ -1,5 +1,6 @@
 const c = require('../.tmp-test/csv.js');
 let pass = 0, fail = 0;
+const ok = (name, cond) => { if (cond) pass++; else { fail++; console.log(`FAIL ${name}`); } };
 const eq = (name, got, want) => {
   const g = JSON.stringify(got), w = JSON.stringify(want);
   if (g === w) { pass++; } else { fail++; console.log(`FAIL ${name}\n  got  ${g}\n  want ${w}`); }
@@ -81,7 +82,50 @@ const t3 = c.parseCsv('Date,Description,Amount\nnope,BAD DATE,100\n2026-03-05,NO
 const b3 = c.buildRows(t3, c.autoDetectColumns(t3.headers), { accountId:'a', dayFirst:false, expenseIsNegative:true });
 eq('good rows kept', b3.rows.length, 1);
 eq('errors reported', b3.errors.length, 2);
-eq('error lines', b3.errors.map(e=>e.line), [1,2]);
+eq('error lines are file-relative', b3.errors.map(e=>e.line), [2,3]);
+
+
+// ===== regressions found by adversarial review =====
+
+// CRITICAL: thousands separator with no decimals was divided by 1000
+eq('1,234 not 1.234',   c.parseAmount('1,234'), 1234);
+eq('12,345 whole',      c.parseAmount('12,345'), 12345);
+eq('1,234.56 still ok', c.parseAmount('1,234.56'), 1234.56);
+eq('1.234,56 still ok', c.parseAmount('1.234,56'), 1234.56);
+eq('1,23 euro decimal', c.parseAmount('1,23'), 1.23);
+
+// CRITICAL: a data row wider than the header used to become the header,
+// silently discarding the real header and every row above it.
+const hj = c.parseCsv('Date,Description,Amount\n2026-03-01,SM STORE,100\n2026-03-02,MERALCO, INC,200\n2026-03-03,GOOD,300\n');
+eq('header survives wide row', hj.headers, ['Date','Description','Amount']);
+ok('no rows lost to hijack', hj.rows.length === 3);
+
+// HIGH: an unterminated quote silently swallowed the rest of the file
+const uq = c.parseCsv('Date,Description,Amount\n2026-03-01,"OPEN QUOTE,100\n2026-03-02,NEXT,200\n');
+ok('unclosed quote warns', typeof uq.warning === 'string' && uq.warning.length > 0);
+
+// MEDIUM: delimiters inside quoted fields skewed detection
+const dq = c.parseCsv('Date,Description,Amount\n2026-03-01,"A;B;C;D;E",100\n2026-03-02,"F;G;H;I;J",200\n');
+eq('delimiter ignores quotes', dq.delimiter, ',');
+
+// HIGH: two identical lines in one file collided and aborted the whole import
+const dup = c.parseCsv('Date,Description,Amount\n2026-03-05,JEEPNEY FARE,-50\n2026-03-05,JEEPNEY FARE,-50\n');
+const dupRows = c.buildRows(dup, c.autoDetectColumns(dup.headers), { accountId:'a', dayFirst:false, expenseIsNegative:true });
+eq('both duplicate lines kept', dupRows.rows.length, 2);
+ok('duplicate lines get distinct fingerprints', dupRows.rows[0].fingerprint !== dupRows.rows[1].fingerprint);
+// ...but re-parsing the same file reproduces the same fingerprints, so a
+// genuine re-import still dedupes.
+const dup2 = c.buildRows(dup, c.autoDetectColumns(dup.headers), { accountId:'a', dayFirst:false, expenseIsNegative:true });
+eq('re-import fingerprints stable', dup2.rows.map(r=>r.fingerprint), dupRows.rows.map(r=>r.fingerprint));
+
+// LOW: error rows now report the real file line, not a body-relative index
+const bad = c.parseCsv('Date,Description,Amount\n2026-03-01,OK,100\nnope,BAD,100\n');
+const badRows = c.buildRows(bad, c.autoDetectColumns(bad.headers), { accountId:'a', dayFirst:false, expenseIsNegative:true });
+eq('error uses file line', badRows.errors[0].line, 3);
+
+// header-only file must not crash
+const ho = c.parseCsv('Date,Description,Amount\n');
+eq('header only -> no rows', ho.rows.length, 0);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
