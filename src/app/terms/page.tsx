@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Terms of Service" };
 
 export default function TermsPage() {
   return (
-    <LegalShell title="Terms of Service" updated="July 2026">
+    <LegalShell title="Terms of Service" updated="September 2026">
       <section>
         <p>
           Welcome to Finance & Habit Tracker. By creating an account or using the service, you
@@ -43,10 +43,11 @@ export default function TermsPage() {
       <section>
         <h2>4. Plans &amp; billing</h2>
         <p>
-          Finance & Habit Tracker offers a Free plan and a paid Pro subscription. Paid plans
-          renew automatically until cancelled. You can cancel anytime and keep
-          Pro until the end of the current billing period. Prices may change with
-          advance notice.
+          Finance & Habit Tracker offers Free, Pro, and Premium plans. A paid
+          checkout covers the billing period shown before payment. Automatic
+          renewal is not enabled yet. Promotional offers can have separate
+          prices, eligibility rules, and expiration dates shown before payment.
+          Prices may change for future purchases with advance notice.
         </p>
       </section>
 
@@ -54,13 +55,22 @@ export default function TermsPage() {
         <h2>5. Your data</h2>
         <p>
           Your data belongs to you. We store it securely and never sell it. See
-          our <a href="/privacy">Privacy Policy</a> for details. You can delete
-          your data at any time.
+          our <a href="/privacy">Privacy Policy</a> for details. You can download
+          your personal data, erase tracking records, or delete your account.
         </p>
       </section>
 
       <section>
-        <h2>6. Disclaimer</h2>
+        <h2>6. Bank connections</h2>
+        <p>
+          Direct bank and e-wallet connections are not available yet. If added,
+          they will use a supported provider and a separate consent screen. We
+          will not ask you to enter a bank password directly into this app.
+        </p>
+      </section>
+
+      <section>
+        <h2>7. Disclaimer</h2>
         <p>
           Finance & Habit Tracker is provided &quot;as is&quot; and is not financial, tax, or
           investment advice. You&apos;re responsible for decisions you make based
@@ -69,7 +79,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>7. Changes &amp; contact</h2>
+        <h2>8. Changes &amp; contact</h2>
         <p>
           We may update these terms; we&apos;ll note the date above. Questions?
           Reach us at{" "}

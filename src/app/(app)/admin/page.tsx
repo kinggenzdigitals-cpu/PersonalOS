@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { requireSuperAdmin } from "@/lib/entitlement";
-import { listAdminUsers, summarize } from "@/lib/admin/users";
+import {
+  getAdminSystemHealth,
+  listAdminAuditLog,
+  listAdminUsers,
+  summarize,
+} from "@/lib/admin/users";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
 import type { Feedback, Invitation } from "@/lib/supabase/types";
@@ -15,13 +20,15 @@ export default async function AdminPage() {
         users: Awaited<ReturnType<typeof listAdminUsers>>;
         feedback: Feedback[];
         invitations: Invitation[];
+        auditLog: Awaited<ReturnType<typeof listAdminAuditLog>>;
+        systemHealth: Awaited<ReturnType<typeof getAdminSystemHealth>>;
       }
     | null = null;
 
   try {
     const users = await listAdminUsers();
     const admin = createAdminClient();
-    const [feedbackRes, invitesRes] = await Promise.all([
+    const [feedbackRes, invitesRes, auditLog, systemHealth] = await Promise.all([
       admin
         .from("feedback")
         .select("*")
@@ -32,6 +39,8 @@ export default async function AdminPage() {
         .select("*")
         .order("created_at", { ascending: false })
         .limit(200),
+      listAdminAuditLog(),
+      getAdminSystemHealth(),
     ]);
     if (feedbackRes.error || invitesRes.error) {
       throw new Error("Unable to load admin dashboard data.");
@@ -40,6 +49,8 @@ export default async function AdminPage() {
       users,
       feedback: (feedbackRes.data as Feedback[] | null) ?? [],
       invitations: (invitesRes.data as Invitation[] | null) ?? [],
+      auditLog,
+      systemHealth,
     };
   } catch {
     data = null;
@@ -61,6 +72,8 @@ export default async function AdminPage() {
           summary={summarize(data.users)}
           feedback={data.feedback}
           invitations={data.invitations}
+          auditLog={data.auditLog}
+          systemHealth={data.systemHealth}
         />
       ) : (
         <Card className="border-error/30 bg-error/5 shadow-card">

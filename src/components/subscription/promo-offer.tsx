@@ -110,8 +110,7 @@ export function PromoOffer({
                 <span className="font-semibold text-brand">{peso(o.promo)}</span>
               </p>
               <p className="text-[11px] text-muted-foreground">
-                Save {peso(o.save)} · {peso(o.monthly)}/mo · renews at{" "}
-                {peso(o.regular)}/yr unless cancelled
+                Save {peso(o.save)} · {peso(o.monthly)}/mo · 12 months access
               </p>
               <Button
                 size="sm"

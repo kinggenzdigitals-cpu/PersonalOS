@@ -6,6 +6,13 @@ import { Loader2Icon, Trash2Icon, CheckIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/components/providers/profile-provider";
 import { currencySymbol } from "@/lib/format";
@@ -13,7 +20,7 @@ import {
   upsertSavingsGoal,
   deleteSavingsGoal,
 } from "@/app/(app)/money/goals-actions";
-import type { SavingsGoal } from "@/lib/supabase/types";
+import type { SavingsGoal, SavingsGoalType } from "@/lib/supabase/types";
 import { toast } from "sonner";
 import { useUpgrade } from "@/components/providers/upgrade-provider";
 
@@ -48,6 +55,13 @@ export function GoalForm({
     initial ? String(initial.saved_amount) : "",
   );
   const [color, setColor] = React.useState(initial?.color ?? GOAL_COLORS[0]);
+  const [goalType, setGoalType] = React.useState<SavingsGoalType>(
+    initial?.goal_type ?? "standard",
+  );
+  const [targetDate, setTargetDate] = React.useState(initial?.target_date ?? "");
+  const [monthlyTarget, setMonthlyTarget] = React.useState(
+    initial?.monthly_target ? String(initial.monthly_target) : "",
+  );
   const [saving, setSaving] = React.useState(false);
 
   async function save() {
@@ -62,6 +76,9 @@ export function GoalForm({
       targetAmount: targetVal,
       savedAmount: Number.parseFloat(saved) || 0,
       color,
+      goalType,
+      targetDate: targetDate || null,
+      monthlyTarget: Number.parseFloat(monthlyTarget) || null,
     });
     if (!result.ok) {
       notify(result.error);
@@ -127,11 +144,67 @@ export function GoalForm({
               id="goal-saved"
               inputMode="decimal"
               value={saved}
+              disabled={editing}
               onChange={(e) => setSaved(e.target.value.replace(/[^0-9.]/g, ""))}
               placeholder="0.00"
               className="pl-7 tnum"
             />
           </div>
+          {editing && (
+            <p className="text-xs text-muted-foreground">
+              Use Add funds so monthly progress is recorded.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Goal type</Label>
+        <Select
+          value={goalType}
+          onValueChange={(value) => setGoalType(value as SavingsGoalType)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="standard">Savings goal</SelectItem>
+            <SelectItem value="sinking_fund">Sinking fund</SelectItem>
+            <SelectItem value="emergency_fund">Emergency fund</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Use a sinking fund for planned costs like car repairs, insurance, or travel.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="goal-monthly-target">Monthly target</Label>
+          <div className="relative">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
+              {currencySymbol(currency)}
+            </span>
+            <Input
+              id="goal-monthly-target"
+              inputMode="decimal"
+              value={monthlyTarget}
+              onChange={(e) =>
+                setMonthlyTarget(e.target.value.replace(/[^0-9.]/g, ""))
+              }
+              placeholder="Optional"
+              className="pl-7 tnum"
+            />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="goal-target-date">Target date</Label>
+          <Input
+            id="goal-target-date"
+            type="date"
+            value={targetDate}
+            onChange={(e) => setTargetDate(e.target.value)}
+          />
         </div>
       </div>
 

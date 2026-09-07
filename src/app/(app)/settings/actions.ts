@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { hasRecentAuthentication } from "@/lib/account-security";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -54,40 +56,51 @@ export async function deleteAllData(): Promise<ActionResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You're not signed in." };
 
-  const tables = [
-    "bill_payments",
-    "transactions",
-    "ledger_entries",
-    "bills",
-    "budgets",
-    "habit_logs",
-    "habits",
-    "mood_entries",
-    "tasks",
-    "calendar_events",
-    "assets",
-    "liabilities",
-    "savings_goals",
-    "accounts",
-  ] as const;
+  const { error } = await supabase.rpc("delete_my_tracking_data");
+  if (error) return { ok: false, error: error.message };
 
-  for (const table of tables) {
-    const { error } = await supabase
-      .from(table)
-      .delete()
-      .eq("user_id", user.id);
-    // Tolerate tables that don't exist yet (migrations not applied) — 42P01.
-    if (error && error.code !== "42P01") {
-      return { ok: false, error: `${table}: ${error.message}` };
-    }
-  }
-
-  // Send them back through onboarding (categories + profile are kept).
-  await supabase
-    .from("profiles")
-    .update({ onboarded: false })
-    .eq("user_id", user.id);
+  await supabase.rpc("record_security_event", {
+    p_event_type: "tracking_data_deleted",
+    p_metadata: {},
+  });
 
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+export async function deleteAccount(
+  confirmation: string,
+): Promise<ActionResult> {
+  if (confirmation.trim().toUpperCase() !== "DELETE ACCOUNT") {
+    return { ok: false, error: "Type DELETE ACCOUNT to confirm." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You're not signed in." };
+
+  // A login on another device must not make this session recent. Token refresh
+  // also does not count as signing in again.
+  const { data: verified, error: claimsError } = await supabase.auth.getClaims();
+  if (claimsError || !hasRecentAuthentication(verified?.claims, user.id)) {
+    return {
+      ok: false,
+      error: "For security, sign out and sign in again before deleting your account.",
+    };
+  }
+
+  try {
+    const admin = createAdminClient();
+    const { error: signOutError } = await supabase.auth.signOut({ scope: "global" });
+    if (signOutError) {
+      return { ok: false, error: "Couldn't sign out your sessions. Please try again." };
+    }
+    const { error } = await admin.auth.admin.deleteUser(user.id);
+    if (error) return { ok: false, error: "You're signed out, but the account wasn't deleted. Sign in and try again." };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Account deletion isn't available right now." };
+  }
 }

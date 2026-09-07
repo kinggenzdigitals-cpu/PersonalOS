@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Privacy Policy" };
 
 export default function PrivacyPage() {
   return (
-    <LegalShell title="Privacy Policy" updated="July 2026">
+    <LegalShell title="Privacy Policy" updated="September 2026">
       <section>
         <p>
           Your privacy matters. This policy explains what we collect, why, and
@@ -21,11 +21,17 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>The data you enter</strong> — accounts, transactions,
-            habits, mood, tasks, events, and goals you create.
+            budgets, goals, habits, mood, tasks, events, and other records you
+            create.
           </li>
           <li>
-            <strong>Basic usage</strong> — minimal technical data needed to run
-            and secure the service.
+            <strong>Security history</strong> — sign-in time, login provider,
+            browser information, and sensitive account actions.
+          </li>
+          <li>
+            <strong>Payment records</strong> — selected plan, amount, billing
+            period, payment status, and provider invoice reference. We do not
+            store your full card or bank credentials.
           </li>
         </ul>
       </section>
@@ -49,10 +55,29 @@ export default function PrivacyPage() {
       </section>
 
       <section>
+        <h2>Service providers</h2>
+        <p>
+          Supabase provides authentication and database storage. Google may
+          process sign-in information when you choose Google login. Xendit
+          processes paid checkouts. Each provider handles data under its own
+          terms and privacy policy.
+        </p>
+      </section>
+
+      <section>
+        <h2>Bank connections</h2>
+        <p>
+          Direct bank and e-wallet connections are not active yet. Before any
+          future connection, the app will show what data is requested, ask for
+          consent, and provide a way to remove the connection.
+        </p>
+      </section>
+
+      <section>
         <h2>Your rights</h2>
         <ul>
-          <li>Access and edit your data anytime inside the app.</li>
-          <li>Delete your data or your entire account at any time.</li>
+          <li>Access, edit, and download your personal data.</li>
+          <li>Delete tracking data or your entire account.</li>
           <li>Ask us questions about your data.</li>
         </ul>
       </section>

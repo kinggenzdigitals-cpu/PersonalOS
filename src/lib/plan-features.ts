@@ -37,15 +37,15 @@ export const FEATURE_SECTIONS: FeatureSection[] = [
   {
     title: "Automation",
     rows: [
-      { label: "Recurring schedules", free: "1", pro: "15", premium: "50" },
+      { label: "Recurring bill schedules", free: true, pro: true, premium: true },
     ],
   },
   {
     title: "Calendar & reminders",
     rows: [
       { label: "Calendar views", free: "Month", pro: "Month · Week · Agenda", premium: "Month · Week · Agenda" },
-      { label: "Active reminders", free: "3", pro: "25", premium: "100" },
-      { label: "Browser / push reminders", free: false, pro: true, premium: true },
+      { label: "Active reminders", free: true, pro: true, premium: true },
+      { label: "In-app reminders", free: true, pro: true, premium: true },
     ],
   },
   {
@@ -53,25 +53,26 @@ export const FEATURE_SECTIONS: FeatureSection[] = [
     rows: [
       { label: "Report history", free: "1 month", pro: "1 year", premium: "5 years" },
       { label: "Financial charts", free: false, pro: true, premium: true },
-      { label: "Financial forecasting", free: false, pro: false, premium: true },
-      { label: "CSV export", free: "Current month", pro: true, premium: true },
-      { label: "PDF exports / month", free: "0", pro: "5", premium: "25" },
+      { label: "Budget & cash-flow forecast", free: true, pro: true, premium: true },
+      { label: "Full JSON data download", free: true, pro: true, premium: true },
+      { label: "CSV transaction export", free: false, pro: true, premium: true },
     ],
   },
   {
     title: "Customization",
     rows: [
       { label: "Custom theme palettes", free: "0", pro: "3", premium: "10" },
-      { label: "Saved searches", free: "0", pro: "5", premium: "20" },
-      { label: "Custom dashboard", free: false, pro: false, premium: true },
+      { label: "Saved searches", free: false, pro: false, premium: false },
+      { label: "Custom dashboard", free: false, pro: false, premium: false },
     ],
   },
   {
     title: "Security",
     rows: [
       { label: "Hide sensitive info", free: true, pro: true, premium: true },
-      { label: "Passkeys & account recovery", free: true, pro: true, premium: true },
-      { label: "PWA install + offline drafts", free: true, pro: true, premium: true },
+      { label: "Login & security history", free: true, pro: true, premium: true },
+      { label: "Passkeys / two-factor authentication", free: false, pro: false, premium: false },
+      { label: "PWA install", free: true, pro: true, premium: true },
     ],
   },
   {

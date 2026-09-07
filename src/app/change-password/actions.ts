@@ -18,6 +18,11 @@ export async function changeOwnPassword(
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) return { ok: false, error: error.message };
 
+  await supabase.rpc("record_security_event", {
+    p_event_type: "password_changed",
+    p_metadata: {},
+  });
+
   // Clear the temp-password flag via the service role (users can't change it
   // themselves — a privilege-escalation guard trigger blocks that column).
   try {

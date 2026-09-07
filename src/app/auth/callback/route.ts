@@ -40,5 +40,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(errorUrl);
   }
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user) {
+    const provider =
+      typeof user.app_metadata?.provider === "string"
+        ? user.app_metadata.provider
+        : "unknown";
+    const userAgent = request.headers.get("user-agent")?.slice(0, 240) ?? "unknown";
+    // Login must still succeed while a new migration is rolling out. The
+    // settings page will show history once security_events is available.
+    await supabase.rpc("record_security_event", {
+      p_event_type: "login_success",
+      p_metadata: { provider, user_agent: userAgent },
+    });
+  }
+
   return NextResponse.redirect(`${origin}${next}`);
 }

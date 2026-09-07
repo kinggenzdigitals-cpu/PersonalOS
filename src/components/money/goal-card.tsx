@@ -11,6 +11,7 @@ import { GoalForm } from "@/components/money/goal-form";
 import { useCurrency } from "@/components/providers/profile-provider";
 import { currencySymbol } from "@/lib/format";
 import { Money } from "@/components/ui/money";
+import { Badge } from "@/components/ui/badge";
 import { contributeToGoal } from "@/app/(app)/money/goals-actions";
 import type { SavingsGoal } from "@/lib/supabase/types";
 import { toast } from "sonner";
@@ -22,6 +23,12 @@ export function GoalCard({ goal }: { goal: SavingsGoal }) {
   const saved = Number(goal.saved_amount);
   const pct = target > 0 ? Math.round((saved / target) * 100) : 0;
   const done = saved >= target;
+  const typeLabel =
+    goal.goal_type === "sinking_fund"
+      ? "Sinking fund"
+      : goal.goal_type === "emergency_fund"
+        ? "Emergency fund"
+        : "Savings goal";
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
@@ -64,6 +71,20 @@ export function GoalCard({ goal }: { goal: SavingsGoal }) {
         </span>
         <ContributeButton goal={goal} />
       </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
+        <Badge variant="secondary">{typeLabel}</Badge>
+        {goal.monthly_target != null && Number(goal.monthly_target) > 0 && (
+          <span>
+            Monthly: <Money value={Number(goal.monthly_target)} currency={currency} />
+          </span>
+        )}
+        {goal.target_date && (
+          <span>
+            Due {new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${goal.target_date}T12:00:00Z`))}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -88,6 +109,7 @@ function ContributeButton({ goal }: { goal: SavingsGoal }) {
     >
       {(close) => (
         <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">Records money you have already set aside. This does not move money or change a bank balance.</p>
           <div className="space-y-1.5">
             <Label htmlFor="contrib">Amount to add</Label>
             <div className="relative">

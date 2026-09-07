@@ -18,8 +18,8 @@ const FAQS = [
     a: "Yes — the Free plan is genuinely useful and never expires. Upgrade to Pro only when you need more.",
   },
   {
-    q: "Can I cancel anytime?",
-    a: "Yes. Cancel whenever you like and you'll keep Pro until the end of your billing period.",
+    q: "Do I need to cancel?",
+    a: "No. Automatic renewal is not enabled yet. Your paid access ends after the selected period unless you purchase another period.",
   },
   {
     q: "What happens to my data if I downgrade?",

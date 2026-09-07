@@ -11,9 +11,9 @@ import {
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { createClient } from "@/lib/supabase/server";
 import { isScheduledOn } from "@/lib/habits";
+import { getBudgetsWithSpending } from "@/lib/queries/planning";
 import type {
   Account,
-  Budget,
   Category,
   Habit,
   HabitLog,
@@ -87,6 +87,7 @@ export async function getReport(
 
   const startKey = format(start, "yyyy-MM-dd");
   const endKey = format(end, "yyyy-MM-dd");
+  const budgetMonthKey = format(startOfMonth(anchor), "yyyy-MM-dd");
   const startISO = fromZonedTime(`${startKey}T00:00:00`, timezone).toISOString();
   const endISO = fromZonedTime(`${endKey}T23:59:59`, timezone).toISOString();
 
@@ -94,7 +95,7 @@ export async function getReport(
     { data: txns },
     { data: accounts },
     { data: categories },
-    { data: budgets },
+    budgets,
     { data: habits },
     { data: logs },
     { data: moods },
@@ -110,7 +111,7 @@ export async function getReport(
       .returns<Transaction[]>(),
     supabase.from("accounts").select("*").returns<Account[]>(),
     supabase.from("categories").select("*").returns<Category[]>(),
-    supabase.from("budgets").select("*").eq("active", true).returns<Budget[]>(),
+    getBudgetsWithSpending(timezone, budgetMonthKey),
     supabase.from("habits").select("*").eq("active", true).returns<Habit[]>(),
     supabase
       .from("habit_logs")
@@ -185,14 +186,11 @@ export async function getReport(
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 5);
 
-  // Budgets met vs exceeded (spend in period vs budget)
+  // Monthly budget status uses the same carry-over-aware totals as the planner.
   let met = 0;
   let exceeded = 0;
   for (const b of budgets ?? []) {
-    const spent = tx
-      .filter((t) => t.type === "expense" && t.category_id === b.category_id)
-      .reduce((s, t) => s + Number(t.amount), 0);
-    if (spent > Number(b.amount)) exceeded++;
+    if (b.spent > b.effectiveAmount) exceeded++;
     else met++;
   }
 

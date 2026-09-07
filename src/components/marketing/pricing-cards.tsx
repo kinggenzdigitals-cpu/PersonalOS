@@ -55,8 +55,8 @@ export function PricingCards() {
       </div>
 
       <p className="mx-auto mt-6 max-w-xl text-center text-xs text-muted-foreground">
-        All prices in PHP. Paid plans auto-renew at the shown price unless
-        cancelled — cancel anytime and keep access until the period ends.
+        All prices are in PHP. Each checkout pays for the selected access
+        period. Automatic renewal is not enabled yet.
       </p>
     </div>
   );
@@ -123,7 +123,7 @@ function PlanCard({ plan, period }: { plan: Plan; period: BillingPeriod }) {
               </p>
             )}
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Renews at {peso(price.total)} unless cancelled
+              One payment for the selected access period
             </p>
           </div>
         ) : null}

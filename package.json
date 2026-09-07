@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:budget": "node --test tests/budget-*.test.*",
+    "test:core": "node --test tests/budget-*.test.* tests/security-billing.test.cjs tests/account-security.test.cjs tests/reconciliation.test.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",
@@ -28,6 +30,7 @@
     "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

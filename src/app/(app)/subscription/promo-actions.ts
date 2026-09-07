@@ -25,8 +25,20 @@ export async function claimOffer(): Promise<ClaimResult> {
     return { ok: false, error: "You're not eligible for this offer." };
   }
 
-  const admin = createAdminClient();
+  let admin: ReturnType<typeof createAdminClient>;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return { ok: false, error: "Offers aren't available right now." };
+  }
   const nowIso = new Date().toISOString();
+
+  await admin
+    .from("promotion_offers")
+    .update({ status: "expired" })
+    .eq("user_id", ent.userId)
+    .eq("status", "active")
+    .lte("expires_at", nowIso);
 
   // Don't duplicate an active offer.
   const { data: existing } = await admin
@@ -49,7 +61,9 @@ export async function claimOffer(): Promise<ClaimResult> {
     campaign: PROMO.campaign,
     expires_at: expiresAt,
   });
-  if (error) return { ok: false, error: "Couldn't start the offer." };
+  if (error && error.code !== "23505") {
+    return { ok: false, error: "Couldn't start the offer." };
+  }
 
   revalidatePath("/subscription");
   return { ok: true };

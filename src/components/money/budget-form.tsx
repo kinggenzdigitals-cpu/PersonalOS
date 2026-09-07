@@ -21,12 +21,16 @@ import type { Budget } from "@/lib/supabase/types";
 import { toast } from "sonner";
 import { useUpgrade } from "@/components/providers/upgrade-provider";
 
+const CUSTOM_CATEGORY = "__custom_category__";
+
 export function BudgetForm({
   initial,
+  monthStart,
   usedCategoryIds = [],
   onDone,
 }: {
   initial?: Budget;
+  monthStart: string;
   usedCategoryIds?: string[];
   onDone: () => void;
 }) {
@@ -39,6 +43,7 @@ export function BudgetForm({
   const [categoryId, setCategoryId] = React.useState(
     initial?.category_id ?? "",
   );
+  const [customCategory, setCustomCategory] = React.useState("");
   const [amount, setAmount] = React.useState(
     initial ? String(initial.amount) : "",
   );
@@ -50,14 +55,20 @@ export function BudgetForm({
 
   async function save() {
     if (!categoryId) return toast.error("Pick a category.");
+    if (categoryId === CUSTOM_CATEGORY && !customCategory.trim()) {
+      return toast.error("Name the custom category.");
+    }
     const value = Number.parseFloat(amount);
     if (!(value > 0)) return toast.error("Enter a budget amount.");
 
     setSaving(true);
     const result = await upsertBudget({
       id: initial?.id,
-      categoryId,
+      categoryId: categoryId === CUSTOM_CATEGORY ? "" : categoryId,
+      customCategoryName:
+        categoryId === CUSTOM_CATEGORY ? customCategory : undefined,
       amount: value,
+      monthStart,
     });
     if (!result.ok) {
       notify(result.error);
@@ -101,12 +112,28 @@ export function BudgetForm({
                 {c.name}
               </SelectItem>
             ))}
+            {!editing && (
+              <SelectItem value={CUSTOM_CATEGORY}>+ Custom category</SelectItem>
+            )}
           </SelectContent>
         </Select>
       </div>
 
+      {categoryId === CUSTOM_CATEGORY && (
+        <div className="space-y-1.5">
+          <Label htmlFor="custom-budget-category">Custom category</Label>
+          <Input
+            id="custom-budget-category"
+            value={customCategory}
+            onChange={(event) => setCustomCategory(event.target.value)}
+            placeholder="e.g. Electricity, Internet, SSS"
+            autoFocus
+          />
+        </div>
+      )}
+
       <div className="space-y-1.5">
-        <Label htmlFor="budget-amount">Monthly budget</Label>
+        <Label htmlFor="budget-amount">Monthly allotment</Label>
         <div className="relative">
           <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
             {currencySymbol(currency)}
@@ -136,7 +163,7 @@ export function BudgetForm({
         )}
         <Button className="flex-1" onClick={save} disabled={saving}>
           {saving && <Loader2Icon className="size-4 animate-spin" aria-hidden />}
-          {editing ? "Save changes" : "Set budget"}
+          {editing ? "Save changes" : "Add allotment"}
         </Button>
       </div>
     </div>

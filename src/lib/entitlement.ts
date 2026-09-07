@@ -62,10 +62,11 @@ export async function getEntitlement(): Promise<Entitlement> {
   // so the platform owner can never be locked out of the admin dashboard.
   const email = user.email?.toLowerCase();
   const bootstrapEmail = process.env.SUPER_ADMIN_EMAIL?.toLowerCase();
+  const hasVerifiedEmail = !!user.email_confirmed_at;
   const isSuperAdmin =
     role === "super_admin" ||
-    (!!bootstrapEmail && email === bootstrapEmail) ||
-    (!!email && OWNER_EMAILS.includes(email));
+    (hasVerifiedEmail && !!bootstrapEmail && email === bootstrapEmail) ||
+    (hasVerifiedEmail && !!email && OWNER_EMAILS.includes(email));
 
   if (isSuperAdmin) {
     return {

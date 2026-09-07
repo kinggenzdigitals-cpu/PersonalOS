@@ -185,7 +185,7 @@ function PlanDetails({
               {price.save > 0 && ` · save ${peso(price.save)} vs monthly`}
             </p>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Renews at {peso(price.total)} unless cancelled.
+              One payment for {BILLING_PERIODS.find((b) => b.id === period)?.label.toLowerCase()} access.
             </p>
           </div>
         </div>

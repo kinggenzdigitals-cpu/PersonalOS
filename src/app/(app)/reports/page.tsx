@@ -196,7 +196,7 @@ export default async function ReportsPage({
 
           <div className="flex gap-2 text-xs">
             <span className="rounded-full bg-success/10 px-2 py-0.5 text-success">
-              {report.money.budgets.met} within budget
+              {report.money.budgets.met} within monthly budget
             </span>
             <span className="rounded-full bg-error/10 px-2 py-0.5 text-error">
               {report.money.budgets.exceeded} exceeded
