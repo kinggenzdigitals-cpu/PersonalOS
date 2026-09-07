@@ -11,6 +11,8 @@ import {
   CalendarPlusIcon,
   ReceiptTextIcon,
   PiggyBankIcon,
+  ArrowLeftRightIcon,
+  StarIcon,
   TimerIcon,
   PlusIcon,
   ChevronLeftIcon,
@@ -26,7 +28,13 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { TransactionForm } from "@/components/money/transaction-form";
+import {
+  TransactionForm,
+  type TransactionPrefill,
+} from "@/components/money/transaction-form";
+import { TransferForm } from "@/components/money/transfer-form";
+import { listFavorites } from "@/app/(app)/money/entry-actions";
+import type { TransactionFavorite } from "@/lib/supabase/types";
 import { BillForm } from "@/components/money/bill-form";
 import { GoalForm } from "@/components/money/goal-form";
 import { MoodForm } from "@/components/habits/mood-form";
@@ -48,6 +56,7 @@ type View =
   | "menu"
   | "expense"
   | "income"
+  | "transfer"
   | "bill"
   | "savings"
   | "habit"
@@ -63,13 +72,16 @@ type QuickAction = {
   view?: View;
   navigate?: string;
   requiresAccount?: boolean;
+  /** Transfers need somewhere to move money to as well as from. */
+  requiresTwoAccounts?: boolean;
 };
 
 const ACTIONS: QuickAction[] = [
   { key: "income", label: "Income", icon: ArrowUpCircleIcon, tint: "var(--success)", view: "income", requiresAccount: true },
   { key: "expense", label: "Expense", icon: ArrowDownCircleIcon, tint: "var(--error)", view: "expense", requiresAccount: true },
+  { key: "transfer", label: "Transfer", icon: ArrowLeftRightIcon, tint: "var(--brand-2)", view: "transfer", requiresTwoAccounts: true },
   { key: "bill", label: "Bill", icon: ReceiptTextIcon, tint: "var(--warning)", view: "bill", requiresAccount: true },
-  { key: "savings", label: "Savings", icon: PiggyBankIcon, tint: "var(--accent-brand)", view: "savings" },
+  { key: "savings", label: "Savings goal", icon: PiggyBankIcon, tint: "var(--accent-brand)", view: "savings" },
   { key: "habit", label: "Habit ✓", icon: CircleCheckBigIcon, tint: "var(--sage)", view: "habit" },
   { key: "task", label: "Task", icon: ListTodoIcon, tint: "var(--chart-4)", view: "task" },
   { key: "focus", label: "Focus", icon: TimerIcon, tint: "var(--brand-2)", navigate: "/focus" },
@@ -81,6 +93,7 @@ const TITLES: Record<View, string> = {
   menu: "Quick add",
   expense: "Add expense",
   income: "Add income",
+  transfer: "Transfer between accounts",
   bill: "Add bill",
   savings: "Add savings goal",
   habit: "Log habits",
@@ -96,6 +109,8 @@ export function QuickAdd({
 }) {
   const [open, setOpen] = React.useState(false);
   const [view, setView] = React.useState<View>("menu");
+  const [prefill, setPrefill] = React.useState<TransactionPrefill | undefined>();
+  const [favorites, setFavorites] = React.useState<TransactionFavorite[]>([]);
   const { accounts } = useReference();
   const profile = useProfile();
   const router = useRouter();
@@ -103,6 +118,23 @@ export function QuickAdd({
 
   function reset() {
     setView("menu");
+    setPrefill(undefined);
+  }
+
+  /** Open the transaction form pre-filled from a saved favourite. */
+  function applyFavorite(f: TransactionFavorite) {
+    if (accounts.length === 0) {
+      toast.error("Add an account first from the Money tab.");
+      return;
+    }
+    setPrefill({
+      type: f.type,
+      amount: f.amount === null ? null : Number(f.amount),
+      categoryId: f.category_id,
+      accountId: f.account_id,
+      merchant: f.merchant,
+    });
+    setView(f.type);
   }
 
   function handle(action: QuickAction) {
@@ -116,6 +148,10 @@ export function QuickAdd({
         toast.error("Add an account first from the Money tab.");
         return;
       }
+      if (action.requiresTwoAccounts && accounts.length < 2) {
+        toast.error("Add a second account to transfer between them.");
+        return;
+      }
       setView(action.view);
     }
   }
@@ -125,7 +161,12 @@ export function QuickAdd({
       open={open}
       onOpenChange={(o) => {
         setOpen(o);
-        if (!o) reset();
+        if (o) {
+          // Refresh favourites each time the sheet opens.
+          listFavorites().then(setFavorites);
+        } else {
+          reset();
+        }
       }}
     >
       <DialogTrigger asChild>
@@ -171,6 +212,30 @@ export function QuickAdd({
         </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
+        {view === "menu" && favorites.length > 0 && (
+          <div className="border-b border-border px-4 pb-3 pt-4">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">
+              Favourites
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {favorites.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => applyFavorite(f)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm transition-colors hover:border-brand/50 hover:bg-secondary/50"
+                >
+                  <StarIcon
+                    className="size-3.5 text-accent-brand"
+                    aria-hidden
+                  />
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {view === "menu" && (
           <div className="grid grid-cols-3 gap-3 p-4">
             {ACTIONS.map((action) => (
@@ -203,8 +268,15 @@ export function QuickAdd({
             <TransactionForm
               defaultType={view}
               allowTypeToggle
+              prefill={prefill}
               onDone={() => setOpen(false)}
             />
+          </div>
+        )}
+
+        {view === "transfer" && (
+          <div className="p-4 pt-2">
+            <TransferForm onDone={() => setOpen(false)} />
           </div>
         )}
 

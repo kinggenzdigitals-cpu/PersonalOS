@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { checkCap, checkTransactionCap } from "@/lib/plan-guard";
+import {
+  checkCap,
+  checkTransactionCap,
+  requireProFeature,
+} from "@/lib/plan-guard";
 import {
   getTransactions,
   type TransactionFilters,
@@ -23,6 +27,30 @@ export async function fetchTransactionsAction(
 export type ActionResult =
   | { ok: true; id?: string }
   | { ok: false; error: string };
+
+export type ExportResult =
+  | { ok: true; transactions: Transaction[] }
+  | { ok: false; error: string };
+
+/**
+ * Transactions for CSV export. The plan check lives HERE (server-side) rather
+ * than only in the UI — a locked button is a hint, not a control.
+ */
+export async function exportTransactionsAction(): Promise<ExportResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You're not signed in." };
+
+  const locked = await requireProFeature("csvExport", "CSV export");
+  if (locked) return { ok: false, error: locked };
+
+  return {
+    ok: true,
+    transactions: await getTransactions({ limit: 100000, offset: 0 }),
+  };
+}
 
 async function auth() {
   const supabase = await createClient();
@@ -145,6 +173,61 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
   if (error) return { ok: false, error: error.message };
   revalidateMoney();
   return { ok: true };
+}
+
+// ---- Duplicate detection -------------------------------------------------
+
+export type DuplicateMatch = Pick<
+  Transaction,
+  "id" | "amount" | "occurred_at" | "merchant" | "category_id" | "account_id"
+>;
+
+/**
+ * Possible duplicates of a transaction about to be saved: same type, account
+ * and amount, within ±1 day, and (when a merchant is given) a merchant that
+ * overlaps. Never deletes anything — the caller shows a warning and lets the
+ * user continue or cancel. Owner-scoped by RLS.
+ */
+export async function findPossibleDuplicates(input: {
+  type: "income" | "expense";
+  amount: number;
+  accountId: string;
+  occurredAt: string; // ISO
+  merchant?: string | null;
+  excludeId?: string; // when editing, ignore the row itself
+}): Promise<DuplicateMatch[]> {
+  const { supabase, user } = await auth();
+  if (!user || !(input.amount > 0) || !input.accountId) return [];
+
+  const at = new Date(input.occurredAt);
+  if (Number.isNaN(at.getTime())) return [];
+  const from = new Date(at.getTime() - 36 * 60 * 60 * 1000).toISOString();
+  const to = new Date(at.getTime() + 36 * 60 * 60 * 1000).toISOString();
+
+  let query = supabase
+    .from("transactions")
+    .select("id, amount, occurred_at, merchant, category_id, account_id")
+    .eq("type", input.type)
+    .eq("account_id", input.accountId)
+    .eq("amount", input.amount)
+    .gte("occurred_at", from)
+    .lte("occurred_at", to)
+    .order("occurred_at", { ascending: false })
+    .limit(5);
+  if (input.excludeId) query = query.neq("id", input.excludeId);
+
+  const { data } = await query.returns<DuplicateMatch[]>();
+  const rows = data ?? [];
+  const needle = input.merchant?.trim().toLowerCase();
+  if (!needle) return rows.slice(0, 3);
+
+  // Prefer merchant overlap; a same-amount row with no merchant still counts.
+  return rows
+    .filter((r) => {
+      const m = r.merchant?.toLowerCase();
+      return !m || m.includes(needle) || needle.includes(m);
+    })
+    .slice(0, 3);
 }
 
 // ---- Transfer ------------------------------------------------------------
