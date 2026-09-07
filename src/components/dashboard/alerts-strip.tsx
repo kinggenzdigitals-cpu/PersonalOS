@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   AlertTriangleIcon,
   AlertCircleIcon,
@@ -33,11 +34,15 @@ const LEVEL: Record<
 
 export function AlertsStrip({ alerts }: { alerts: DashboardAlert[] }) {
   const hidden = usePrivacyHidden();
+  const [expanded, setExpanded] = useState(false);
   if (alerts.length === 0) return null;
+  const priority = { error: 0, warning: 1, info: 2 };
+  const sorted = [...alerts].sort((a, b) => priority[a.level] - priority[b.level]);
+  const visible = expanded ? sorted : sorted.slice(0, 3);
 
   return (
     <div className="space-y-2">
-      {alerts.map((alert, i) => {
+      {visible.map((alert, i) => {
         const meta = LEVEL[alert.level];
         const Icon = meta.icon;
         const body = (
@@ -61,6 +66,16 @@ export function AlertsStrip({ alerts }: { alerts: DashboardAlert[] }) {
           <div key={i}>{body}</div>
         );
       })}
+      {alerts.length > 3 && (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded(!expanded)}
+          className="min-h-11 rounded-lg px-3 text-sm font-medium underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {expanded ? "Show fewer alerts" : `Show ${alerts.length - 3} more alerts`}
+        </button>
+      )}
     </div>
   );
 }
