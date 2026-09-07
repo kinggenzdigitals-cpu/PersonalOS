@@ -50,7 +50,10 @@ export type Entitlement = {
  * of their own deployment, and always merged with (never replaced by) the env
  * allow-list.
  */
-const FALLBACK_OWNER_EMAILS = ["kingfmgonzales@gmail.com"];
+const FALLBACK_OWNER_EMAILS = [
+  "kinggenzdigitals@gmail.com",
+  "kingfmgonzales@gmail.com",
+];
 
 /**
  * Owner emails from env (`SUPER_ADMIN_EMAILS` comma-separated, or the older
