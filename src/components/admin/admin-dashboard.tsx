@@ -148,6 +148,8 @@ function planBadge(u: AdminUser): { label: string; className: string } {
     return { label: "Lifetime Pro", className: "bg-brand/10 text-brand" };
   if (u.accessType === "complimentary_pro" && u.plan === "pro")
     return { label: "Complimentary", className: "bg-brand-2/15 text-brand-2" };
+  if (u.plan === "premium")
+    return { label: "Premium", className: "bg-brand text-primary-foreground" };
   if (u.plan === "pro")
     return { label: "Pro", className: "bg-success/15 text-success" };
   return { label: "Free", className: "bg-secondary text-muted-foreground" };
