@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test:csv": "tsc src/lib/csv.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/csv-parser.test.cjs"
+    "test:csv": "tsc src/lib/csv.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/csv-parser.test.cjs",
+    "test:reconcile": "tsc src/lib/reconcile.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/reconcile.test.cjs",
+    "test": "npm run test:csv && npm run test:reconcile"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

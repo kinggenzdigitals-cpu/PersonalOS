@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Plain CommonJS Node test scripts (`npm run test:csv` / `test:reconcile`)
+    // and their compiled output — not application code, and intentionally
+    // `require()`-based so they run on bare node with no bundler.
+    "scripts/**",
+    ".tmp-test/**",
   ]),
 ]);
 

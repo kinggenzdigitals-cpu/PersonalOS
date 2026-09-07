@@ -8,6 +8,8 @@ import { PLANS } from "@/lib/plans";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CsvImport } from "@/components/money/csv-import";
+import { ReconcilePanel } from "@/components/money/reconcile-panel";
+import { getReconciliation } from "@/lib/queries/reconcile";
 import { WalletIcon } from "lucide-react";
 
 export const metadata: Metadata = { title: "Import" };
@@ -52,5 +54,24 @@ export default async function ImportPage() {
     );
   }
 
-  return <CsvImport />;
+  // Imported rows that may duplicate something entered by hand. The 0020
+  // fingerprint only stops the same STATEMENT being imported twice.
+  const reconciliation = await getReconciliation(50);
+
+  return (
+    <div className="space-y-6">
+      <CsvImport />
+
+      {(reconciliation.items.length > 0 ||
+        reconciliation.unmatchedCount > 0) && (
+        <section className="space-y-3">
+          <h2 className="font-display text-lg">Reconcile</h2>
+          <ReconcilePanel
+            items={reconciliation.items}
+            unmatchedCount={reconciliation.unmatchedCount}
+          />
+        </section>
+      )}
+    </div>
+  );
 }

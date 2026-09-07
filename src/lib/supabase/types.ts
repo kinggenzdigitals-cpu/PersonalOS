@@ -141,6 +141,8 @@ export type Transaction = Owned & {
   import_batch_id: string | null;
   /** Stable identity of the source statement line; null for manual entries. */
   import_fingerprint: string | null;
+  /** Set once the user has reviewed this row against possible duplicates. */
+  reconciled_at: string | null;
 } & Timestamps;
 
 /** One uploaded statement file. */
