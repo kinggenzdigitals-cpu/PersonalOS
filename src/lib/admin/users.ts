@@ -71,18 +71,21 @@ function effectivePlan(
   // Null = "no end date", valid only for a granted access_type.
   const live = (iso: string | null | undefined) =>
     !iso || new Date(iso).getTime() > now;
-  // A paid period must have a real end date — see entitlement.ts.
+  // A PAID period must have a real end date. main's version used live(), which
+  // treats null as "never expires" — so a row left at plan=pro/status=active
+  // with no period (exactly what admin "Remove Pro access" used to leave)
+  // granted the tier forever. Keeping the stricter check.
   const periodLive = (iso: string | null | undefined) =>
     !!iso && new Date(iso).getTime() > now;
-  const tier: PlanValue = sub?.plan === "premium" ? "premium" : "pro";
-  if (at === "lifetime_pro") return tier;
+  const paidTier: PlanValue = sub?.plan === "premium" ? "premium" : "pro";
+  if (at === "lifetime_pro") return paidTier;
   if (at === "complimentary_pro")
-    return live(sub?.access_expires_at) ? tier : "free";
+    return live(sub?.access_expires_at) ? paidTier : "free";
   if (
     (sub?.plan === "pro" || sub?.plan === "premium") &&
     sub?.status === "active"
   ) {
-    return periodLive(sub?.current_period_end) ? tier : "free";
+    return periodLive(sub?.current_period_end) ? paidTier : "free";
   }
   return "free";
 }
@@ -99,6 +102,9 @@ export async function listAdminUsers(): Promise<AdminUser[]> {
     // 0017's cancel_at_period_end) can't turn this into an unknown-column error.
     admin.from("subscriptions").select("*"),
   ]);
+
+  const error = authRes.error ?? profRes.error ?? subRes.error;
+  if (error) throw new Error("Unable to load admin user data.");
 
   const profiles = (profRes.data as ProfileRow[] | null) ?? [];
   const subs = (subRes.data as SubRow[] | null) ?? [];

@@ -25,6 +25,7 @@ import { getTransactions, getCategories } from "@/lib/queries/money";
 import { getHabitsBoard, localToday } from "@/lib/queries/habits";
 import { getTodayMood } from "@/lib/queries/mood";
 import { getLedgerSummary } from "@/lib/queries/ledger";
+import { getAccounts } from "@/lib/queries/money";
 import {
   getTodayPriorities,
   getPriorityCandidates,
@@ -84,6 +85,7 @@ export default async function HomePage() {
     carryOver,
     todayTasks,
     ledger,
+    accountSettings,
   ] = await Promise.all([
     supabase
       .from("account_balances")
@@ -111,6 +113,7 @@ export default async function HomePage() {
     getCarryOverTasks(profile.timezone),
     getTasksByView("today", profile.timezone),
     getLedgerSummary(profile.timezone),
+    getAccounts(),
   ]);
 
   const accounts = balances ?? [];
@@ -178,15 +181,20 @@ export default async function HomePage() {
       });
     }
   }
-  for (const a of accounts) {
-    const threshold = profile.low_balance_threshold;
-    if (a.is_spending && Number(a.balance) < threshold) {
-      alerts.push({
-        level: "warning",
-        text: `${a.name} is low (${formatMoney(Number(a.balance), currency)})`,
-        href: "/money",
-      });
-    }
+  const thresholds = new Map(accountSettings.map((a) => [a.id, a.low_balance_threshold]));
+  const lowAccounts = accounts.filter((a) => {
+    const threshold = thresholds.get(a.id) ?? profile.low_balance_threshold;
+    return a.is_spending && Number(a.balance) < threshold;
+  });
+  if (lowAccounts.length > 0) {
+    const first = lowAccounts[0];
+    alerts.push({
+      level: "warning",
+      text: lowAccounts.length === 1
+        ? `${first.name} is low (${formatMoney(Number(first.balance), currency)})`
+        : `${lowAccounts.length} spending accounts are below their low-balance thresholds. Review accounts.`,
+      href: "/money",
+    });
   }
 
   // Daily progress: (habits completed + priorities done) / (scheduled + set)

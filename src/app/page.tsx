@@ -163,7 +163,7 @@ export default async function LandingPage() {
             title="Know your true position at a glance"
             body="Every account, what you're owed, and what you owe — combined into one honest number. Log an expense in three taps, set budgets, and never miss a bill again."
             points={[
-              "Live account balances, no manual math",
+              "Balances calculated from the transactions you record",
               "Receivables & payables in one place",
               "Budgets and gentle bill reminders",
             ]}

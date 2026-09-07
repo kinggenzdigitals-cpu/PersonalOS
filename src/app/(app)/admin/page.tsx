@@ -5,40 +5,64 @@ import { listAuditLog } from "@/lib/admin/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
 import type { Feedback, Invitation } from "@/lib/supabase/types";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "Subscribers & Users" };
 
 export default async function AdminPage() {
   const me = await requireSuperAdmin();
-  const users = await listAdminUsers();
-  const summary = summarize(users);
   // A provisional (allow-list) grant is read + triage only; the server enforces
   // this regardless, but hiding the controls avoids inviting a failed action.
   const canManageAccounts = me.adminTier !== "provisional";
 
-  const admin = createAdminClient();
-  const [feedbackRes, invitesRes, auditLog] = await Promise.all([
-    admin
-      .from("feedback")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(200),
-    admin
-      .from("user_invitations")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(200),
-    listAuditLog(
-      200,
-      new Map(
-        users
-          .filter((u): u is typeof u & { email: string } => Boolean(u.email))
-          .map((u) => [u.userId, u.email]),
+  // Keeps main's resilience: a missing service-role key or an unapplied
+  // migration renders an explanatory card instead of crashing the page.
+  let data:
+    | {
+        users: Awaited<ReturnType<typeof listAdminUsers>>;
+        feedback: Feedback[];
+        invitations: Invitation[];
+        auditLog: Awaited<ReturnType<typeof listAuditLog>>;
+      }
+    | null = null;
+
+  try {
+    const users = await listAdminUsers();
+    const admin = createAdminClient();
+    const [feedbackRes, invitesRes, auditLog] = await Promise.all([
+      admin
+        .from("feedback")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200),
+      admin
+        .from("user_invitations")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200),
+      // Reuse the emails already fetched above rather than paging auth.users
+      // a second time for the same render.
+      listAuditLog(
+        200,
+        new Map(
+          users
+            .filter((u): u is typeof u & { email: string } => Boolean(u.email))
+            .map((u) => [u.userId, u.email]),
+        ),
       ),
-    ),
-  ]);
-  const feedback = feedbackRes.data;
-  const invitations = (invitesRes.data as Invitation[] | null) ?? [];
+    ]);
+    if (feedbackRes.error || invitesRes.error) {
+      throw new Error("Unable to load admin dashboard data.");
+    }
+    data = {
+      users,
+      feedback: (feedbackRes.data as Feedback[] | null) ?? [],
+      invitations: (invitesRes.data as Invitation[] | null) ?? [],
+      auditLog,
+    };
+  } catch {
+    data = null;
+  }
 
   return (
     <div className="space-y-5">
@@ -58,14 +82,25 @@ export default async function AdminPage() {
           </p>
         )}
       </header>
-      <AdminDashboard
-        users={users}
-        summary={summary}
-        feedback={(feedback as Feedback[] | null) ?? []}
-        invitations={invitations}
-        auditLog={auditLog}
-        canManageAccounts={canManageAccounts}
-      />
+      {data ? (
+        <AdminDashboard
+          users={data.users}
+          summary={summarize(data.users)}
+          feedback={data.feedback}
+          invitations={data.invitations}
+          auditLog={data.auditLog}
+          canManageAccounts={canManageAccounts}
+        />
+      ) : (
+        <Card className="border-error/30 bg-error/5 shadow-card">
+          <CardContent className="space-y-1 pt-6">
+            <p className="font-medium">Admin data is temporarily unavailable.</p>
+            <p className="text-sm text-muted-foreground">
+              Check the secure Supabase service-role key and confirm that the latest database migrations are applied.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -34,6 +34,7 @@ function accessLabel(
   if (role === "super_admin") return "Super Admin";
   if (accessType === "lifetime_pro") return "Lifetime Pro";
   if (accessType === "complimentary_pro") return "Complimentary Pro";
+  if (plan === "premium") return "Premium";
   return plan === "pro" ? "Pro" : "Free";
 }
 
@@ -43,13 +44,13 @@ export default async function AccountPage() {
   const sub = await getSubscription();
 
   const label = accessLabel(ent.role, ent.accessType, ent.plan);
-  const isPro = ent.plan === "pro";
+  const hasPaidAccess = ent.plan !== "free";
   const complimentary =
     ent.role === "super_admin" ||
     ent.accessType === "lifetime_pro" ||
     ent.accessType === "complimentary_pro";
   const renewal = sub?.access_expires_at ?? sub?.current_period_end ?? null;
-  const features = PLANS[isPro ? "pro" : "free"].features.filter(
+  const features = PLANS[ent.plan].features.filter(
     (f) => !f.startsWith("Everything"),
   );
 
@@ -85,14 +86,14 @@ export default async function AccountPage() {
               <p className="text-xs text-muted-foreground">
                 {complimentary
                   ? "You have full Pro access — no payment or renewal needed."
-                  : isPro
-                    ? "You're on Pro. Thanks for supporting us!"
+                  : hasPaidAccess
+                    ? `You're on ${PLANS[ent.plan].name}. Thanks for supporting us!`
                     : "You're on the Free plan."}
               </p>
             </div>
             <span
               className={
-                isPro
+                hasPaidAccess
                   ? "rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-primary-foreground"
                   : "rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
               }
@@ -148,7 +149,7 @@ export default async function AccountPage() {
               </li>
             ))}
           </ul>
-          {!isPro && (
+          {!hasPaidAccess && (
             <div className="rounded-xl border border-brand/20 bg-brand/5 p-3 text-sm">
               <p className="mb-0.5 flex items-center gap-1.5 font-medium text-brand">
                 <SparklesIcon className="size-4" /> Unlock Pro
