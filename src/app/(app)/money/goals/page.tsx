@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
-import { TargetIcon, PlusIcon } from "lucide-react";
+import { TargetIcon } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
 import { getSavingsGoals } from "@/lib/queries/goals";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { FormSheet } from "@/components/money/form-sheet";
-import { GoalForm } from "@/components/money/goal-form";
 import { GoalCard } from "@/components/money/goal-card";
+import { GoalCreateButton } from "@/components/money/goal-create-button";
 import { Money } from "@/components/ui/money";
 
 export const metadata: Metadata = { title: "Savings Goals" };
@@ -26,18 +24,7 @@ export default async function GoalsPage() {
           title="No savings goals yet"
           description="Set goals like an emergency fund, a vacation, or a business fund — and watch them fill up."
           className="py-10"
-          action={
-            <FormSheet
-              title="New goal"
-              trigger={
-                <Button>
-                  <PlusIcon className="size-4" /> Add goal
-                </Button>
-              }
-            >
-              {(close) => <GoalForm onDone={close} />}
-            </FormSheet>
-          }
+          action={<GoalCreateButton empty />}
         />
       ) : (
         <>
@@ -73,16 +60,7 @@ export default async function GoalsPage() {
             ))}
           </div>
 
-          <FormSheet
-            title="New goal"
-            trigger={
-              <Button variant="outline" className="w-full">
-                <PlusIcon className="size-4" /> Add goal
-              </Button>
-            }
-          >
-            {(close) => <GoalForm onDone={close} />}
-          </FormSheet>
+          <GoalCreateButton />
         </>
       )}
     </div>
