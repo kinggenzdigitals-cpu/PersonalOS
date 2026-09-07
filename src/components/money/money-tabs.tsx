@@ -12,6 +12,7 @@ const TABS = [
   { href: "/money/owed", label: "Owed" },
   { href: "/money/budgets", label: "Budgets" },
   { href: "/money/bills", label: "Bills" },
+  { href: "/money/import", label: "Import" },
 ];
 
 export function MoneyTabs() {

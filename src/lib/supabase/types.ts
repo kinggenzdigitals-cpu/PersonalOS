@@ -138,7 +138,21 @@ export type Transaction = Owned & {
   merchant: string | null;
   notes: string | null;
   bill_id: string | null;
+  import_batch_id: string | null;
+  /** Stable identity of the source statement line; null for manual entries. */
+  import_fingerprint: string | null;
 } & Timestamps;
+
+/** One uploaded statement file. */
+export type ImportBatch = Owned & {
+  account_id: string | null;
+  source: string;
+  filename: string | null;
+  row_count: number;
+  imported_count: number;
+  skipped_count: number;
+  created_at: string;
+};
 
 export type Budget = Owned & {
   category_id: string;
@@ -416,6 +430,11 @@ export type Database = {
           Omit<MonthlyBudget, "user_id" | "period_start">
         >,
         UpdateOf<MonthlyBudget>
+      >;
+      import_batches: TableShape<
+        ImportBatch,
+        { user_id: string } & Partial<Omit<ImportBatch, "user_id">>,
+        UpdateOf<ImportBatch>
       >;
       merchant_categories: TableShape<
         MerchantCategory,
