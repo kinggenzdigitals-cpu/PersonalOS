@@ -25,6 +25,21 @@ export async function getSubscription(): Promise<Subscription | null> {
 }
 
 /**
+ * Whether the signed-in user has a real, still-running PAID period — the only
+ * state in which cancelling or resuming renewal means anything. Complimentary
+ * and lifetime grants don't renew, and super admins have no subscription row.
+ *
+ * Lives here rather than in a page body so the time comparison isn't performed
+ * during render (react-hooks/purity).
+ */
+export async function canManageRenewal(): Promise<boolean> {
+  const sub = await getSubscription();
+  if (!sub || sub.access_type !== "paid") return false;
+  const end = sub.current_period_end;
+  return !!end && new Date(end).getTime() > Date.now();
+}
+
+/**
  * The plan to gate features on. Delegates to the server-side entitlement engine
  * so super_admin / lifetime / complimentary access is honored (not just paid
  * subscriptions).

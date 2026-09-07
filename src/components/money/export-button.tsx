@@ -5,7 +5,7 @@ import Link from "next/link";
 import { DownloadIcon, Loader2Icon, SparklesIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReference } from "@/components/providers/reference-provider";
-import { fetchTransactionsAction } from "@/app/(app)/money/actions";
+import { exportTransactionsAction } from "@/app/(app)/money/actions";
 import { toast } from "sonner";
 
 function csvEscape(value: string) {
@@ -19,7 +19,7 @@ export function ExportButton({ canExport = true }: { canExport?: boolean }) {
   if (!canExport) {
     return (
       <Button variant="outline" asChild>
-        <Link href="/settings">
+        <Link href="/subscription">
           <SparklesIcon className="size-4" aria-hidden />
           Export transactions (CSV) · Pro
         </Link>
@@ -30,7 +30,12 @@ export function ExportButton({ canExport = true }: { canExport?: boolean }) {
   async function exportCsv() {
     setBusy(true);
     try {
-      const txns = await fetchTransactionsAction({ limit: 100000, offset: 0 });
+      const result = await exportTransactionsAction();
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      const txns = result.transactions;
       const accountName = new Map(accounts.map((a) => [a.id, a.name]));
       const categoryName = new Map(categories.map((c) => [c.id, c.name]));
 
