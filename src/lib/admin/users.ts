@@ -58,10 +58,11 @@ function effectivePlan(
   const at = sub?.access_type ?? null;
   const live = (iso: string | null | undefined) =>
     !iso || new Date(iso).getTime() > now;
-  if (at === "lifetime_pro") return "pro";
-  if (at === "complimentary_pro") return live(sub?.access_expires_at) ? "pro" : "free";
-  if (sub?.plan === "pro" && sub?.status === "active")
-    return live(sub?.current_period_end) ? "pro" : "free";
+  const paidTier: PlanValue = sub?.plan === "premium" ? "premium" : "pro";
+  if (at === "lifetime_pro") return paidTier;
+  if (at === "complimentary_pro") return live(sub?.access_expires_at) ? paidTier : "free";
+  if ((sub?.plan === "pro" || sub?.plan === "premium") && sub?.status === "active")
+    return live(sub?.current_period_end) ? paidTier : "free";
   return "free";
 }
 
@@ -81,6 +82,9 @@ export async function listAdminUsers(): Promise<AdminUser[]> {
         "user_id, plan, status, interval, access_type, access_expires_at, current_period_end, created_at",
       ),
   ]);
+
+  const error = authRes.error ?? profRes.error ?? subRes.error;
+  if (error) throw new Error("Unable to load admin user data.");
 
   const profiles = (profRes.data as ProfileRow[] | null) ?? [];
   const subs = (subRes.data as SubRow[] | null) ?? [];
