@@ -88,6 +88,7 @@ test("export includes all 1205 records, even with a lower Data API row cap", asy
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("Cache-Control"), "private, no-store");
   const payload = await response.json();
+  assert.deepEqual(payload.data.account_reconciliations, []);
   assert.equal(payload.data.transactions.length, 1205);
   assert.equal(new Set(payload.data.transactions.map(row => row.id)).size, 1205);
   assert.equal(events.length, 1);

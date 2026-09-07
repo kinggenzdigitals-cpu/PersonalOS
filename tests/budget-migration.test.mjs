@@ -2,6 +2,7 @@ import { before, after, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
+import { randomUUID } from "node:crypto";
 
 // Isolated PostgreSQL engine. Only the Supabase auth service and grants are
 // represented here; no live project, network call, or real user data is used.
@@ -42,8 +43,23 @@ before(async () => {
   await db.exec(await sql("0011_monthly_budget_planner.sql"));
   await db.exec(await sql("0012_security_and_billing.sql"));
   await db.exec(await sql("20260907152123_security_admin_hardening.sql"));
+  await db.exec(await sql("20260907154543_account_reconciliation.sql"));
 });
 after(async () => {await db?.close();});
+
+async function comparisonFixture(opening = 1000, user = owner) {
+  await asUser(user);
+  const account = (await db.query("insert into accounts(user_id,name,type,opening_balance) values($1,'Test bank','bank',$2) returning id", [user, opening])).rows[0].id;
+  const asOf = (await db.query("select now() as value")).rows[0].value.toISOString();
+  return { account, asOf, request: randomUUID(), opening, user };
+}
+async function recordComparison(fixture, observed, adjust = false, notes = null, expected = fixture.opening) {
+  return (await db.query("select record_account_reconciliation($1,$2,$3,$4,$5,$6,$7) as result",
+    [fixture.request, fixture.account, fixture.asOf, expected, observed, adjust, notes])).rows[0].result;
+}
+async function recordedBalance(fixture) {
+  return Number((await db.query("select get_recorded_account_balance($1,$2) as amount", [fixture.account, fixture.asOf])).rows[0].amount);
+}
 
 test("migration keeps legacy budgets writable and copies existing balances", async () => {
   await asUser(owner);
@@ -187,4 +203,153 @@ test("server-owned tables and trigger functions are not exposed to users", async
   await db.query("insert into auth.users(id) values($1)", [fresh]);
   assert.equal((await db.query("select count(*)::int as n from profiles where user_id=$1", [fresh])).rows[0].n, 1);
   assert.equal((await db.query("select count(*)::int as n from categories where user_id=$1", [fresh])).rows[0].n, 15);
+});
+
+test("bank comparisons exclude future entries and transfer both sides correctly", async () => {
+  const source = await comparisonFixture();
+  const destination = await comparisonFixture(0);
+  destination.asOf = source.asOf;
+  await db.query("insert into transactions(user_id,account_id,type,amount,occurred_at) values($1,$2,'income',100,$3::timestamptz-interval '1 day'),($1,$2,'expense',30,$3::timestamptz-interval '1 day'),($1,$2,'expense',900,$3::timestamptz+interval '1 day')", [owner, source.account, source.asOf]);
+  const tx = (await db.query("insert into transactions(user_id,account_id,to_account_id,type,amount,occurred_at) values($1,$2,$3,'transfer',200,$4::timestamptz-interval '1 hour') returning id", [owner, source.account, destination.account, source.asOf])).rows[0].id;
+  assert.equal(await recordedBalance(source), 870);
+  assert.equal(await recordedBalance(destination), 200);
+  await db.query("update transactions set amount=250 where id=$1", [tx]);
+  assert.equal(await recordedBalance(source), 820);
+  assert.equal(await recordedBalance(destination), 250);
+  await db.query("delete from transactions where id=$1", [tx]);
+  assert.equal(await recordedBalance(source), 1070);
+  assert.equal(await recordedBalance(destination), 0);
+});
+
+test("matched and unresolved comparisons do not change the ledger", async () => {
+  for (const opening of [0, -50, 1000]) {
+    const f = await comparisonFixture(opening);
+    const matched = await recordComparison(f, opening);
+    assert.equal(matched.status, "matched");
+    assert.equal(matched.adjustment_transaction_id, null);
+    f.request = randomUUID();
+    const unresolved = await recordComparison(f, opening + 25);
+    assert.equal(unresolved.status, "needs_review");
+    assert.equal(unresolved.difference, 25);
+    assert.equal(await recordedBalance(f), opening);
+    assert.equal((await db.query("select count(*)::int as n from transactions where account_id=$1", [f.account])).rows[0].n, 0);
+  }
+});
+
+test("explicit adjustment is atomic, excluded from spending, and safe to retry", async () => {
+  const f = await comparisonFixture();
+  const first = await recordComparison(f, 950, true, "Opening balance correction");
+  const retry = await recordComparison(f, 950, true, "Opening balance correction");
+  assert.equal(first.id, retry.id);
+  assert.equal(first.status, "adjusted");
+  assert.equal(await recordedBalance(f), 950);
+  const txs = (await db.query("select type,amount,direction,category_id from transactions where account_id=$1", [f.account])).rows;
+  assert.deepEqual(txs, [{ type: "adjustment", amount: "50.00", direction: "out", category_id: null }]);
+  assert.equal((await db.query("select count(*)::int as n from transactions where account_id=$1 and type in ('income','expense')", [f.account])).rows[0].n, 0);
+  await assert.rejects(recordComparison(f, 940, true, "Different request"), /already used/);
+  assert.equal(await recordedBalance(f), 950);
+  f.request = randomUUID();
+  await recordComparison(f, 975, true, "Another correction", 950);
+  assert.equal(await recordedBalance(f), 975);
+});
+
+test("changed balances invalidate a preview without writing anything", async () => {
+  const f = await comparisonFixture();
+  await db.query("insert into transactions(user_id,account_id,type,amount,occurred_at) values($1,$2,'expense',10,$3::timestamptz-interval '1 minute')", [owner, f.account, f.asOf]);
+  await assert.rejects(recordComparison(f, 900, true, "Correction"), /Recorded balance changed/);
+  assert.equal((await db.query("select count(*)::int as n from account_reconciliations where account_id=$1", [f.account])).rows[0].n, 0);
+  assert.equal(await recordedBalance(f), 990);
+  await db.query("update accounts set opening_balance=1100 where id=$1", [f.account]);
+  await assert.rejects(recordComparison(f, 900, true, "Correction", 990), /Recorded balance changed/);
+});
+
+test("invalid or expired comparisons cannot create partial adjustments", async () => {
+  const f = await comparisonFixture();
+  for (const amount of ["NaN", "Infinity", "-Infinity", "10000000000", "1.234"]) {
+    await assert.rejects(recordComparison(f, amount, true, "Correction"), /Invalid comparison/);
+  }
+  await assert.rejects(recordComparison(f, 900, true, "   "), /Add a reason/);
+  await assert.rejects(recordComparison(f, 900, true, "x".repeat(241)), /Invalid comparison/);
+  for (const offset of [-16 * 60 * 1000, 60 * 1000]) {
+    await assert.rejects(recordComparison({ ...f, asOf: new Date(Date.now() + offset).toISOString() }, 900, true, "Correction"), /Preview expired/);
+  }
+  assert.equal(await recordedBalance(f), 1000);
+  assert.equal((await db.query("select count(*)::int as n from transactions where account_id=$1", [f.account])).rows[0].n, 0);
+  assert.equal((await db.query("select count(*)::int as n from account_reconciliations where account_id=$1", [f.account])).rows[0].n, 0);
+});
+
+test("comparison history and account links remain isolated by owner", async () => {
+  const f = await comparisonFixture();
+  const history = await recordComparison(f, 900);
+  await assert.rejects(db.query("update account_reconciliations set observed_balance=1 where id=$1", [history.id]), /permission denied/);
+  const foreign = await comparisonFixture(500, other);
+  assert.equal((await db.query("select count(*)::int as n from account_reconciliations where id=$1", [history.id])).rows[0].n, 0);
+  assert.equal((await db.query("select get_recorded_account_balance($1,now()) as amount", [f.account])).rows[0].amount, null);
+  await assert.rejects(recordComparison(f, 800, true, "Correction"), /Account is unavailable/);
+  await assert.rejects(db.query("insert into transactions(user_id,account_id,type,amount) values($1,$2,'expense',1)", [other, f.account]), /Account is unavailable/);
+  await assert.rejects(db.query("insert into transactions(user_id,account_id,to_account_id,type,amount) values($1,$2,$3,'transfer',1)", [other, foreign.account, f.account]), /Account is unavailable/);
+  await assert.rejects(db.query("insert into account_reconciliations(user_id,account_id,request_id,as_of,recorded_balance,observed_balance) values($1,$2,$3,now(),0,0)", [other, f.account, randomUUID()]), /foreign key/);
+  await assert.rejects(db.query("insert into account_reconciliations(user_id,account_id,request_id,as_of,recorded_balance,observed_balance) values($1,$2,$3,now(),0,0)", [owner, f.account, randomUUID()]), /row-level security/);
+  await asUser(owner);
+  assert.equal(await recordedBalance(f), 1000);
+});
+
+test("anonymous and inactive accounts cannot use reconciliation RPCs", async () => {
+  const f = await comparisonFixture();
+  await db.exec("reset role; set role anon");
+  await assert.rejects(db.query("select get_recorded_account_balance($1,now())", [f.account]), /permission denied/);
+  await assert.rejects(recordComparison(f, 900), /permission denied/);
+  await assert.rejects(db.query("select * from account_reconciliations"), /permission denied/);
+  await db.exec("reset role; set role service_role");
+  await db.query("update profiles set status='suspended' where user_id=$1", [owner]);
+  await asUser(owner);
+  assert.equal((await db.query("select status from profiles where user_id=$1", [owner])).rows[0].status, "suspended");
+  await assert.rejects(recordComparison(f, 900), /Account is unavailable/);
+  await db.exec("reset role; set role service_role");
+  await db.query("update profiles set status='active' where user_id=$1", [owner]);
+  await asUser(owner);
+  await db.query("update accounts set archived=true where id=$1", [f.account]);
+  await assert.rejects(recordComparison(f, 900), /Account is unavailable/);
+});
+
+test("removing an adjustment marks its comparison for review; account deletion cascades", async () => {
+  const f = await comparisonFixture();
+  const result = await recordComparison(f, 950, true, "Correction");
+  await db.query("delete from transactions where id=$1", [result.adjustment_transaction_id]);
+  const history = (await db.query("select status,adjustment_transaction_id from account_reconciliations where id=$1", [result.id])).rows[0];
+  assert.deepEqual(history, { status: "needs_review", adjustment_transaction_id: null });
+  assert.equal(await recordedBalance(f), 1000);
+  // Include a transfer to exercise child triggers during parent cascade.
+  const target = await comparisonFixture(0);
+  await db.query("insert into transactions(user_id,account_id,to_account_id,type,amount) values($1,$2,$3,'transfer',20)", [owner, f.account, target.account]);
+  await db.query("delete from accounts where id=$1", [f.account]);
+  assert.equal((await db.query("select count(*)::int as n from account_reconciliations where id=$1", [result.id])).rows[0].n, 0);
+});
+
+test("tracking reset removes comparison history only for its owner", async () => {
+  const foreign = await comparisonFixture(500, other);
+  const kept = await recordComparison(foreign, 500);
+  await asUser(owner);
+  await db.query("select delete_my_tracking_data()");
+  assert.equal((await db.query("select count(*)::int as n from account_reconciliations")).rows[0].n, 0);
+  assert.equal((await db.query("select count(*)::int as n from accounts")).rows[0].n, 0);
+  await asUser(other);
+  assert.equal((await db.query("select count(*)::int as n from account_reconciliations where id=$1", [kept.id])).rows[0].n, 1);
+});
+
+test("a history write failure rolls back the adjustment in the same call", async () => {
+  const f = await comparisonFixture();
+  await db.exec(`reset role;
+    create function public.test_reconciliation_failure() returns trigger language plpgsql as $$begin raise exception 'Simulated history failure'; end;$$;
+    create trigger test_reconciliation_failure before insert on public.account_reconciliations
+      for each row execute function public.test_reconciliation_failure();`);
+  try {
+    await asUser(owner);
+    await assert.rejects(recordComparison(f, 950, true, "Correction"), /Simulated history failure/);
+    assert.equal(await recordedBalance(f), 1000);
+    assert.equal((await db.query("select count(*)::int as n from transactions where account_id=$1", [f.account])).rows[0].n, 0);
+    assert.equal((await db.query("select count(*)::int as n from account_reconciliations where account_id=$1", [f.account])).rows[0].n, 0);
+  } finally {
+    await db.exec("reset role; drop trigger test_reconciliation_failure on public.account_reconciliations; drop function public.test_reconciliation_failure()");
+  }
 });

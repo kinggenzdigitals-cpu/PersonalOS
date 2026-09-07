@@ -25,7 +25,8 @@ with required(migration, kind, object_name, column_name) as (
     ('0012', 'relation', 'public.security_events', null),
     ('0012', 'relation', 'public.app_error_events', null),
     ('0012', 'relation', 'public.payment_checkout_sessions', null),
-    ('0012', 'relation', 'public.app_schema_versions', null)
+    ('0012', 'relation', 'public.app_schema_versions', null),
+    ('20260907154543', 'relation', 'public.account_reconciliations', null)
 ), checked as (
   select *, case when kind = 'relation' then to_regclass(object_name) is not null
     else exists (

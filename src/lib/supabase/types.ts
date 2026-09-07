@@ -106,6 +106,20 @@ export type AccountBalance = {
   balance: number;
 };
 
+export type AccountReconciliation = Owned & {
+  account_id: string;
+  request_id: string;
+  as_of: string;
+  recorded_balance: number;
+  observed_balance: number;
+  difference: number;
+  apply_adjustment: boolean;
+  adjustment_transaction_id: string | null;
+  notes: string | null;
+  status: "matched" | "adjusted" | "needs_review";
+  created_at: string;
+};
+
 export type Category = Owned & {
   name: string;
   kind: CategoryKind;
@@ -412,6 +426,7 @@ export type Database = {
         Partial<Profile>
       >;
       accounts: TableShape<Account, InsertOf<Account>, UpdateOf<Account>>;
+      account_reconciliations: TableShape<AccountReconciliation, never, never>;
       categories: TableShape<Category, InsertOf<Category>, UpdateOf<Category>>;
       transactions: TableShape<
         Transaction,
@@ -531,6 +546,18 @@ export type Database = {
       };
     };
     Functions: {
+      get_recorded_account_balance: {
+        Args: { p_account_id: string; p_as_of: string };
+        Returns: number | null;
+      };
+      record_account_reconciliation: {
+        Args: {
+          p_request_id: string; p_account_id: string; p_as_of: string;
+          p_expected_balance: number; p_observed_balance: number;
+          p_apply_adjustment: boolean; p_notes: string | null;
+        };
+        Returns: AccountReconciliation;
+      };
       initialize_monthly_budget: {
         Args: {
           p_month: string; p_total: number; p_income: number; p_carry: boolean;

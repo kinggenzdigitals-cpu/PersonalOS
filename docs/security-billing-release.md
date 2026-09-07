@@ -59,16 +59,17 @@ verified against the connected project. They do not mean deployed.
 | Step | Check |
 | --- | --- |
 | 1 | Select the staging organization/project, confirm any cost, and preserve the live database backup. |
-| 2 | On a fresh test project, apply 0001-0012 and 20260907152123_security_admin_hardening.sql in order. On an existing project, reconcile the baseline first; never re-run installed objects blindly. |
+| 2 | On a fresh test project, apply 0001-0012, 20260907152123_security_admin_hardening.sql, and 20260907154543_account_reconciliation.sql in order (schema marker 14). On an existing project, reconcile the baseline first; never re-run installed objects blindly. |
 | 3 | Sign in with two synthetic users and verify neither can read the other's records. |
 | 4 | Test JSON export, tracking reset, recent-login account deletion, and admin system status. |
 | 5 | Verify the new profile/feedback privileges using the Data API and inspect Supabase advisors. |
 | 6 | Xendit tests are deferred. Before a payment release, test correct/wrong amounts, duplicate callbacks, and retry after a database error in sandbox. |
 | 7 | Merge only after the relevant staging checks and release approval; keep paid checkout unavailable until Xendit is tested. |
 
-Automated coverage currently passes 36 focused tests, including the isolated
+Automated coverage currently passes 52 focused tests, including the isolated
 PostgreSQL migrations, RLS isolation, atomic payment completion, duplicate
 callbacks, pricing totals, monthly budget calculations, data-reset scope,
 profile escalation attempts, admin-note access, 1,205-row export, failed-page
 handling, verified-session recency, sign-out ordering, and unavailable health data.
+Bank comparison/adjustment tests are described in [section 7](./bank-connections-release.md).
 This does not replace staging tests against Supabase Auth/PostgREST or Xendit.

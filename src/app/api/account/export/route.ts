@@ -7,6 +7,7 @@ const FEEDBACK_COLUMNS = "id,user_id,category,title,message,screenshot_url,statu
 const OWNED_TABLES = [
   "profiles",
   "accounts",
+  "account_reconciliations",
   "categories",
   "transactions",
   "budgets",
