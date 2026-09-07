@@ -1,42 +1,30 @@
 import type { Metadata } from "next";
-import { PieChartIcon } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
-import { getBudgetsWithSpending } from "@/lib/queries/planning";
-import { EmptyState } from "@/components/ui/empty-state";
-import { BudgetCard } from "@/components/money/budget-card";
-import { AddBudgetButton } from "@/components/money/add-budget-button";
+import { resolveMonthStart } from "@/lib/month";
+import { getMonthlyBudgetPlanner } from "@/lib/queries/budget-planner";
+import { BudgetPlannerView } from "@/components/money/budget-planner-view";
 
 export const metadata: Metadata = { title: "Budgets" };
 
-export default async function BudgetsPage() {
+export default async function BudgetsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
   const profile = await requireOnboardedProfile();
-  const budgets = await getBudgetsWithSpending(profile.timezone);
-  const usedCategoryIds = budgets.map((b) => b.budget.category_id);
+  const { month } = await searchParams;
+  const monthStart = resolveMonthStart(month, profile.timezone);
+  const planner = await getMonthlyBudgetPlanner(
+    profile.timezone,
+    monthStart,
+    profile.currency,
+  );
 
   return (
-    <div className="space-y-4">
-      {budgets.length === 0 ? (
-        <EmptyState
-          icon={PieChartIcon}
-          title="No budgets yet"
-          description="Set a monthly limit for a category to track spending against it."
-          className="py-10"
-          action={<AddBudgetButton usedCategoryIds={usedCategoryIds} />}
-        />
-      ) : (
-        <>
-          <div className="space-y-3">
-            {budgets.map((item) => (
-              <BudgetCard
-                key={item.budget.id}
-                item={item}
-                usedCategoryIds={usedCategoryIds}
-              />
-            ))}
-          </div>
-          <AddBudgetButton usedCategoryIds={usedCategoryIds} />
-        </>
-      )}
-    </div>
+    <BudgetPlannerView
+      planner={planner}
+      currency={profile.currency}
+      timezone={profile.timezone}
+    />
   );
 }

@@ -1,10 +1,18 @@
 import { differenceInCalendarDays } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import { createClient } from "@/lib/supabase/server";
-import { monthRange, localDateKey } from "@/lib/date";
+import { localDateKey } from "@/lib/date";
+import {
+  currentMonthStart,
+  daysInMonthKey,
+  monthDateRange,
+  shiftMonthStart,
+} from "@/lib/month";
 import type {
   Bill,
   Budget,
   Category,
+  MonthlyBudgetPlan,
   Transaction,
 } from "@/lib/supabase/types";
 
@@ -12,53 +20,112 @@ export type BudgetWithSpending = {
   budget: Budget;
   category: Category | null;
   spent: number;
+  baseAmount: number;
+  carryover: number;
+  effectiveAmount: number;
   remaining: number;
   pct: number; // 0–100+ (uncapped)
+  forecastSpent: number;
+  forecastRemaining: number;
 };
 
 export async function getBudgetsWithSpending(
   timezone: string,
+  selectedMonth?: string,
 ): Promise<BudgetWithSpending[]> {
   const supabase = await createClient();
-  const { start, end } = monthRange(timezone);
+  const monthStart = selectedMonth ?? currentMonthStart(timezone);
+  const previousMonth = shiftMonthStart(monthStart, -1);
+  const currentRange = monthDateRange(timezone, monthStart);
+  const previousRange = monthDateRange(timezone, previousMonth);
 
-  const [{ data: budgets }, { data: categories }, { data: expenses }] =
-    await Promise.all([
+  const [
+    { data: plan },
+    { data: budgets },
+    { data: previousBudgets },
+    { data: categories },
+    { data: expenses },
+  ] = await Promise.all([
+      supabase
+        .from("monthly_budget_plans")
+        .select("*")
+        .eq("month_start", monthStart)
+        .maybeSingle<MonthlyBudgetPlan>(),
       supabase
         .from("budgets")
         .select("*")
         .eq("active", true)
+        .eq("month_start", monthStart)
+        .returns<Budget[]>(),
+      supabase
+        .from("budgets")
+        .select("*")
+        .eq("active", true)
+        .eq("month_start", previousMonth)
         .returns<Budget[]>(),
       supabase.from("categories").select("*").returns<Category[]>(),
       supabase
         .from("transactions")
-        .select("amount, category_id")
+        .select("amount, category_id, occurred_at")
         .eq("type", "expense")
-        .gte("occurred_at", start)
-        .lte("occurred_at", end)
-        .returns<Pick<Transaction, "amount" | "category_id">[]>(),
+        .gte("occurred_at", previousRange.start)
+        .lte("occurred_at", currentRange.end)
+        .returns<
+          Pick<Transaction, "amount" | "category_id" | "occurred_at">[]
+        >(),
     ]);
 
-  const spentByCat = new Map<string, number>();
+  const currentSpentByCat = new Map<string, number>();
+  const previousSpentByCat = new Map<string, number>();
   for (const e of expenses ?? []) {
     if (!e.category_id) continue;
-    spentByCat.set(
-      e.category_id,
-      (spentByCat.get(e.category_id) ?? 0) + Number(e.amount),
-    );
+    const target =
+      e.occurred_at >= currentRange.start
+        ? currentSpentByCat
+        : previousSpentByCat;
+    target.set(e.category_id, (target.get(e.category_id) ?? 0) + Number(e.amount));
   }
+
+  const previousBudgetByCat = new Map(
+    (previousBudgets ?? []).map((budget) => [budget.category_id, budget]),
+  );
   const catMap = new Map((categories ?? []).map((c) => [c.id, c]));
+  const localNow = toZonedTime(new Date(), timezone);
+  const currentKey = currentMonthStart(timezone);
+  const isCurrentMonth = monthStart === currentKey;
+  const isPastMonth = monthStart < currentKey;
+  const elapsedDays = isCurrentMonth ? localNow.getDate() : isPastMonth ? daysInMonthKey(monthStart) : 0;
+  const totalDays = daysInMonthKey(monthStart);
 
   return (budgets ?? [])
     .map((budget) => {
-      const spent = spentByCat.get(budget.category_id) ?? 0;
-      const amount = Number(budget.amount);
+      const spent = currentSpentByCat.get(budget.category_id) ?? 0;
+      const baseAmount = Number(budget.amount);
+      const previousBudget = previousBudgetByCat.get(budget.category_id);
+      const carryover =
+        plan?.carry_over_enabled && previousBudget
+          ? Math.max(
+              Number(previousBudget.amount) -
+                (previousSpentByCat.get(budget.category_id) ?? 0),
+              0,
+            )
+          : 0;
+      const effectiveAmount = baseAmount + carryover;
+      const forecastSpent =
+        elapsedDays > 0
+          ? Math.max(spent, (spent / elapsedDays) * totalDays)
+          : 0;
       return {
         budget,
         category: catMap.get(budget.category_id) ?? null,
         spent,
-        remaining: amount - spent,
-        pct: amount > 0 ? (spent / amount) * 100 : 0,
+        baseAmount,
+        carryover,
+        effectiveAmount,
+        remaining: effectiveAmount - spent,
+        pct: effectiveAmount > 0 ? (spent / effectiveAmount) * 100 : 0,
+        forecastSpent,
+        forecastRemaining: effectiveAmount - forecastSpent,
       };
     })
     .sort((a, b) => b.pct - a.pct);

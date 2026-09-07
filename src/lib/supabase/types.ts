@@ -12,6 +12,7 @@ export type CategoryKind = "income" | "expense";
 export type TransactionType = "income" | "expense" | "transfer" | "adjustment";
 export type AdjustmentDirection = "in" | "out";
 export type BudgetPeriod = "monthly";
+export type SavingsGoalType = "standard" | "sinking_fund" | "emergency_fund";
 export type BillFrequency = "once" | "weekly" | "monthly" | "yearly";
 export type LifeArea =
   | "physical"
@@ -132,6 +133,14 @@ export type Budget = Owned & {
   amount: number;
   period: BudgetPeriod;
   active: boolean;
+  month_start: string;
+} & Timestamps;
+
+export type MonthlyBudgetPlan = Owned & {
+  month_start: string;
+  total_budget: number;
+  expected_income: number;
+  carry_over_enabled: boolean;
 } & Timestamps;
 
 export type Bill = Owned & {
@@ -237,7 +246,23 @@ export type SavingsGoal = Owned & {
   color: string | null;
   notes: string | null;
   sort_order: number;
+  goal_type: SavingsGoalType;
+  target_date: string | null;
+  monthly_target: number | null;
 } & Timestamps;
+
+export type MonthlyGoalAllocation = Owned & {
+  month_start: string;
+  goal_id: string;
+  amount: number;
+} & Timestamps;
+
+export type SavingsGoalContribution = Owned & {
+  goal_id: string;
+  amount: number;
+  contributed_at: string;
+  created_at: string;
+};
 
 export type Subscription = Owned & {
   plan: string;
@@ -356,6 +381,11 @@ export type Database = {
         UpdateOf<Transaction>
       >;
       budgets: TableShape<Budget, InsertOf<Budget>, UpdateOf<Budget>>;
+      monthly_budget_plans: TableShape<
+        MonthlyBudgetPlan,
+        InsertOf<MonthlyBudgetPlan>,
+        UpdateOf<MonthlyBudgetPlan>
+      >;
       bills: TableShape<Bill, InsertOf<Bill>, UpdateOf<Bill>>;
       bill_payments: TableShape<
         BillPayment,
@@ -390,6 +420,16 @@ export type Database = {
         SavingsGoal,
         InsertOf<SavingsGoal>,
         UpdateOf<SavingsGoal>
+      >;
+      monthly_goal_allocations: TableShape<
+        MonthlyGoalAllocation,
+        InsertOf<MonthlyGoalAllocation>,
+        UpdateOf<MonthlyGoalAllocation>
+      >;
+      savings_goal_contributions: TableShape<
+        SavingsGoalContribution,
+        InsertOf<SavingsGoalContribution>,
+        UpdateOf<SavingsGoalContribution>
       >;
       subscriptions: TableShape<
         Subscription,
@@ -431,13 +471,23 @@ export type Database = {
         Relationships: [];
       };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      contribute_to_savings_goal: {
+        Args: {
+          p_goal_id: string;
+          p_amount: number;
+          p_contributed_at?: string;
+        };
+        Returns: string;
+      };
+    };
     Enums: {
       account_type: AccountType;
       category_kind: CategoryKind;
       transaction_type: TransactionType;
       adjustment_direction: AdjustmentDirection;
       budget_period: BudgetPeriod;
+      savings_goal_type: SavingsGoalType;
       bill_frequency: BillFrequency;
       life_area: LifeArea;
       habit_status: HabitStatus;

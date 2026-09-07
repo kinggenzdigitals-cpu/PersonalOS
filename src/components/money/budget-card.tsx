@@ -13,12 +13,23 @@ import type { BudgetWithSpending } from "@/lib/queries/planning";
 export function BudgetCard({
   item,
   usedCategoryIds,
+  monthStart,
 }: {
   item: BudgetWithSpending;
   usedCategoryIds: string[];
+  monthStart: string;
 }) {
   const currency = useCurrency();
-  const { budget, category, spent, remaining, pct } = item;
+  const {
+    budget,
+    category,
+    spent,
+    remaining,
+    pct,
+    effectiveAmount,
+    carryover,
+    forecastRemaining,
+  } = item;
   const iconComp = categoryIcon(category?.name ?? "");
 
   const state = pct > 100 ? "over" : pct >= 80 ? "warn" : "ok";
@@ -49,7 +60,7 @@ export function BudgetCard({
             </span>
             <span className="tnum text-sm text-muted-foreground">
               <Money value={spent} currency={currency} /> /{" "}
-              <Money value={Number(budget.amount)} currency={currency} />
+              <Money value={effectiveAmount} currency={currency} />
             </span>
           </div>
 
@@ -60,28 +71,41 @@ export function BudgetCard({
             />
           </div>
 
-          <p
-            className={cn(
-              "tnum mt-2 text-xs",
-              state === "over" ? "text-error" : "text-muted-foreground",
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-xs">
+            <p
+              className={cn(
+                "tnum",
+                state === "over" ? "text-error" : "text-muted-foreground",
+              )}
+            >
+              {state === "over" ? (
+                <>
+                  Over by <Money value={-remaining} currency={currency} />
+                </>
+              ) : (
+                <>
+                  <Money value={remaining} currency={currency} /> left
+                </>
+              )}
+            </p>
+            {forecastRemaining < 0 && (
+              <span className="tnum text-warning">
+                Forecast: <Money value={-forecastRemaining} currency={currency} /> over
+              </span>
             )}
-          >
-            {state === "over" ? (
-              <>
-                Over by <Money value={-remaining} currency={currency} />
-              </>
-            ) : (
-              <>
-                <Money value={remaining} currency={currency} /> left
-              </>
+            {carryover > 0 && (
+              <span className="tnum text-success">
+                +<Money value={carryover} currency={currency} /> carry-over
+              </span>
             )}
-          </p>
+          </div>
         </button>
       }
     >
       {(close) => (
         <BudgetForm
           initial={budget}
+          monthStart={monthStart}
           usedCategoryIds={usedCategoryIds}
           onDone={close}
         />

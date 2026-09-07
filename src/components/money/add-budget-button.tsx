@@ -7,20 +7,28 @@ import { BudgetForm } from "@/components/money/budget-form";
 
 export function AddBudgetButton({
   usedCategoryIds,
+  monthStart,
+  compact = false,
 }: {
   usedCategoryIds: string[];
+  monthStart: string;
+  compact?: boolean;
 }) {
   return (
     <FormSheet
       title="New budget"
       trigger={
-        <Button variant="outline" className="w-full">
-          <PlusIcon className="size-4" /> Add budget
+        <Button variant="outline" size={compact ? "sm" : "default"} className={compact ? undefined : "w-full"}>
+          <PlusIcon className="size-4" /> Add allotment
         </Button>
       }
     >
       {(close) => (
-        <BudgetForm usedCategoryIds={usedCategoryIds} onDone={close} />
+        <BudgetForm
+          monthStart={monthStart}
+          usedCategoryIds={usedCategoryIds}
+          onDone={close}
+        />
       )}
     </FormSheet>
   );

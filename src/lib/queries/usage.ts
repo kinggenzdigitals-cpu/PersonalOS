@@ -1,4 +1,4 @@
-import { startOfMonth } from "date-fns";
+import { format, startOfMonth } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { createClient } from "@/lib/supabase/server";
 
@@ -30,6 +30,10 @@ export async function getUsage(timezone: string): Promise<Usage> {
     startOfMonth(toZonedTime(new Date(), timezone)),
     timezone,
   ).toISOString();
+  const monthStartKey = format(
+    startOfMonth(toZonedTime(new Date(), timezone)),
+    "yyyy-MM-dd",
+  );
 
   const head = { count: "exact" as const, head: true };
   const [tx, acc, hab, goal, bud] = await Promise.all([
@@ -49,7 +53,11 @@ export async function getUsage(timezone: string): Promise<Usage> {
       .eq("user_id", user.id)
       .eq("active", true),
     supabase.from("savings_goals").select("id", head).eq("user_id", user.id),
-    supabase.from("budgets").select("id", head).eq("user_id", user.id),
+    supabase
+      .from("budgets")
+      .select("id", head)
+      .eq("user_id", user.id)
+      .eq("month_start", monthStartKey),
   ]);
 
   return {

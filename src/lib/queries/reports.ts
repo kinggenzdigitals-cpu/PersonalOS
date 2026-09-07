@@ -87,6 +87,7 @@ export async function getReport(
 
   const startKey = format(start, "yyyy-MM-dd");
   const endKey = format(end, "yyyy-MM-dd");
+  const budgetMonthKey = format(startOfMonth(anchor), "yyyy-MM-dd");
   const startISO = fromZonedTime(`${startKey}T00:00:00`, timezone).toISOString();
   const endISO = fromZonedTime(`${endKey}T23:59:59`, timezone).toISOString();
 
@@ -110,7 +111,12 @@ export async function getReport(
       .returns<Transaction[]>(),
     supabase.from("accounts").select("*").returns<Account[]>(),
     supabase.from("categories").select("*").returns<Category[]>(),
-    supabase.from("budgets").select("*").eq("active", true).returns<Budget[]>(),
+    supabase
+      .from("budgets")
+      .select("*")
+      .eq("active", true)
+      .eq("month_start", budgetMonthKey)
+      .returns<Budget[]>(),
     supabase.from("habits").select("*").eq("active", true).returns<Habit[]>(),
     supabase
       .from("habit_logs")
