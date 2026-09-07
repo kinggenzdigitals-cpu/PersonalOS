@@ -1,5 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireSuperAdmin } from "@/lib/entitlement";
+import { allRows } from "@/lib/queries/all-rows";
 import type { PlanId } from "@/lib/plans";
 import type {
   AccessType,
@@ -8,16 +10,17 @@ import type {
   UserRole,
 } from "@/lib/supabase/types";
 
-export const EXPECTED_SCHEMA_VERSION = 12;
+export const EXPECTED_SCHEMA_VERSION = 13;
 
 export type AdminSystemHealth = {
-  schemaVersion: number;
+  schemaVersion: number | null;
   expectedSchemaVersion: number;
-  pendingCheckouts: number;
-  recentErrors: number;
+  pendingCheckouts: number | null;
+  recentErrors: number | null;
 };
 
 export async function getAdminSystemHealth(): Promise<AdminSystemHealth> {
+  await requireSuperAdmin();
   const admin = createAdminClient();
   const [schemaRes, checkoutRes, errorRes] = await Promise.all([
     admin
@@ -38,14 +41,15 @@ export async function getAdminSystemHealth(): Promise<AdminSystemHealth> {
   ]);
 
   return {
-    schemaVersion: schemaRes.error ? 0 : (schemaRes.data?.version ?? 0),
+    schemaVersion: schemaRes.error ? null : (schemaRes.data?.version ?? 0),
     expectedSchemaVersion: EXPECTED_SCHEMA_VERSION,
-    pendingCheckouts: checkoutRes.error ? 0 : (checkoutRes.count ?? 0),
-    recentErrors: errorRes.error ? 0 : (errorRes.count ?? 0),
+    pendingCheckouts: checkoutRes.error ? null : checkoutRes.count,
+    recentErrors: errorRes.error ? null : errorRes.count,
   };
 }
 
 export async function listAdminAuditLog(): Promise<AdminAuditLog[]> {
+  await requireSuperAdmin();
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("admin_audit_log")
@@ -103,7 +107,7 @@ function effectivePlan(
   now: number,
 ): PlanValue {
   if (status !== "active" && role !== "super_admin") return "free";
-  if (role === "super_admin") return "pro";
+  if (role === "super_admin") return "premium";
   const at = sub?.access_type ?? null;
   const live = (iso: string | null | undefined) =>
     !iso || new Date(iso).getTime() > now;
@@ -117,31 +121,35 @@ function effectivePlan(
 
 /** Every registered user with their account + subscription info (admin only). */
 export async function listAdminUsers(): Promise<AdminUser[]> {
+  await requireSuperAdmin();
   const admin = createAdminClient();
-  const [authRes, profRes, subRes] = await Promise.all([
-    admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
-    admin
-      .from("profiles")
-      .select(
+  const listAuthUsers = async () => {
+    const users = [];
+    for (let page = 1; ; page++) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 500 });
+      if (error) throw new Error("Unable to load admin user data.");
+      users.push(...data.users);
+      if (data.users.length < 500) return users;
+    }
+  };
+  const [authUsers, profiles, subs] = await Promise.all([
+    listAuthUsers(),
+    allRows<ProfileRow>((from, to) => admin
+      .from("profiles").select(
         "user_id, display_name, username, role, status, created_at, last_login_at",
-      ),
-    admin
-      .from("subscriptions")
-      .select(
+        { count: "exact" },
+      ).order("user_id").range(from, to), "Unable to load admin user data."),
+    allRows<SubRow>((from, to) => admin
+      .from("subscriptions").select(
         "user_id, plan, status, interval, access_type, access_expires_at, current_period_end, created_at",
-      ),
+        { count: "exact" },
+      ).order("user_id").range(from, to), "Unable to load admin user data."),
   ]);
-
-  const error = authRes.error ?? profRes.error ?? subRes.error;
-  if (error) throw new Error("Unable to load admin user data.");
-
-  const profiles = (profRes.data as ProfileRow[] | null) ?? [];
-  const subs = (subRes.data as SubRow[] | null) ?? [];
   const profMap = new Map(profiles.map((p) => [p.user_id, p]));
   const subMap = new Map(subs.map((s) => [s.user_id, s]));
   const now = Date.now();
 
-  return (authRes.data?.users ?? []).map((u) => {
+  return authUsers.map((u) => {
     const p = profMap.get(u.id);
     const s = subMap.get(u.id);
     const role: UserRole = p?.role ?? "user";
@@ -180,10 +188,10 @@ export function summarize(users: AdminUser[]): AdminSummary {
   let expiredCancelled = 0;
   for (const u of users) {
     if (u.accessType === "lifetime_pro") lifetime++;
-    else if (u.accessType === "complimentary_pro" && u.plan === "pro")
+    else if (u.accessType === "complimentary_pro" && u.plan !== "free")
       complimentary++;
-    else if (u.plan === "pro" && u.accessType === "paid") activePaid++;
-    else if (u.plan === "pro" && u.accessType == null && u.subStatus === "active")
+    else if (u.plan !== "free" && u.accessType === "paid") activePaid++;
+    else if (u.plan !== "free" && u.accessType == null && u.subStatus === "active")
       activePaid++;
     if (
       (u.subStatus === "canceled" || u.subStatus === "past_due") &&

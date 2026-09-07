@@ -1,4 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import { allRows } from "@/lib/queries/all-rows";
+
+const PRIVATE_HEADERS = { "Cache-Control": "private, no-store" };
+const FEEDBACK_COLUMNS = "id,user_id,category,title,message,screenshot_url,status,admin_response,is_duplicate,archived,created_at,updated_at";
 
 const OWNED_TABLES = [
   "profiles",
@@ -36,24 +40,38 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return Response.json({ error: "unauthorized" }, { status: 401 });
+    return Response.json({ error: "unauthorized" }, { status: 401, headers: PRIVATE_HEADERS });
+  }
+
+  let entries;
+  try {
+    entries = await Promise.all(
+      OWNED_TABLES.map(async (table) => {
+        const columns = table === "feedback" ? FEEDBACK_COLUMNS : "*";
+        const rows = await allRows(
+          (from, to) => supabase
+            .from(table)
+            .select(columns, { count: "exact" })
+            .eq("user_id", user.id)
+            .order("id", { ascending: true })
+            .range(from, to),
+          "Unable to export your data. Please try again.",
+        );
+        return [table, rows] as const;
+      }),
+    );
+  } catch {
+    // Never deliver a file containing only part of the user's records.
+    return Response.json(
+      { error: "Your data couldn't be exported. Please try again." },
+      { status: 503, headers: PRIVATE_HEADERS },
+    );
   }
 
   await supabase.rpc("record_security_event", {
     p_event_type: "data_exported",
     p_metadata: { format: "json" },
   });
-
-  const entries = await Promise.all(
-    OWNED_TABLES.map(async (table) => {
-      const { data, error } = await supabase
-        .from(table)
-        .select("*")
-        .eq("user_id", user.id);
-      if (error) throw new Error(`Unable to export ${table}.`);
-      return [table, data ?? []] as const;
-    }),
-  );
 
   const payload = {
     exported_at: new Date().toISOString(),
@@ -66,7 +84,7 @@ export async function GET() {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
       "Content-Disposition": `attachment; filename="finance-habit-data-${date}.json"`,
-      "Cache-Control": "private, no-store",
+      ...PRIVATE_HEADERS,
       "X-Content-Type-Options": "nosniff",
     },
   });

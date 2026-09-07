@@ -17,7 +17,7 @@ const asUser = async id => {
 };
 before(async () => {
   db=new PGlite();
-  await db.exec(`create role authenticated; create role anon; create role service_role; create schema auth;
+  await db.exec(`create role authenticated; create role anon; create role service_role bypassrls; create schema auth;
     create table auth.users(id uuid primary key, email text, raw_user_meta_data jsonb default '{}');
     create function auth.uid() returns uuid language sql stable as
     $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
@@ -41,6 +41,7 @@ before(async () => {
   goal=(await db.query("insert into savings_goals(user_id,name,target_amount,saved_amount) values ($1,'Car',10000,3000) returning id",[owner])).rows[0].id;
   await db.exec(await sql("0011_monthly_budget_planner.sql"));
   await db.exec(await sql("0012_security_and_billing.sql"));
+  await db.exec(await sql("20260907152123_security_admin_hardening.sql"));
 });
 after(async () => {await db?.close();});
 
@@ -142,4 +143,48 @@ test("payment completion checks amount and handles repeated callbacks once", asy
   await db.exec("reset role");
   const sub=(await db.query("select plan,interval,status from subscriptions where user_id=$1",[owner])).rows[0];
   assert.deepEqual(sub,{plan:"premium",interval:"quarterly",status:"active"});
+});
+
+test("profiles cannot be deleted and recreated to escalate privileges", async () => {
+  await asUser(owner);
+  await assert.rejects(db.query("delete from profiles where user_id=$1", [owner]), /permission denied/);
+  await assert.rejects(db.query("insert into profiles(user_id,role) values($1,'super_admin')", [owner]), /permission denied/);
+  await assert.rejects(db.query("update profiles set role='super_admin' where user_id=$1", [owner]), /permission denied/);
+  await db.query("update profiles set display_name='Updated settings' where user_id=$1", [owner]);
+  assert.equal((await db.query("select display_name from profiles")).rows[0].display_name, "Updated settings");
+
+  await db.exec("reset role; set role service_role");
+  await db.query("update profiles set status='suspended' where user_id=$1", [owner]);
+  assert.equal((await db.query("select status from profiles where user_id=$1", [owner])).rows[0].status, "suspended");
+  await db.query("update profiles set status='active' where user_id=$1", [owner]);
+});
+
+test("feedback hides internal notes and prevents forged admin responses", async () => {
+  await asUser(owner);
+  await db.query("insert into feedback(user_id,title,message) values($1,'Test','Synthetic feedback')", [owner]);
+  await assert.rejects(db.query("select admin_note from feedback"), /permission denied/);
+  await assert.rejects(db.query("insert into feedback(user_id,title,message,admin_response) values($1,'Forged','Message','Approved')", [owner]), /permission denied/);
+  assert.equal((await db.query("select title from feedback")).rows[0].title, "Test");
+  await asUser(other);
+  assert.equal((await db.query("select id from feedback")).rows.length, 0);
+
+  await db.exec("reset role; set role service_role");
+  await db.query("update feedback set admin_note='Private',admin_response='Received' where user_id=$1", [owner]);
+  assert.equal((await db.query("select admin_note from feedback where user_id=$1", [owner])).rows[0].admin_note, "Private");
+});
+
+test("server-owned tables and trigger functions are not exposed to users", async () => {
+  await asUser(owner);
+  for (const table of ["user_invitations", "admin_audit_log", "app_schema_versions", "app_error_events"]) {
+    await assert.rejects(db.query(`select * from ${table}`), /permission denied/);
+  }
+  for (const fn of ["handle_new_user", "set_updated_at", "protect_profile_privileged"]) {
+    assert.equal((await db.query("select has_function_privilege('authenticated',$1,'EXECUTE') as allowed", [`public.${fn}()`])).rows[0].allowed, false);
+    assert.equal((await db.query("select has_function_privilege('anon',$1,'EXECUTE') as allowed", [`public.${fn}()`])).rows[0].allowed, false);
+  }
+  await db.exec("reset role");
+  const fresh="10000000-0000-4000-8000-000000000003";
+  await db.query("insert into auth.users(id) values($1)", [fresh]);
+  assert.equal((await db.query("select count(*)::int as n from profiles where user_id=$1", [fresh])).rows[0].n, 1);
+  assert.equal((await db.query("select count(*)::int as n from categories where user_id=$1", [fresh])).rows[0].n, 15);
 });

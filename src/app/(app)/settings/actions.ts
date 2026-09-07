@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { hasRecentAuthentication } from "@/lib/account-security";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -80,10 +81,10 @@ export async function deleteAccount(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You're not signed in." };
 
-  const lastSignIn = user.last_sign_in_at
-    ? new Date(user.last_sign_in_at).getTime()
-    : 0;
-  if (!lastSignIn || Date.now() - lastSignIn > 15 * 60 * 1000) {
+  // A login on another device must not make this session recent. Token refresh
+  // also does not count as signing in again.
+  const { data: verified, error: claimsError } = await supabase.auth.getClaims();
+  if (claimsError || !hasRecentAuthentication(verified?.claims, user.id)) {
     return {
       ok: false,
       error: "For security, sign out and sign in again before deleting your account.",
@@ -92,8 +93,12 @@ export async function deleteAccount(
 
   try {
     const admin = createAdminClient();
+    const { error: signOutError } = await supabase.auth.signOut({ scope: "global" });
+    if (signOutError) {
+      return { ok: false, error: "Couldn't sign out your sessions. Please try again." };
+    }
     const { error } = await admin.auth.admin.deleteUser(user.id);
-    if (error) return { ok: false, error: "Couldn't delete the account." };
+    if (error) return { ok: false, error: "You're signed out, but the account wasn't deleted. Sign in and try again." };
     return { ok: true };
   } catch {
     return { ok: false, error: "Account deletion isn't available right now." };

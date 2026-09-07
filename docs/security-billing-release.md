@@ -1,8 +1,19 @@
 # Security, Admin, and Billing Release Checklist
 
-This work is code-complete on the feature branch. Do not merge or deploy it
-until migrations 0011 and 0012 pass on a Supabase staging branch or separate
-test project.
+This feature branch contains reviewed code changes, not a completed live rollout.
+Keep PR #3 in draft until the database baseline and staging checks below pass.
+Xendit connection and sandbox payment testing are explicitly deferred by the owner.
+
+## Connected-project audit: 2026-09-07
+
+Supabase access is verified. The live project has 17 public tables, all with RLS.
+The checked baseline objects through 0006 exist, but there are no tracked migration
+history entries. Tables/columns for 0007-0012 are absent. Do not blindly re-run
+0001-0006 or start with 0011. There is no staging project/branch visible.
+See [the full audit](./supabase-readiness-2026-09-07.md).
+
+Status checkmarks below mean implemented in code unless explicitly described as
+verified against the connected project. They do not mean deployed.
 
 ## Section 8: Security and Admin
 
@@ -15,8 +26,15 @@ test project.
 | ✅ | Privacy-safe error event tracking with rate limiting |
 | ✅ | Full personal-data JSON download |
 | ✅ | Atomic tracking-data reset and permanent account deletion controls |
+| ✅ | Verified-session recency and global session sign-out before account deletion |
+| ✅ | Paginated exports and admin lists; failed health queries show unavailable |
+| ✅ | Profile recreation/role escalation blocked in the new hardening migration |
+| ✅ | Private admin notes, invitation records, and trigger RPCs protected |
+| ✅ | Email-based owner bootstrap requires a verified email |
+| ✅ | Premium subscriptions included in admin totals |
+| ✅ | Supabase connection and read-only live schema/RLS audit |
 | ❌ | Verify service-role configuration in staging and production |
-| ❌ | Apply and verify migrations 0011 and 0012 in staging |
+| ❌ | Reconcile the baseline; apply and verify all pending migrations in staging |
 | ❌ | Configure and test Supabase backups and restore procedure |
 | ❌ | Add passkeys or two-factor authentication |
 
@@ -31,7 +49,7 @@ test project.
 | ✅ | Existing three-step onboarding wizard verified in the codebase |
 | ✅ | Terms and privacy copy updated for Premium, payments, data controls, and future bank consent |
 | ✅ | Concurrent promotional-offer claims protected |
-| ❌ | Run a full Xendit sandbox checkout and callback test |
+| ❌ | Xendit connection and sandbox checkout/callback test: deferred by owner |
 | ❌ | Build and test free-trial and promo-code redemption |
 | ❌ | Have final terms and privacy wording reviewed by a qualified Philippine lawyer |
 | ❌ | Build Android and iOS store versions later |
@@ -40,14 +58,17 @@ test project.
 
 | Step | Check |
 | --- | --- |
-| 1 | Create or select a non-production Supabase project/branch and take a backup. |
-| 2 | Apply migrations 0011 and 0012 in order. Do not rewrite an already-applied migration. |
+| 1 | Select the staging organization/project, confirm any cost, and preserve the live database backup. |
+| 2 | On a fresh test project, apply 0001-0012 and 20260907152123_security_admin_hardening.sql in order. On an existing project, reconcile the baseline first; never re-run installed objects blindly. |
 | 3 | Sign in with two synthetic users and verify neither can read the other's records. |
 | 4 | Test JSON export, tracking reset, recent-login account deletion, and admin system status. |
-| 5 | Use Xendit sandbox to test correct payment, wrong amount, duplicate callback, and retry after a temporary database error. |
-| 6 | Merge and deploy only after all staging checks pass. |
+| 5 | Verify the new profile/feedback privileges using the Data API and inspect Supabase advisors. |
+| 6 | Xendit tests are deferred. Before a payment release, test correct/wrong amounts, duplicate callbacks, and retry after a database error in sandbox. |
+| 7 | Merge only after the relevant staging checks and release approval; keep paid checkout unavailable until Xendit is tested. |
 
-Automated coverage currently passes 25 focused tests, including the isolated
+Automated coverage currently passes 36 focused tests, including the isolated
 PostgreSQL migrations, RLS isolation, atomic payment completion, duplicate
-callbacks, pricing totals, monthly budget calculations, and data-reset scope.
+callbacks, pricing totals, monthly budget calculations, data-reset scope,
+profile escalation attempts, admin-note access, 1,205-row export, failed-page
+handling, verified-session recency, sign-out ordering, and unavailable health data.
 This does not replace staging tests against Supabase Auth/PostgREST or Xendit.

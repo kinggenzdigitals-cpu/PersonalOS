@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:budget": "node --test tests/budget-*.test.*",
-    "test:core": "node --test tests/budget-*.test.* tests/security-billing.test.cjs"
+    "test:core": "node --test tests/budget-*.test.* tests/security-billing.test.cjs tests/account-security.test.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

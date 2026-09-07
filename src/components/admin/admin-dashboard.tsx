@@ -134,7 +134,7 @@ export function AdminDashboard({
 }
 
 function SystemHealth({ health }: { health: AdminSystemHealth }) {
-  const schemaCurrent = health.schemaVersion >= health.expectedSchemaVersion;
+  const schemaCurrent = health.schemaVersion !== null && health.schemaVersion >= health.expectedSchemaVersion;
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       <Card className="shadow-soft">
@@ -145,7 +145,9 @@ function SystemHealth({ health }: { health: AdminSystemHealth }) {
           <div>
             <p className="text-sm font-medium">Database schema</p>
             <p className={cn("text-sm", schemaCurrent ? "text-success" : "text-error")}>
-              {schemaCurrent
+              {health.schemaVersion === null
+                ? "Unable to check database version"
+                : schemaCurrent
                 ? `Current · version ${health.schemaVersion}`
                 : `Update needed · found ${health.schemaVersion}, expected ${health.expectedSchemaVersion}`}
             </p>
@@ -164,7 +166,9 @@ function SystemHealth({ health }: { health: AdminSystemHealth }) {
           <div>
             <p className="text-sm font-medium">Payment callbacks</p>
             <p className={cn("text-sm", health.pendingCheckouts === 0 ? "text-success" : "text-error")}>
-              {health.pendingCheckouts === 0
+              {health.pendingCheckouts === null
+                ? "Unable to check payment callbacks"
+                : health.pendingCheckouts === 0
                 ? "No checkout pending over one hour"
                 : `${health.pendingCheckouts} checkout(s) need review`}
             </p>
@@ -183,7 +187,9 @@ function SystemHealth({ health }: { health: AdminSystemHealth }) {
           <div>
             <p className="text-sm font-medium">App errors · 24 hours</p>
             <p className={cn("text-sm", health.recentErrors === 0 ? "text-success" : "text-error")}>
-              {health.recentErrors === 0
+              {health.recentErrors === null
+                ? "Unable to check app errors"
+                : health.recentErrors === 0
                 ? "No recorded errors"
                 : `${health.recentErrors} error(s) recorded`}
             </p>

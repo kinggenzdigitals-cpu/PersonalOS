@@ -14,7 +14,9 @@ Habit Tracker and the production database have not been changed by this work.
 
 ## Validation
 
-`npm run test:budget` runs 19 regression tests, using the actual TypeScript source and an isolated PGlite PostgreSQL engine. The test setup loads schema migrations 0001, 0002, 0005 and the revised 0011, with synthetic auth users and grants. It omits the unused pgcrypto extension declaration because UUID generation is native in this test engine.
+`npm run test:budget` runs 24 regression tests, using the actual TypeScript source and an isolated PGlite PostgreSQL engine. The test setup loads migrations 0001-0012 and `20260907152123_security_admin_hardening.sql`, with synthetic auth users and grants. It omits the unused pgcrypto extension declaration because UUID generation is native in this test engine.
+
+The read-only Supabase audit on 2026-09-07 found the baseline objects through 0006, no migration-history entries, and missing objects from 0007 onward. See [the audit](./supabase-readiness-2026-09-07.md) before choosing a rollout sequence.
 
 Tests cover legacy writes, copied balances, month isolation, cross-user RLS and foreign keys, anonymous access, contribution atomicity, invalid amounts/dates, rollback of failed templates, retry safety, cumulative carry-over, savings totals, bill recurrence, timezone boundaries, future cash entries, pagination, stale goal edits and recommendation masking.
 
