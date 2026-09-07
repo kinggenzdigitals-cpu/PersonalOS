@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { checkCap } from "@/lib/plan-guard";
+import { isSchemaMissing } from "@/lib/supabase/errors";
 
 export type ActionResult =
   | { ok: true; id?: string }
@@ -26,6 +27,7 @@ export async function upsertSavingsGoal(input: {
   targetAmount: number;
   savedAmount: number;
   color?: string | null;
+  targetDate?: string | null; // YYYY-MM-DD → makes the goal a sinking fund
 }): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
@@ -33,19 +35,32 @@ export async function upsertSavingsGoal(input: {
   if (!(input.targetAmount > 0)) {
     return { ok: false, error: "Enter a target amount." };
   }
+  const targetDate = input.targetDate?.trim() || null;
+  if (targetDate && !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+    return { ok: false, error: "Enter a valid target date." };
+  }
 
-  const row = {
+  // `target_date` arrives with migration 0012 — every write retries without it
+  // if the column isn't there yet, so goals stay editable on an older database.
+  const base = {
     name: input.name.trim(),
     target_amount: input.targetAmount,
     saved_amount: Math.max(0, input.savedAmount),
     color: input.color ?? null,
   };
+  const row = { ...base, target_date: targetDate };
 
   if (input.id) {
-    const { error } = await supabase
+    let { error } = await supabase
       .from("savings_goals")
       .update(row)
       .eq("id", input.id);
+    if (isSchemaMissing(error)) {
+      ({ error } = await supabase
+        .from("savings_goals")
+        .update(base)
+        .eq("id", input.id));
+    }
     if (error) return { ok: false, error: error.message };
     revalidate();
     return { ok: true, id: input.id };
@@ -58,14 +73,21 @@ export async function upsertSavingsGoal(input: {
   const capError = await checkCap("goals", count ?? 0);
   if (capError) return { ok: false, error: capError };
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("savings_goals")
     .insert({ user_id: user.id, ...row })
     .select("id")
     .single();
+  if (isSchemaMissing(error)) {
+    ({ data, error } = await supabase
+      .from("savings_goals")
+      .insert({ user_id: user.id, ...base })
+      .select("id")
+      .single());
+  }
   if (error) return { ok: false, error: error.message };
   revalidate();
-  return { ok: true, id: data.id };
+  return { ok: true, id: data?.id };
 }
 
 export async function deleteSavingsGoal(id: string): Promise<ActionResult> {

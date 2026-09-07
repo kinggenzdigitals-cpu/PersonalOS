@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/components/providers/profile-provider";
 import { currencySymbol } from "@/lib/format";
+import { Money } from "@/components/ui/money";
+import { sinkingFundMath } from "@/lib/sinking-funds";
 import {
   upsertSavingsGoal,
   deleteSavingsGoal,
@@ -31,9 +33,12 @@ export const GOAL_COLORS = [
 export function GoalForm({
   initial,
   onDone,
+  todayKey,
 }: {
   initial?: SavingsGoal;
   onDone: () => void;
+  /** Today as YYYY-MM-DD in the user's timezone — enables the monthly hint. */
+  todayKey?: string;
 }) {
   const router = useRouter();
   const { notify } = useUpgrade();
@@ -47,8 +52,25 @@ export function GoalForm({
   const [saved, setSaved] = React.useState(
     initial ? String(initial.saved_amount) : "",
   );
+  const [targetDate, setTargetDate] = React.useState(
+    initial?.target_date ?? "",
+  );
   const [color, setColor] = React.useState(initial?.color ?? GOAL_COLORS[0]);
   const [saving, setSaving] = React.useState(false);
+
+  // Live "set aside per month" hint for a dated goal (a sinking fund).
+  const targetNum = Number.parseFloat(target) || 0;
+  const hint =
+    todayKey && targetDate && targetNum > 0
+      ? sinkingFundMath(
+          {
+            target_amount: targetNum,
+            saved_amount: Number.parseFloat(saved) || 0,
+            target_date: targetDate,
+          },
+          todayKey,
+        )
+      : null;
 
   async function save() {
     if (!name.trim()) return toast.error("Name the goal.");
@@ -62,6 +84,7 @@ export function GoalForm({
       targetAmount: targetVal,
       savedAmount: Number.parseFloat(saved) || 0,
       color,
+      targetDate: targetDate || null,
     });
     if (!result.ok) {
       notify(result.error);
@@ -133,6 +156,37 @@ export function GoalForm({
             />
           </div>
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="goal-date">Target date (optional)</Label>
+        <Input
+          id="goal-date"
+          type="date"
+          value={targetDate}
+          onChange={(e) => setTargetDate(e.target.value)}
+          className="tnum"
+        />
+        <p className="text-xs text-muted-foreground">
+          {hint ? (
+            hint.reached ? (
+              "Already reached."
+            ) : hint.overdue ? (
+              "Target date has passed — pick a new date to re-plan."
+            ) : (
+              <>
+                Set aside about{" "}
+                <span className="font-medium text-foreground">
+                  <Money value={hint.requiredMonthly} currency={currency} />
+                </span>
+                /month for {hint.monthsLeft} month
+                {hint.monthsLeft === 1 ? "" : "s"} to hit this on time.
+              </>
+            )
+          ) : (
+            "Add a date to turn this into a sinking fund with a monthly amount."
+          )}
+        </p>
       </div>
 
       <div className="space-y-1.5">

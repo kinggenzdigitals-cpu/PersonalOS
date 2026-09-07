@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { PlusIcon, Loader2Icon } from "lucide-react";
+import { format } from "date-fns";
+import { PlusIcon, Loader2Icon, CalendarClockIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,17 +12,28 @@ import { GoalForm } from "@/components/money/goal-form";
 import { useCurrency } from "@/components/providers/profile-provider";
 import { currencySymbol } from "@/lib/format";
 import { Money } from "@/components/ui/money";
+import { sinkingFundMath } from "@/lib/sinking-funds";
 import { contributeToGoal } from "@/app/(app)/money/goals-actions";
 import type { SavingsGoal } from "@/lib/supabase/types";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-export function GoalCard({ goal }: { goal: SavingsGoal }) {
+export function GoalCard({
+  goal,
+  todayKey,
+}: {
+  goal: SavingsGoal;
+  /** Today as YYYY-MM-DD in the user's timezone (for sinking-fund maths). */
+  todayKey?: string;
+}) {
   const currency = useCurrency();
   const color = goal.color ?? "var(--brand)";
   const target = Number(goal.target_amount);
   const saved = Number(goal.saved_amount);
   const pct = target > 0 ? Math.round((saved / target) * 100) : 0;
   const done = saved >= target;
+  const fund =
+    goal.target_date && todayKey ? sinkingFundMath(goal, todayKey) : null;
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
@@ -40,13 +52,38 @@ export function GoalCard({ goal }: { goal: SavingsGoal }) {
             </button>
           }
         >
-          {(close) => <GoalForm initial={goal} onDone={close} />}
+          {(close) => (
+            <GoalForm initial={goal} onDone={close} todayKey={todayKey} />
+          )}
         </FormSheet>
         <span className="tnum shrink-0 text-sm text-muted-foreground">
           <Money value={saved} currency={currency} /> /{" "}
           <Money value={target} currency={currency} />
         </span>
       </div>
+
+      {goal.target_date && fund && (
+        <p
+          className={cn(
+            "tnum mt-1.5 flex items-center gap-1.5 text-xs",
+            fund.overdue ? "text-error" : "text-muted-foreground",
+          )}
+        >
+          <CalendarClockIcon className="size-3.5 shrink-0" aria-hidden />
+          By {format(new Date(`${goal.target_date}T00:00:00`), "MMM yyyy")}
+          {fund.reached ? (
+            " · reached"
+          ) : fund.overdue ? (
+            " · target date passed"
+          ) : (
+            <>
+              {" · "}
+              <Money value={fund.requiredMonthly} currency={currency} />
+              /mo needed
+            </>
+          )}
+        </p>
+      )}
 
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
         <div

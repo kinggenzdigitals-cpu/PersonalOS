@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { TargetIcon, PlusIcon } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
+import { localDateKey } from "@/lib/date";
 import { getSavingsGoals } from "@/lib/queries/goals";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ export default async function GoalsPage() {
   const { goals, totalTarget, totalSaved, overallPct } =
     await getSavingsGoals();
   const currency = profile.currency;
+  const todayKey = localDateKey(profile.timezone);
 
   return (
     <div className="space-y-5">
@@ -35,7 +37,7 @@ export default async function GoalsPage() {
                 </Button>
               }
             >
-              {(close) => <GoalForm onDone={close} />}
+              {(close) => <GoalForm onDone={close} todayKey={todayKey} />}
             </FormSheet>
           }
         />
@@ -69,7 +71,7 @@ export default async function GoalsPage() {
 
           <div className="space-y-3">
             {goals.map((goal) => (
-              <GoalCard key={goal.id} goal={goal} />
+              <GoalCard key={goal.id} goal={goal} todayKey={todayKey} />
             ))}
           </div>
 
@@ -81,7 +83,7 @@ export default async function GoalsPage() {
               </Button>
             }
           >
-            {(close) => <GoalForm onDone={close} />}
+            {(close) => <GoalForm onDone={close} todayKey={todayKey} />}
           </FormSheet>
         </>
       )}

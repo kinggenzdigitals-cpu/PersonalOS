@@ -18,7 +18,7 @@ export function BudgetCard({
   usedCategoryIds: string[];
 }) {
   const currency = useCurrency();
-  const { budget, category, spent, remaining, pct } = item;
+  const { category, spent, remaining, pct, effective, carryIn } = item;
   const iconComp = categoryIcon(category?.name ?? "");
 
   const state = pct > 100 ? "over" : pct >= 80 ? "warn" : "ok";
@@ -49,9 +49,29 @@ export function BudgetCard({
             </span>
             <span className="tnum text-sm text-muted-foreground">
               <Money value={spent} currency={currency} /> /{" "}
-              <Money value={Number(budget.amount)} currency={currency} />
+              <Money value={effective} currency={currency} />
             </span>
           </div>
+
+          {carryIn !== 0 && (
+            <p
+              className={cn(
+                "tnum mt-1 text-xs",
+                carryIn > 0 ? "text-success" : "text-warning",
+              )}
+            >
+              {carryIn > 0 ? (
+                <>
+                  +<Money value={carryIn} currency={currency} /> carried over
+                </>
+              ) : (
+                <>
+                  −<Money value={-carryIn} currency={currency} /> from last
+                  month&rsquo;s overspend
+                </>
+              )}
+            </p>
+          )}
 
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
             <div
@@ -81,7 +101,7 @@ export function BudgetCard({
     >
       {(close) => (
         <BudgetForm
-          initial={budget}
+          initial={item.budget}
           usedCategoryIds={usedCategoryIds}
           onDone={close}
         />
