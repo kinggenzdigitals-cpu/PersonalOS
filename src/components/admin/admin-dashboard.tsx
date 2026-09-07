@@ -11,6 +11,9 @@ import {
   GiftIcon,
   InfinityIcon,
   CircleSlashIcon,
+  CheckCircle2Icon,
+  AlertTriangleIcon,
+  DatabaseIcon,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -34,27 +37,36 @@ import {
   updateFeedback,
 } from "@/app/(app)/admin/actions";
 import { STATUS_LABELS, STATUS_ORDER, CATEGORY_LABELS } from "@/lib/feedback";
-import type { AdminUser, AdminSummary } from "@/lib/admin/users";
+import type {
+  AdminSystemHealth,
+  AdminUser,
+  AdminSummary,
+} from "@/lib/admin/users";
 import { InvitationsPanel } from "@/components/admin/invitations-panel";
 import type {
   AccessType,
+  AdminAuditLog,
   Feedback,
   FeedbackStatus,
   Invitation,
 } from "@/lib/supabase/types";
 
-type Tab = "users" | "invitations" | "feedback";
+type Tab = "users" | "invitations" | "feedback" | "activity" | "system";
 
 export function AdminDashboard({
   users,
   summary,
   feedback,
   invitations,
+  auditLog,
+  systemHealth,
 }: {
   users: AdminUser[];
   summary: AdminSummary;
   feedback: Feedback[];
   invitations: Invitation[];
+  auditLog: AdminAuditLog[];
+  systemHealth: AdminSystemHealth;
 }) {
   const [tab, setTab] = React.useState<Tab>("users");
   const [q, setQ] = React.useState("");
@@ -80,7 +92,7 @@ export function AdminDashboard({
       </div>
 
       <div className="flex items-center gap-1 rounded-full bg-secondary p-1 text-sm w-fit">
-        {(["users", "invitations", "feedback"] as const).map((t) => (
+        {(["users", "invitations", "feedback", "activity", "system"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -115,6 +127,118 @@ export function AdminDashboard({
       {tab === "feedback" && (
         <FeedbackTriage feedback={feedback} users={users} />
       )}
+      {tab === "activity" && <ActivityLog entries={auditLog} users={users} />}
+      {tab === "system" && <SystemHealth health={systemHealth} />}
+    </div>
+  );
+}
+
+function SystemHealth({ health }: { health: AdminSystemHealth }) {
+  const schemaCurrent = health.schemaVersion >= health.expectedSchemaVersion;
+  return (
+    <div className="grid gap-3 sm:grid-cols-3">
+      <Card className="shadow-soft">
+        <CardContent className="flex items-start gap-3 pt-5">
+          <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground">
+            <DatabaseIcon className="size-4" aria-hidden />
+          </span>
+          <div>
+            <p className="text-sm font-medium">Database schema</p>
+            <p className={cn("text-sm", schemaCurrent ? "text-success" : "text-error")}>
+              {schemaCurrent
+                ? `Current · version ${health.schemaVersion}`
+                : `Update needed · found ${health.schemaVersion}, expected ${health.expectedSchemaVersion}`}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+      <Card className="shadow-soft">
+        <CardContent className="flex items-start gap-3 pt-5">
+          <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground">
+            {health.pendingCheckouts === 0 ? (
+              <CheckCircle2Icon className="size-4 text-success" aria-hidden />
+            ) : (
+              <AlertTriangleIcon className="size-4 text-error" aria-hidden />
+            )}
+          </span>
+          <div>
+            <p className="text-sm font-medium">Payment callbacks</p>
+            <p className={cn("text-sm", health.pendingCheckouts === 0 ? "text-success" : "text-error")}>
+              {health.pendingCheckouts === 0
+                ? "No checkout pending over one hour"
+                : `${health.pendingCheckouts} checkout(s) need review`}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+      <Card className="shadow-soft">
+        <CardContent className="flex items-start gap-3 pt-5">
+          <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground">
+            {health.recentErrors === 0 ? (
+              <CheckCircle2Icon className="size-4 text-success" aria-hidden />
+            ) : (
+              <AlertTriangleIcon className="size-4 text-error" aria-hidden />
+            )}
+          </span>
+          <div>
+            <p className="text-sm font-medium">App errors · 24 hours</p>
+            <p className={cn("text-sm", health.recentErrors === 0 ? "text-success" : "text-error")}>
+              {health.recentErrors === 0
+                ? "No recorded errors"
+                : `${health.recentErrors} error(s) recorded`}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function ActivityLog({
+  entries,
+  users,
+}: {
+  entries: AdminAuditLog[];
+  users: AdminUser[];
+}) {
+  const emailById = new Map(users.map((user) => [user.userId, user.email]));
+  if (entries.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
+        No admin activity yet.
+      </p>
+    );
+  }
+  return (
+    <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-border text-left text-xs text-muted-foreground">
+            <th className="px-3 py-2 font-medium">Date</th>
+            <th className="px-3 py-2 font-medium">Action</th>
+            <th className="px-3 py-2 font-medium">Admin</th>
+            <th className="px-3 py-2 font-medium">Target</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map((entry) => (
+            <tr key={entry.id} className="border-b border-border last:border-0">
+              <td className="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">
+                {new Date(entry.created_at).toLocaleString("en-PH")}
+              </td>
+              <td className="px-3 py-2 font-medium">{entry.action.replaceAll("_", " ")}</td>
+              <td className="px-3 py-2 text-xs text-muted-foreground">
+                {emailById.get(entry.admin_id) ?? entry.admin_id}
+              </td>
+              <td className="px-3 py-2 text-xs text-muted-foreground">
+                {entry.target_user_id
+                  ? (emailById.get(entry.target_user_id) ?? entry.target_user_id)
+                  : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

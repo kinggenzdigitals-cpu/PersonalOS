@@ -40,7 +40,7 @@ export function BudgetTemplatePicker({
   return (
     <FormSheet
       title="Budget templates"
-      description="Apply suggested percentages, then adjust each category anytime."
+      description="For an empty month only. Existing allotments are never overwritten."
       trigger={
         <Button variant="outline" size="sm">
           <LayoutTemplateIcon className="size-3.5" /> Templates

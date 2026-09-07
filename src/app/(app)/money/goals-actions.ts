@@ -34,7 +34,7 @@ export async function upsertSavingsGoal(input: {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
   if (!input.name.trim()) return { ok: false, error: "Name the goal." };
-  if (!(input.targetAmount > 0)) {
+  if (!Number.isFinite(input.targetAmount) || !(input.targetAmount > 0)) {
     return { ok: false, error: "Enter a target amount." };
   }
   if (!Number.isFinite(input.savedAmount) || input.savedAmount < 0) {
@@ -55,7 +55,6 @@ export async function upsertSavingsGoal(input: {
   const row = {
     name: input.name.trim(),
     target_amount: input.targetAmount,
-    saved_amount: Math.max(0, input.savedAmount),
     color: input.color ?? null,
     goal_type: input.goalType,
     target_date: input.targetDate || null,
@@ -81,7 +80,7 @@ export async function upsertSavingsGoal(input: {
 
   const { data, error } = await supabase
     .from("savings_goals")
-    .insert({ user_id: user.id, ...row })
+    .insert({ user_id: user.id, saved_amount: input.savedAmount, ...row })
     .select("id")
     .single();
   if (error) return { ok: false, error: error.message };
@@ -105,7 +104,7 @@ export async function contributeToGoal(
 ): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
-  if (!(amount > 0)) return { ok: false, error: "Enter an amount." };
+  if (!Number.isFinite(amount) || !(amount > 0)) return { ok: false, error: "Enter an amount." };
 
   const { error } = await supabase.rpc("contribute_to_savings_goal", {
     p_goal_id: id,

@@ -1,9 +1,10 @@
-import { toZonedTime } from "date-fns-tz";
+import { localDateKey } from "@/lib/date";
+import { budgetTotals, billsDueThrough, forecastExpense, roundMoney, spendingCashNow } from "@/lib/budget-math";
+import { allRows } from "@/lib/queries/all-rows";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format";
 import {
   currentMonthStart,
-  daysInMonthKey,
   monthDateRange,
   monthLabel,
 } from "@/lib/month";
@@ -79,59 +80,28 @@ export async function getMonthlyBudgetPlanner(
   const isCurrentMonth = monthStart === currentKey;
   const isPastMonth = monthStart < currentKey;
 
-  const [
-    budgets,
-    { data: plan },
-    { data: allocations },
-    { data: goals },
-    { data: contributions },
-    { data: transactions },
-    { data: accounts },
-    { data: activeBills },
-  ] = await Promise.all([
+  const snapshot = new Date().toISOString();
+  const through = new Date(Math.min(Date.parse(snapshot), Date.parse(range.end))).toISOString();
+  const [budgets, planResult, allocations, goals, contributions, transactions, accounts, activeBills, payments, futureFlows] = await Promise.all([
     getBudgetsWithSpending(timezone, monthStart),
-    supabase
-      .from("monthly_budget_plans")
-      .select("*")
-      .eq("month_start", monthStart)
-      .maybeSingle<MonthlyBudgetPlan>(),
-    supabase
-      .from("monthly_goal_allocations")
-      .select("*")
-      .eq("month_start", monthStart)
-      .order("created_at")
-      .returns<MonthlyGoalAllocation[]>(),
-    supabase
-      .from("savings_goals")
-      .select("*")
-      .order("sort_order")
-      .order("created_at")
-      .returns<SavingsGoal[]>(),
-    supabase
-      .from("savings_goal_contributions")
-      .select("*")
-      .gte("contributed_at", range.start)
-      .lte("contributed_at", range.end)
-      .returns<SavingsGoalContribution[]>(),
-    supabase
-      .from("transactions")
-      .select("type, amount")
-      .in("type", ["income", "expense"])
-      .gte("occurred_at", range.start)
-      .lte("occurred_at", range.end)
-      .returns<Pick<Transaction, "type" | "amount">[]>(),
-    supabase
-      .from("account_balances")
-      .select("*")
-      .eq("archived", false)
-      .returns<AccountBalance[]>(),
-    supabase
-      .from("bills")
-      .select("amount, next_due_date, active")
-      .eq("active", true)
-      .lte("next_due_date", range.endKey)
-      .returns<Pick<Bill, "amount" | "next_due_date" | "active">[]>(),
+    supabase.from("monthly_budget_plans").select("*").eq("month_start", monthStart).maybeSingle<MonthlyBudgetPlan>(),
+    allRows<MonthlyGoalAllocation>((from, to) => supabase.from("monthly_goal_allocations").select("*")
+      .eq("month_start", monthStart).order("id").range(from, to)),
+    allRows<SavingsGoal>((from, to) => supabase.from("savings_goals").select("*").order("sort_order").order("id").range(from, to)),
+    allRows<SavingsGoalContribution>((from, to) => supabase.from("savings_goal_contributions").select("*")
+      .gte("contributed_at", range.start).lte("contributed_at", through).order("id").range(from, to)),
+    allRows<Pick<Transaction, "type" | "amount">>((from, to) => supabase.from("transactions").select("type, amount")
+      .in("type", ["income", "expense"]).gte("occurred_at", range.start).lte("occurred_at", through).order("id").range(from, to)),
+    allRows<AccountBalance>((from, to) => supabase.from("account_balances").select("*").eq("archived", false).order("id").range(from, to)),
+    allRows<Pick<Bill, "id" | "amount" | "next_due_date" | "frequency">>((from, to) => supabase.from("bills")
+      .select("id, amount, next_due_date, frequency").eq("active", true).lte("next_due_date", range.endKey).order("id").range(from, to)),
+    allRows<{ bill_id: string; paid_for_date: string }>((from, to) => supabase.from("bill_payments").select("bill_id, paid_for_date")
+      .lte("paid_for_date", range.endKey).order("id").range(from, to)),
+    allRows<Pick<Transaction, "type" | "amount" | "account_id" | "to_account_id" | "direction">>((from, to) => supabase.from("transactions")
+      .select("type, amount, account_id, to_account_id, direction").gt("occurred_at", snapshot).order("id").range(from, to)),
   ]);
+  if (planResult.error) throw new Error("Budget plan could not be loaded. Please try again.");
+  const plan = planResult.data;
 
   const goalList = goals ?? [];
   const goalMap = new Map(goalList.map((goal) => [goal.id, goal]));
@@ -171,45 +141,21 @@ export async function getMonthlyBudgetPlanner(
     (sum, item) => sum + Number(item.allocation.amount),
     0,
   );
-  const savedThisMonth = savings.reduce(
-    (sum, item) => sum + item.savedThisMonth,
-    0,
-  );
-  const allocated = expenseAllocated + savingsAllocated;
-  const carryover = budgets.reduce((sum, item) => sum + item.carryover, 0);
-  const unallocated = totalBudget - allocated;
-  const remaining = totalBudget + carryover - spent - savedThisMonth;
-
-  const localNow = toZonedTime(new Date(), timezone);
-  const totalDays = daysInMonthKey(monthStart);
-  const elapsedDays = isCurrentMonth
-    ? localNow.getDate()
-    : isPastMonth
-      ? totalDays
-      : 0;
-  const forecastExpense =
-    elapsedDays > 0 ? Math.max(spent, (spent / elapsedDays) * totalDays) : 0;
-  const spendingCeiling = Math.max(totalBudget - savingsAllocated + carryover, 0);
-  const forecastRemaining = spendingCeiling - forecastExpense;
+  const carryover = roundMoney(budgets.reduce((sum, item) => sum + item.carryover, 0));
+  const { savedThisMonth, allocated, unallocated, remaining, spendingCeiling } = budgetTotals({
+    totalBudget, expenseAllocated, savingsAllocated, carryover, spent, contributions,
+  });
+  const forecastValue = forecastExpense(spent, monthStart, localDateKey(timezone));
+  const forecastRemaining = roundMoney(spendingCeiling - forecastValue);
   const projectedOver = Math.max(-forecastRemaining, 0);
 
-  const availableNow = (accounts ?? [])
-    .filter((account) => account.is_spending)
-    .reduce((sum, account) => sum + Number(account.balance), 0);
+  const availableNow = spendingCashNow(accounts, futureFlows);
   const expectedIncome = Number(plan?.expected_income ?? 0);
   const expectedIncomeLeft = isPastMonth
     ? 0
     : Math.max(expectedIncome - incomeReceived, 0);
-  const upcomingBills = isPastMonth
-    ? 0
-    : (activeBills ?? [])
-        .filter((bill) =>
-          isCurrentMonth
-            ? true
-            : bill.next_due_date >= monthStart,
-        )
-        .reduce((sum, bill) => sum + Number(bill.amount), 0);
-  const projectedAvailable = availableNow + expectedIncomeLeft - upcomingBills;
+  const upcomingBills = isPastMonth ? 0 : billsDueThrough(activeBills, payments, range.endKey);
+  const projectedAvailable = roundMoney(availableNow + expectedIncomeLeft - upcomingBills);
 
   const recommendations: BudgetRecommendation[] = [];
   if (!plan || totalBudget <= 0) {
@@ -232,7 +178,7 @@ export async function getMonthlyBudgetPlanner(
     });
   }
 
-  if (isCurrentMonth && projectedOver > 0) {
+  if (isCurrentMonth && totalBudget > 0 && projectedOver > 0) {
     recommendations.push({
       level: "error",
       title: "Spending may exceed your plan",
@@ -259,7 +205,7 @@ export async function getMonthlyBudgetPlanner(
     });
   }
 
-  if (!isPastMonth && projectedAvailable < 0) {
+  if (isCurrentMonth && projectedAvailable < 0) {
     recommendations.push({
       level: "error",
       title: "Bills due may cause a cash shortage",
@@ -288,7 +234,7 @@ export async function getMonthlyBudgetPlanner(
       unallocated,
     },
     forecast: {
-      expense: forecastExpense,
+      expense: forecastValue,
       spendingCeiling,
       remaining: forecastRemaining,
       projectedOver,

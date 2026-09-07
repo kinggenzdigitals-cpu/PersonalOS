@@ -111,7 +111,7 @@ function MonthlyBudgetPlanForm({
         <div>
           <Label htmlFor="carry-over">Carry unused allotments forward</Label>
           <p className="mt-1 text-xs text-muted-foreground">
-            Adds last month&apos;s unused category amount to this month.
+            Carries unused category funds across completed months. Future carry-over is not counted yet.
           </p>
         </div>
         <Switch

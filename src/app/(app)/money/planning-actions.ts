@@ -43,14 +43,14 @@ export async function upsertBudget(input: {
 }): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
-  if (!(input.amount > 0)) return { ok: false, error: "Enter a budget amount." };
+  if (!Number.isFinite(input.amount) || !(input.amount > 0)) return { ok: false, error: "Enter a budget amount." };
   if (!isMonthStart(input.monthStart)) {
     return { ok: false, error: "Choose a valid budget month." };
   }
 
   if (input.id) {
     const { error } = await supabase
-      .from("budgets")
+      .from("monthly_category_budgets")
       .update({ amount: input.amount })
       .eq("id", input.id);
     if (error) return { ok: false, error: error.message };
@@ -78,7 +78,7 @@ export async function upsertBudget(input: {
       categoryId = existingCategory.id;
     } else {
       const { count } = await supabase
-        .from("budgets")
+        .from("monthly_category_budgets")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
         .eq("month_start", input.monthStart);
@@ -114,7 +114,7 @@ export async function upsertBudget(input: {
 
   // Enforce the plan cap only when adding a budget for a new category.
   const { data: existing } = await supabase
-    .from("budgets")
+    .from("monthly_category_budgets")
     .select("id")
     .eq("user_id", user.id)
     .eq("category_id", categoryId)
@@ -122,7 +122,7 @@ export async function upsertBudget(input: {
     .maybeSingle();
   if (!existing && !capAlreadyChecked) {
     const { count } = await supabase
-      .from("budgets")
+      .from("monthly_category_budgets")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .eq("month_start", input.monthStart);
@@ -132,7 +132,7 @@ export async function upsertBudget(input: {
 
   // One budget per category — upsert on conflict.
   const { data, error } = await supabase
-    .from("budgets")
+    .from("monthly_category_budgets")
     .upsert(
       {
         user_id: user.id,
@@ -201,7 +201,7 @@ export async function upsertMonthlyGoalAllocation(input: {
     return { ok: false, error: "Choose a valid budget month." };
   }
   if (!input.goalId) return { ok: false, error: "Choose a savings goal." };
-  if (!(input.amount > 0)) return { ok: false, error: "Enter an amount." };
+  if (!Number.isFinite(input.amount) || !(input.amount > 0)) return { ok: false, error: "Enter an amount." };
 
   const { data: goal } = await supabase
     .from("savings_goals")
@@ -243,219 +243,76 @@ export async function deleteMonthlyGoalAllocation(
 }
 
 export async function applyBudgetTemplate(input: {
-  monthStart: string;
-  totalBudget: number;
-  templateId: string;
-  savingsGoalId?: string;
+  monthStart: string; totalBudget: number; templateId: string; savingsGoalId?: string;
 }): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
-  if (!isMonthStart(input.monthStart)) {
-    return { ok: false, error: "Choose a valid budget month." };
-  }
-  if (!(input.totalBudget > 0)) {
-    return { ok: false, error: "Set your total monthly budget first." };
+  if (!isMonthStart(input.monthStart) || !Number.isFinite(input.totalBudget) || input.totalBudget <= 0) {
+    return { ok: false, error: "Set a valid monthly plan first." };
   }
   const template = getBudgetTemplate(input.templateId);
   if (!template) return { ok: false, error: "Budget template not found." };
-
-  let verifiedSavingsGoalId: string | null = null;
-  if (input.savingsGoalId) {
-    const { data: goal } = await supabase
-      .from("savings_goals")
-      .select("id")
-      .eq("id", input.savingsGoalId)
-      .maybeSingle();
-    if (!goal) return { ok: false, error: "Savings goal not found." };
-    verifiedSavingsGoalId = goal.id;
+  const { data: categories, error } = await supabase.from("categories").select("*")
+    .eq("kind", "expense").returns<Category[]>();
+  if (error) return { ok: false, error: "Categories could not be loaded. Please try again." };
+  const rows: { category_id: string; amount: number }[] = [];
+  for (const item of template.categories) {
+    const category = categories?.find(c => c.name.toLowerCase() === item.name.toLowerCase());
+    if (!category) return { ok: false, error: `This template needs the "${item.name}" category. Add it or choose another template.` };
+    const amount = Math.round(input.totalBudget * item.percent) / 100;
+    if (amount <= 0) return { ok: false, error: "The budget is too small for this template." };
+    rows.push({ category_id: category.id, amount });
   }
-
-  const [{ data: categories }, { data: existing }, activePlan] =
-    await Promise.all([
-      supabase
-        .from("categories")
-        .select("*")
-        .eq("kind", "expense")
-        .returns<Category[]>(),
-      supabase
-        .from("budgets")
-        .select("*")
-        .eq("month_start", input.monthStart)
-        .returns<Budget[]>(),
-      getActivePlan(),
-    ]);
-
-  const categoryMap = new Map(
-    (categories ?? []).map((category) => [category.name.toLowerCase(), category]),
-  );
-  const rows = template.categories
-    .map((item) => {
-      const category = categoryMap.get(item.name.toLowerCase());
-      return category
-        ? {
-            user_id: user.id,
-            category_id: category.id,
-            month_start: input.monthStart,
-            amount: Math.round(input.totalBudget * item.percent) / 100,
-            period: "monthly" as const,
-            active: true,
-          }
-        : null;
-    })
-    .filter((row): row is NonNullable<typeof row> => Boolean(row));
-
-  const union = new Set([
-    ...(existing ?? []).map((budget) => budget.category_id),
-    ...rows.map((row) => row.category_id),
-  ]);
+  const activePlan = await getActivePlan();
   const limit = PLANS[activePlan].limits.budgets;
-  if (typeof limit === "number" && union.size > limit) {
-    return {
-      ok: false,
-      error: `Your ${PLANS[activePlan].name} plan allows up to ${limit} budgets. Choose categories manually or upgrade for a full template.`,
-    };
+  if (limit != null && rows.length > limit) {
+    return { ok: false, error: `Your ${PLANS[activePlan].name} plan allows up to ${limit} budgets. Choose the Simple starter or add allotments manually.` };
   }
-
-  const { error: planError } = await supabase
-    .from("monthly_budget_plans")
-    .upsert(
-      {
-        user_id: user.id,
-        month_start: input.monthStart,
-        total_budget: input.totalBudget,
-      },
-      { onConflict: "user_id,month_start" },
-    );
-  if (planError) return { ok: false, error: planError.message };
-
-  if (rows.length > 0) {
-    const { error } = await supabase
-      .from("budgets")
-      .upsert(rows, { onConflict: "user_id,category_id,month_start" });
-    if (error) return { ok: false, error: error.message };
-  }
-
-  if (verifiedSavingsGoalId && template.savingsPercent > 0) {
-    const { error } = await supabase.from("monthly_goal_allocations").upsert(
-      {
-        user_id: user.id,
-        goal_id: verifiedSavingsGoalId,
-        month_start: input.monthStart,
-        amount:
-          Math.round(input.totalBudget * template.savingsPercent) / 100,
-      },
-      { onConflict: "user_id,month_start,goal_id" },
-    );
-    if (error) return { ok: false, error: error.message };
-  }
-
+  const savings = input.savingsGoalId ? [{
+    goal_id: input.savingsGoalId,
+    amount: Math.round(input.totalBudget * template.savingsPercent) / 100,
+  }] : [];
+  const result = await supabase.rpc("initialize_monthly_budget", {
+    p_month: input.monthStart, p_total: input.totalBudget, p_income: 0, p_carry: true,
+    p_categories: rows, p_savings: savings,
+  });
+  if (result.error) return { ok: false, error: result.error.message };
   revalidate();
   return { ok: true };
 }
 
-export async function copyPreviousMonthPlan(
-  monthStart: string,
-): Promise<ActionResult> {
+export async function copyPreviousMonthPlan(monthStart: string): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
-  if (!isMonthStart(monthStart)) {
-    return { ok: false, error: "Choose a valid budget month." };
-  }
+  if (!isMonthStart(monthStart)) return { ok: false, error: "Choose a valid budget month." };
   const previousMonth = shiftMonthStart(monthStart, -1);
-
-  const [
-    { data: previousPlan },
-    { data: previousBudgets },
-    { data: currentBudgets },
-    { data: previousSavings },
-    activePlan,
-  ] = await Promise.all([
-    supabase
-      .from("monthly_budget_plans")
-      .select("*")
-      .eq("month_start", previousMonth)
-      .maybeSingle<MonthlyBudgetPlan>(),
-    supabase
-      .from("budgets")
-      .select("*")
-      .eq("month_start", previousMonth)
-      .eq("active", true)
-      .returns<Budget[]>(),
-    supabase
-      .from("budgets")
-      .select("*")
-      .eq("month_start", monthStart)
-      .eq("active", true)
-      .returns<Budget[]>(),
-    supabase
-      .from("monthly_goal_allocations")
-      .select("*")
-      .eq("month_start", previousMonth)
-      .returns<MonthlyGoalAllocation[]>(),
+  const [planResult, budgetResult, savingsResult, activePlan] = await Promise.all([
+    supabase.from("monthly_budget_plans").select("*").eq("month_start", previousMonth).maybeSingle<MonthlyBudgetPlan>(),
+    supabase.from("monthly_category_budgets").select("*").eq("month_start", previousMonth).eq("active", true).returns<Budget[]>(),
+    supabase.from("monthly_goal_allocations").select("*").eq("month_start", previousMonth).returns<MonthlyGoalAllocation[]>(),
     getActivePlan(),
   ]);
-
-  if (!previousPlan && !(previousBudgets?.length || previousSavings?.length)) {
-    return { ok: false, error: "The previous month has no plan to copy." };
+  if (planResult.error || budgetResult.error || savingsResult.error) {
+    return { ok: false, error: "The previous month could not be loaded. Please try again." };
   }
-
+  const previousPlan = planResult.data;
+  const budgets = budgetResult.data ?? [];
+  const savings = savingsResult.data ?? [];
+  const total = Number(previousPlan?.total_budget ?? 0) ||
+    budgets.reduce((s,b)=>s+Number(b.amount),0) + savings.reduce((s,a)=>s+Number(a.amount),0);
+  if (total <= 0) return { ok: false, error: "The previous month has no plan to copy." };
   const limit = PLANS[activePlan].limits.budgets;
-  const copiedBudgetIds = new Set([
-    ...(currentBudgets ?? []).map((budget) => budget.category_id),
-    ...(previousBudgets ?? []).map((budget) => budget.category_id),
-  ]);
-  if (
-    typeof limit === "number" &&
-    copiedBudgetIds.size > limit
-  ) {
-    return {
-      ok: false,
-      error: `Your ${PLANS[activePlan].name} plan allows up to ${limit} budgets.`,
-    };
+  if (limit != null && budgets.length > limit) {
+    return { ok: false, error: `Your ${PLANS[activePlan].name} plan allows up to ${limit} budgets.` };
   }
-
-  if (previousPlan) {
-    const { error } = await supabase.from("monthly_budget_plans").upsert(
-      {
-        user_id: user.id,
-        month_start: monthStart,
-        total_budget: Number(previousPlan.total_budget),
-        expected_income: Number(previousPlan.expected_income),
-        carry_over_enabled: previousPlan.carry_over_enabled,
-      },
-      { onConflict: "user_id,month_start" },
-    );
-    if (error) return { ok: false, error: error.message };
-  }
-
-  if (previousBudgets?.length) {
-    const { error } = await supabase.from("budgets").upsert(
-      previousBudgets.map((budget) => ({
-        user_id: user.id,
-        category_id: budget.category_id,
-        month_start: monthStart,
-        amount: Number(budget.amount),
-        period: "monthly" as const,
-        active: true,
-      })),
-      { onConflict: "user_id,category_id,month_start" },
-    );
-    if (error) return { ok: false, error: error.message };
-  }
-
-  if (previousSavings?.length) {
-    const { error } = await supabase.from("monthly_goal_allocations").upsert(
-      previousSavings.map((allocation) => ({
-        user_id: user.id,
-        goal_id: allocation.goal_id,
-        month_start: monthStart,
-        amount: Number(allocation.amount),
-      })),
-      { onConflict: "user_id,month_start,goal_id" },
-    );
-    if (error) return { ok: false, error: error.message };
-  }
-
+  const result = await supabase.rpc("initialize_monthly_budget", {
+    p_month: monthStart, p_total: total,
+    p_income: Number(previousPlan?.expected_income ?? 0),
+    p_carry: previousPlan?.carry_over_enabled ?? false,
+    p_categories: budgets.map(b=>({category_id:b.category_id,amount:Number(b.amount)})),
+    p_savings: savings.map(s=>({goal_id:s.goal_id,amount:Number(s.amount)})),
+  });
+  if (result.error) return { ok: false, error: result.error.message };
   revalidate();
   return { ok: true };
 }
@@ -463,7 +320,7 @@ export async function copyPreviousMonthPlan(
 export async function deleteBudget(id: string): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
-  const { error } = await supabase.from("budgets").delete().eq("id", id);
+  const { error } = await supabase.from("monthly_category_budgets").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidate();
   return { ok: true };
@@ -488,7 +345,7 @@ export async function upsertBill(
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
   if (!input.name.trim()) return { ok: false, error: "Name the bill." };
-  if (!(input.amount > 0)) return { ok: false, error: "Enter an amount." };
+  if (!Number.isFinite(input.amount) || !(input.amount > 0)) return { ok: false, error: "Enter an amount." };
   if (!input.nextDueDate) return { ok: false, error: "Pick a due date." };
 
   const row = {
@@ -559,7 +416,7 @@ export async function markBillPaid(input: {
 }): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
-  if (!(input.amount > 0)) return { ok: false, error: "Enter an amount." };
+  if (!Number.isFinite(input.amount) || !(input.amount > 0)) return { ok: false, error: "Enter an amount." };
   if (!input.accountId) return { ok: false, error: "Choose an account." };
 
   const { data: bill, error: billErr } = await supabase

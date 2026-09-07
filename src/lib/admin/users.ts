@@ -4,8 +4,57 @@ import type { PlanId } from "@/lib/plans";
 import type {
   AccessType,
   AccountStatus,
+  AdminAuditLog,
   UserRole,
 } from "@/lib/supabase/types";
+
+export const EXPECTED_SCHEMA_VERSION = 12;
+
+export type AdminSystemHealth = {
+  schemaVersion: number;
+  expectedSchemaVersion: number;
+  pendingCheckouts: number;
+  recentErrors: number;
+};
+
+export async function getAdminSystemHealth(): Promise<AdminSystemHealth> {
+  const admin = createAdminClient();
+  const [schemaRes, checkoutRes, errorRes] = await Promise.all([
+    admin
+      .from("app_schema_versions")
+      .select("version")
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    admin
+      .from("payment_checkout_sessions")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending")
+      .lt("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString()),
+    admin
+      .from("app_error_events")
+      .select("id", { count: "exact", head: true })
+      .gt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
+  ]);
+
+  return {
+    schemaVersion: schemaRes.error ? 0 : (schemaRes.data?.version ?? 0),
+    expectedSchemaVersion: EXPECTED_SCHEMA_VERSION,
+    pendingCheckouts: checkoutRes.error ? 0 : (checkoutRes.count ?? 0),
+    recentErrors: errorRes.error ? 0 : (errorRes.count ?? 0),
+  };
+}
+
+export async function listAdminAuditLog(): Promise<AdminAuditLog[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("admin_audit_log")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw new Error("Unable to load admin activity.");
+  return data ?? [];
+}
 
 type PlanValue = PlanId;
 

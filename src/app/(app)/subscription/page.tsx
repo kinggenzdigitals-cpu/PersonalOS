@@ -100,8 +100,8 @@ export default async function SubscriptionPage() {
         <h2 className="font-display text-lg">Compare plans</h2>
         <FeatureComparison currentPlan={ent.plan} />
         <p className="text-xs text-muted-foreground">
-          Paid plans auto-renew at the shown price unless cancelled. Cancel
-          anytime and keep access until the end of the paid period.
+          Each checkout pays for the selected access period. Automatic renewal
+          is not enabled yet.
         </p>
       </section>
     </div>

@@ -105,8 +105,8 @@ export function PlanCard({
           </p>
           <p className="text-xs text-muted-foreground">
             {peso(price.monthlyEq)}/mo
-            {price.save > 0 && ` · save ${peso(price.save)}`} · renews at{" "}
-            {peso(price.total)} unless cancelled
+            {price.save > 0 && ` · save ${peso(price.save)}`} · one payment for
+            the selected period
           </p>
         </div>
 

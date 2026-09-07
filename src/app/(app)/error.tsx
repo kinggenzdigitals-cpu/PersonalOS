@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { AlertCircleIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { recordAppError } from "./error-actions";
 
 export default function AppError({
   error,
@@ -13,6 +14,7 @@ export default function AppError({
 }) {
   useEffect(() => {
     console.error(error);
+    void recordAppError(error.digest, window.location.pathname);
   }, [error]);
 
   return (

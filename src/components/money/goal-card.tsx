@@ -109,6 +109,7 @@ function ContributeButton({ goal }: { goal: SavingsGoal }) {
     >
       {(close) => (
         <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">Records money you have already set aside. This does not move money or change a bank balance.</p>
           <div className="space-y-1.5">
             <Label htmlFor="contrib">Amount to add</Label>
             <div className="relative">

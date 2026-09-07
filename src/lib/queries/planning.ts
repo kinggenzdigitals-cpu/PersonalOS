@@ -1,12 +1,11 @@
 import { differenceInCalendarDays } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
 import { createClient } from "@/lib/supabase/server";
 import { localDateKey } from "@/lib/date";
+import { categoryCarryovers, forecastExpense, roundMoney } from "@/lib/budget-math";
+import { allRows } from "@/lib/queries/all-rows";
 import {
   currentMonthStart,
-  daysInMonthKey,
   monthDateRange,
-  shiftMonthStart,
 } from "@/lib/month";
 import type {
   Bill,
@@ -35,100 +34,47 @@ export async function getBudgetsWithSpending(
 ): Promise<BudgetWithSpending[]> {
   const supabase = await createClient();
   const monthStart = selectedMonth ?? currentMonthStart(timezone);
-  const previousMonth = shiftMonthStart(monthStart, -1);
-  const currentRange = monthDateRange(timezone, monthStart);
-  const previousRange = monthDateRange(timezone, previousMonth);
-
-  const [
-    { data: plan },
-    { data: budgets },
-    { data: previousBudgets },
-    { data: categories },
-    { data: expenses },
-  ] = await Promise.all([
-      supabase
-        .from("monthly_budget_plans")
-        .select("*")
-        .eq("month_start", monthStart)
-        .maybeSingle<MonthlyBudgetPlan>(),
-      supabase
-        .from("budgets")
-        .select("*")
-        .eq("active", true)
-        .eq("month_start", monthStart)
-        .returns<Budget[]>(),
-      supabase
-        .from("budgets")
-        .select("*")
-        .eq("active", true)
-        .eq("month_start", previousMonth)
-        .returns<Budget[]>(),
-      supabase.from("categories").select("*").returns<Category[]>(),
-      supabase
-        .from("transactions")
-        .select("amount, category_id, occurred_at")
-        .eq("type", "expense")
-        .gte("occurred_at", previousRange.start)
-        .lte("occurred_at", currentRange.end)
-        .returns<
-          Pick<Transaction, "amount" | "category_id" | "occurred_at">[]
-        >(),
-    ]);
-
-  const currentSpentByCat = new Map<string, number>();
-  const previousSpentByCat = new Map<string, number>();
-  for (const e of expenses ?? []) {
-    if (!e.category_id) continue;
-    const target =
-      e.occurred_at >= currentRange.start
-        ? currentSpentByCat
-        : previousSpentByCat;
-    target.set(e.category_id, (target.get(e.category_id) ?? 0) + Number(e.amount));
-  }
-
-  const previousBudgetByCat = new Map(
-    (previousBudgets ?? []).map((budget) => [budget.category_id, budget]),
+  const now = new Date();
+  const range = monthDateRange(timezone, monthStart);
+  const through = new Date(Math.min(now.getTime(), Date.parse(range.end))).toISOString();
+  const [budgets, plans, categories] = await Promise.all([
+    allRows<Budget>((from, to) => supabase.from("monthly_category_budgets")
+      .select("*").eq("active", true).lte("month_start", monthStart)
+      .order("month_start").order("id").range(from, to).returns<Budget[]>()),
+    allRows<MonthlyBudgetPlan>((from, to) => supabase.from("monthly_budget_plans")
+      .select("*").lte("month_start", monthStart).order("month_start")
+      .range(from, to).returns<MonthlyBudgetPlan[]>()),
+    allRows<Category>((from, to) => supabase.from("categories").select("*")
+      .order("id").range(from, to).returns<Category[]>()),
+  ]);
+  const earliest = budgets[0]?.month_start ?? monthStart;
+  const expenses = await allRows<Pick<Transaction, "amount" | "category_id" | "occurred_at">>(
+    (from, to) => supabase.from("transactions").select("amount, category_id, occurred_at")
+      .eq("type", "expense").gte("occurred_at", monthDateRange(timezone, earliest).start)
+      .lte("occurred_at", through).order("occurred_at").order("id").range(from, to),
   );
-  const catMap = new Map((categories ?? []).map((c) => [c.id, c]));
-  const localNow = toZonedTime(new Date(), timezone);
-  const currentKey = currentMonthStart(timezone);
-  const isCurrentMonth = monthStart === currentKey;
-  const isPastMonth = monthStart < currentKey;
-  const elapsedDays = isCurrentMonth ? localNow.getDate() : isPastMonth ? daysInMonthKey(monthStart) : 0;
-  const totalDays = daysInMonthKey(monthStart);
-
-  return (budgets ?? [])
-    .map((budget) => {
-      const spent = currentSpentByCat.get(budget.category_id) ?? 0;
-      const baseAmount = Number(budget.amount);
-      const previousBudget = previousBudgetByCat.get(budget.category_id);
-      const carryover =
-        plan?.carry_over_enabled && previousBudget
-          ? Math.max(
-              Number(previousBudget.amount) -
-                (previousSpentByCat.get(budget.category_id) ?? 0),
-              0,
-            )
-          : 0;
-      const effectiveAmount = baseAmount + carryover;
-      const forecastSpent =
-        elapsedDays > 0
-          ? Math.max(spent, (spent / elapsedDays) * totalDays)
-          : 0;
-      return {
-        budget,
-        category: catMap.get(budget.category_id) ?? null,
-        spent,
-        baseAmount,
-        carryover,
-        effectiveAmount,
-        remaining: effectiveAmount - spent,
-        pct: effectiveAmount > 0 ? (spent / effectiveAmount) * 100 : 0,
-        forecastSpent,
-        forecastRemaining: effectiveAmount - forecastSpent,
-      };
-    })
-    .sort((a, b) => b.pct - a.pct);
+  const carryovers = categoryCarryovers(budgets, plans, expenses, monthStart, timezone, localDateKey(timezone, now));
+  const spentByCategory = new Map<string, number>();
+  for (const expense of expenses) {
+    if (!expense.category_id || Date.parse(expense.occurred_at) < Date.parse(range.start)) continue;
+    spentByCategory.set(expense.category_id, roundMoney((spentByCategory.get(expense.category_id) ?? 0) + Number(expense.amount)));
+  }
+  const categoryMap = new Map(categories.map(category => [category.id, category]));
+  return budgets.filter(budget => budget.month_start === monthStart).map(budget => {
+    const spent = spentByCategory.get(budget.category_id) ?? 0;
+    const baseAmount = Number(budget.amount);
+    const carryover = carryovers.get(budget.category_id) ?? 0;
+    const effectiveAmount = roundMoney(baseAmount + carryover);
+    const projected = forecastExpense(spent, monthStart, localDateKey(timezone, now));
+    return {
+      budget, category: categoryMap.get(budget.category_id) ?? null,
+      spent, baseAmount, carryover, effectiveAmount,
+      remaining: roundMoney(effectiveAmount - spent),
+      pct: effectiveAmount > 0 ? spent / effectiveAmount * 100 : 0,
+      forecastSpent: projected,
+      forecastRemaining: roundMoney(effectiveAmount - projected),
+    };
+  }).sort((a, b) => b.pct - a.pct);
 }
 
 export type BillStatus = "overdue" | "due_soon" | "upcoming";

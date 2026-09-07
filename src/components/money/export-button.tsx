@@ -19,7 +19,7 @@ export function ExportButton({ canExport = true }: { canExport?: boolean }) {
   if (!canExport) {
     return (
       <Button variant="outline" asChild>
-        <Link href="/settings">
+        <Link href="/subscription">
           <SparklesIcon className="size-4" aria-hidden />
           Export transactions (CSV) · Pro
         </Link>

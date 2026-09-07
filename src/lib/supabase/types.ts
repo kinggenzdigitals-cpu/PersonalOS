@@ -338,6 +338,44 @@ export type AdminAuditLog = {
   created_at: string;
 };
 
+export type SecurityEvent = Owned & {
+  event_type:
+    | "login_success"
+    | "password_changed"
+    | "data_exported"
+    | "tracking_data_deleted";
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+export type PaymentCheckoutSession = Owned & {
+  external_id: string;
+  plan: "pro" | "premium";
+  billing_period: "monthly" | "quarterly" | "semiannual" | "annual";
+  period_months: 1 | 3 | 6 | 12;
+  expected_amount: number;
+  currency: "PHP";
+  status: "pending" | "paid" | "failed" | "expired";
+  provider_invoice_id: string | null;
+  provider_invoice_url: string | null;
+  promotion_offer_id: string | null;
+  paid_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AppSchemaVersion = {
+  version: number;
+  description: string;
+  applied_at: string;
+};
+
+export type AppErrorEvent = Owned & {
+  error_digest: string | null;
+  route: string;
+  created_at: string;
+};
+
 export type FocusSessionType = "focus" | "short_break" | "long_break";
 
 export type FocusSession = Owned & {
@@ -380,7 +418,8 @@ export type Database = {
         InsertOf<Transaction>,
         UpdateOf<Transaction>
       >;
-      budgets: TableShape<Budget, InsertOf<Budget>, UpdateOf<Budget>>;
+      budgets: TableShape<Omit<Budget, "month_start">, InsertOf<Omit<Budget, "month_start">>, UpdateOf<Omit<Budget, "month_start">>>;
+      monthly_category_budgets: TableShape<Budget, InsertOf<Budget>, UpdateOf<Budget>>;
       monthly_budget_plans: TableShape<
         MonthlyBudgetPlan,
         InsertOf<MonthlyBudgetPlan>,
@@ -450,6 +489,26 @@ export type Database = {
         },
         Partial<AdminAuditLog>
       >;
+      security_events: TableShape<
+        SecurityEvent,
+        InsertOf<SecurityEvent>,
+        never
+      >;
+      payment_checkout_sessions: TableShape<
+        PaymentCheckoutSession,
+        InsertOf<PaymentCheckoutSession>,
+        UpdateOf<PaymentCheckoutSession>
+      >;
+      app_schema_versions: TableShape<
+        AppSchemaVersion,
+        AppSchemaVersion,
+        Partial<AppSchemaVersion>
+      >;
+      app_error_events: TableShape<
+        AppErrorEvent,
+        InsertOf<AppErrorEvent>,
+        never
+      >;
       user_invitations: TableShape<
         Invitation,
         { email: string; token_hash: string; invitation_expires_at: string } & Partial<
@@ -472,6 +531,14 @@ export type Database = {
       };
     };
     Functions: {
+      initialize_monthly_budget: {
+        Args: {
+          p_month: string; p_total: number; p_income: number; p_carry: boolean;
+          p_categories: { category_id: string; amount: number }[];
+          p_savings: { goal_id: string; amount: number }[];
+        };
+        Returns: undefined;
+      };
       contribute_to_savings_goal: {
         Args: {
           p_goal_id: string;
@@ -479,6 +546,34 @@ export type Database = {
           p_contributed_at?: string;
         };
         Returns: string;
+      };
+      record_security_event: {
+        Args: {
+          p_event_type: SecurityEvent["event_type"];
+          p_metadata?: Record<string, unknown>;
+        };
+        Returns: undefined;
+      };
+      delete_my_tracking_data: {
+        Args: Record<string, never>;
+        Returns: undefined;
+      };
+      complete_payment_checkout: {
+        Args: {
+          p_external_id: string;
+          p_provider_invoice_id: string;
+          p_paid_amount: number;
+          p_currency: string;
+          p_paid_at?: string;
+        };
+        Returns: string;
+      };
+      record_app_error: {
+        Args: {
+          p_error_digest: string;
+          p_route: string;
+        };
+        Returns: undefined;
       };
     };
     Enums: {

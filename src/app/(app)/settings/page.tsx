@@ -9,6 +9,8 @@ import { ExportButton } from "@/components/money/export-button";
 import { PlanCard } from "@/components/settings/plan-card";
 import { ThemeSettings } from "@/components/settings/theme-settings";
 import { DangerZone } from "@/components/settings/danger-zone";
+import { SecurityHistory } from "@/components/settings/security-history";
+import { getSecurityHistory } from "@/lib/queries/security";
 import { SettingsForm } from "./settings-form";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -19,8 +21,11 @@ export default async function SettingsPage({
   searchParams: Promise<{ upgraded?: string; checkout?: string }>;
 }) {
   const profile = await requireOnboardedProfile();
-  const plan = await getActivePlan();
-  const subscription = await getSubscription();
+  const [plan, subscription, securityHistory] = await Promise.all([
+    getActivePlan(),
+    getSubscription(),
+    getSecurityHistory(),
+  ]);
   const sp = await searchParams;
 
   return (
@@ -39,9 +44,9 @@ export default async function SettingsPage({
         <div className="rounded-2xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-foreground">
           <p className="font-medium">Payment received — thank you! 🎉</p>
           <p className="text-muted-foreground">
-            {plan === "pro"
-              ? "You're on Pro now. Enjoy everything Finance & Habit Tracker has to offer."
-              : "Your Pro upgrade will activate in a moment. Refresh this page shortly."}
+            {plan !== "free"
+              ? `You're on ${plan === "premium" ? "Premium" : "Pro"} now.`
+              : "Your upgrade will activate in a moment. Refresh this page shortly."}
           </p>
         </div>
       )}
@@ -66,12 +71,20 @@ export default async function SettingsPage({
           <div>
             <p className="text-sm font-medium">Your data</p>
             <p className="text-xs text-muted-foreground">
-              Download a copy of your transactions as a spreadsheet.
+              Download all personal data as JSON. Paid plans can also export
+              transactions as a spreadsheet.
             </p>
           </div>
-          <ExportButton canExport={plan === "pro"} />
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild>
+              <a href="/api/account/export">Download all data (JSON)</a>
+            </Button>
+            <ExportButton canExport={plan !== "free"} />
+          </div>
         </CardContent>
       </Card>
+
+      <SecurityHistory history={securityHistory} />
 
       <form action="/auth/signout" method="post">
         <Button variant="outline" type="submit" className="w-full">

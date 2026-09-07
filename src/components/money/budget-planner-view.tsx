@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Money } from "@/components/ui/money";
+import { Money, MaskAmounts } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 import { clampPercent } from "@/lib/format";
 import { currentMonthStart, shiftMonthStart } from "@/lib/month";
@@ -377,7 +377,9 @@ function ForecastCard({
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          Based on the average daily spending recorded in this month.
+          {planner.isCurrentMonth
+            ? "Estimate from recorded daily spending, not a guarantee. Savings are reserved first."
+            : planner.isPastMonth ? "Final recorded expenses for this month." : "No spending forecast until this month starts."}
         </p>
       </CardContent>
     </Card>
@@ -391,6 +393,18 @@ function CashFlowCard({
   planner: MonthlyBudgetPlanner;
   currency: string;
 }) {
+  if (!planner.isCurrentMonth && !planner.isPastMonth) {
+    return (
+      <Card>
+        <CardHeader><CardTitle>Future cash-flow plan</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <ValueRow label="Planned income" value={planner.cashFlow.expectedIncome} currency={currency} />
+          <ValueRow label="Unpaid bills through month-end" value={planner.cashFlow.upcomingBills} currency={currency} />
+          <p className="text-xs text-muted-foreground">Includes earlier unpaid bills. The cash-balance forecast starts when this month begins.</p>
+        </CardContent>
+      </Card>
+    );
+  }
   if (planner.isPastMonth) {
     const net = planner.cashFlow.incomeReceived - planner.summary.spent;
     return (
@@ -468,7 +482,7 @@ function CashFlowCard({
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          Current spending balances + expected income left − bills due or overdue.
+          Recorded spending balances + expected income left − unpaid bill occurrences. Excludes everyday spending and bank sync.
         </p>
       </CardContent>
     </Card>
@@ -547,7 +561,7 @@ function RecommendationsCard({
                 <div>
                   <p className="text-sm font-medium">{item.title}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {item.detail}
+                    <MaskAmounts text={item.detail} />
                   </p>
                 </div>
               </div>

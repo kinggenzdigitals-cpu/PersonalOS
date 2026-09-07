@@ -3,8 +3,8 @@ import { localDateKey } from "@/lib/date";
 
 const MONTH_START_RE = /^\d{4}-(0[1-9]|1[0-2])-01$/;
 
-export function isMonthStart(value: string): boolean {
-  return MONTH_START_RE.test(value);
+export function isMonthStart(value: unknown): value is string {
+  return typeof value === "string" && MONTH_START_RE.test(value) && Number(value.slice(0, 4)) >= 1000;
 }
 
 export function currentMonthStart(timezone: string): string {

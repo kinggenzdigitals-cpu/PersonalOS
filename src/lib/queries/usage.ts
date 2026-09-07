@@ -54,7 +54,7 @@ export async function getUsage(timezone: string): Promise<Usage> {
       .eq("active", true),
     supabase.from("savings_goals").select("id", head).eq("user_id", user.id),
     supabase
-      .from("budgets")
+      .from("monthly_category_budgets")
       .select("id", head)
       .eq("user_id", user.id)
       .eq("month_start", monthStartKey),
