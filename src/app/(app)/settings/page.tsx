@@ -87,7 +87,7 @@ export default async function SettingsPage({
         </CardContent>
       </Card>
 
-      <ThemeSettings />
+      <ThemeSettings canCustomize={PLANS[plan].limits.customThemes > 0} />
 
       <Card className="shadow-card">
         <CardContent className="space-y-3 pt-6">

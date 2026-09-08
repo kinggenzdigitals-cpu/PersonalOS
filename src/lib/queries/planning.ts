@@ -2,6 +2,10 @@ import { differenceInCalendarDays, subMonths } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { monthRange, localDateKey } from "@/lib/date";
 import { currencySymbol } from "@/lib/format";
+import {
+  buildBudgetRecommendations as buildAdvice,
+  type BudgetRecommendation,
+} from "@/lib/budget-advice";
 import { getAccountsWithBalances } from "@/lib/queries/money";
 import type {
   Account,
@@ -125,10 +129,7 @@ export async function getMonthlyBudget(
   return data ?? null;
 }
 
-export type BudgetRecommendation = {
-  tone: "warn" | "info" | "success";
-  text: string;
-};
+export type { BudgetRecommendation };
 
 export type BudgetSummary = {
   hasMonthlyBudget: boolean;
@@ -202,93 +203,39 @@ export async function getBudgetSummary(
   };
 }
 
-/** Money inside recommendation text, so <MaskAmounts> can hide it on demand. */
-function money(n: number, sym: string): string {
-  return `${sym}${Math.abs(Math.round(n)).toLocaleString("en-US")}`;
-}
-
 /**
  * Rule-based budget guidance derived purely from the summary — no ML, no
  * fabricated figures. Warnings first, capped so the list stays scannable.
+ *
+ * The rules themselves live in `@/lib/budget-advice`, which is pure and
+ * dependency-free so it can be unit-tested; this wrapper just narrows the
+ * database-shaped summary down to what those rules read.
  */
 export function buildBudgetRecommendations(
   s: Omit<BudgetSummary, "recommendations">,
   currency = "PHP",
 ): BudgetRecommendation[] {
-  if (!s.hasMonthlyBudget) return [];
-  const sym = currencySymbol(currency);
-  const m = (n: number) => money(n, sym);
-
-  const warn: BudgetRecommendation[] = [];
-  const info: BudgetRecommendation[] = [];
-
-  // Allocation coverage.
-  if (s.unallocated > 0.5) {
-    info.push({
-      tone: "info",
-      text: `You have ${m(s.unallocated)} left to allocate.`,
-    });
-  } else if (s.unallocated < -0.5) {
-    warn.push({
-      tone: "warn",
-      text: `You've over-allocated by ${m(s.unallocated)}. Trim a category or raise your budget.`,
-    });
-  }
-
-  // Over-total spending.
-  if (s.spent > s.total + 0.5) {
-    warn.push({
-      tone: "warn",
-      text: `You've spent ${m(s.spent)} — more than your ${m(s.total)} budget this month.`,
-    });
-  }
-
-  // Per-category: over budget, then near limit.
-  for (const i of s.items) {
-    const name = i.category?.name ?? "A category";
-    const amount = Number(i.budget.amount);
-    if (i.pct > 100) {
-      warn.push({ tone: "warn", text: `${name} is over by ${m(-i.remaining)}.` });
-    } else if (i.pct >= 80 && s.daysLeft > 0) {
-      warn.push({
-        tone: "warn",
-        text: `${name} is at ${Math.round(i.pct)}% with ${s.daysLeft} day${s.daysLeft === 1 ? "" : "s"} left.`,
-      });
-    } else if (i.spent > 0 && s.dayOfMonth >= 5) {
-      // Pace-based month-end forecast (labelled as an estimate).
-      const projected = (i.spent / s.dayOfMonth) * s.daysInMonth;
-      if (projected > amount * 1.05) {
-        info.push({
-          tone: "info",
-          text: `At this pace ${name} is on track for about ${m(projected)} by month-end (budget ${m(amount)}).`,
-        });
-      }
-    }
-  }
-
-  // Savings: funded = transfers into savings-type accounts this month.
-  if (s.savingsTarget > 0) {
-    const gap = s.savingsTarget - s.savingsFunded;
-    if (gap <= 0.5) {
-      info.push({
-        tone: "success",
-        text: `Savings funded: ${m(s.savingsFunded)} moved to savings this month.`,
-      });
-    } else if (s.daysLeft <= 5) {
-      warn.push({
-        tone: "warn",
-        text: `${m(gap)} of your savings allocation is still unfunded with ${s.daysLeft} day${s.daysLeft === 1 ? "" : "s"} left.`,
-      });
-    } else {
-      info.push({
-        tone: "info",
-        text: `Savings: ${m(s.savingsFunded)} of ${m(s.savingsTarget)} moved so far — ${m(gap)} to go.`,
-      });
-    }
-  }
-
-  // Warnings first; cap to keep the card scannable.
-  return [...warn, ...info].slice(0, 6);
+  return buildAdvice(
+    {
+      hasMonthlyBudget: s.hasMonthlyBudget,
+      total: s.total,
+      savingsTarget: s.savingsTarget,
+      savingsFunded: s.savingsFunded,
+      spent: s.spent,
+      unallocated: s.unallocated,
+      dayOfMonth: s.dayOfMonth,
+      daysInMonth: s.daysInMonth,
+      daysLeft: s.daysLeft,
+      items: s.items.map((i) => ({
+        name: i.category?.name ?? null,
+        amount: Number(i.budget.amount),
+        spent: i.spent,
+        remaining: i.remaining,
+        pct: i.pct,
+      })),
+    },
+    currencySymbol(currency),
+  );
 }
 
 /** Day-of-month position in the user's timezone. */

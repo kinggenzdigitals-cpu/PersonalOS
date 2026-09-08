@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   ShuffleIcon,
   RotateCcwIcon,
@@ -8,6 +9,7 @@ import {
   XIcon,
   CheckIcon,
   ChevronDownIcon,
+  LockIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +27,16 @@ import {
 } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
-export function ThemeSettings() {
+export function ThemeSettings({
+  canCustomize = true,
+}: {
+  /**
+   * Whether the plan includes custom brand colors. Light/dark stays available
+   * on every plan — only the palette engine is gated, which is what the
+   * pricing page advertises (Free: 0 custom palettes).
+   */
+  canCustomize?: boolean;
+}) {
   const {
     config,
     setEnabled,
@@ -37,7 +48,10 @@ export function ThemeSettings() {
     reset,
   } = useThemeCustomizer();
   const [advanced, setAdvanced] = React.useState(false);
-  const colors = config.enabled ? config.colors : DEFAULT_COLORS;
+  // A downgraded user can still be holding an enabled palette in local
+  // storage. Show the controls only when the plan allows them.
+  const customActive = config.enabled && canCustomize;
+  const colors = customActive ? config.colors : DEFAULT_COLORS;
 
   return (
     <Card className="shadow-card">
@@ -58,19 +72,51 @@ export function ThemeSettings() {
         {/* Custom theme toggle */}
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-medium">Custom theme</p>
+            <p className="text-sm font-medium">
+              Custom theme
+              {!canCustomize && (
+                <span className="ml-2 rounded-full bg-brand px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
+                  Pro
+                </span>
+              )}
+            </p>
             <p className="text-xs text-muted-foreground">
-              Personalize your brand colors.
+              {canCustomize
+                ? "Personalize your brand colors."
+                : "Personalize your brand colors on Pro and Premium."}
             </p>
           </div>
-          <Switch
-            checked={config.enabled}
-            onCheckedChange={setEnabled}
-            aria-label="Enable custom theme"
-          />
+          {canCustomize ? (
+            <Switch
+              checked={config.enabled}
+              onCheckedChange={setEnabled}
+              aria-label="Enable custom theme"
+            />
+          ) : (
+            <Button asChild size="sm" variant="outline">
+              <Link href="/subscription">
+                <LockIcon className="size-3.5" aria-hidden /> Upgrade
+              </Link>
+            </Button>
+          )}
         </div>
 
-        {config.enabled && (
+        {/* A palette left enabled from a previous paid period. The colours are
+            held in local storage and still applied; say so plainly and offer a
+            way out rather than silently discarding what the user chose. */}
+        {!canCustomize && config.enabled && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-secondary/50 p-3">
+            <p className="text-xs text-muted-foreground">
+              Colours from your previous plan are still applied. Upgrade to edit
+              them again, or switch back to the default.
+            </p>
+            <Button size="sm" variant="ghost" onClick={() => setEnabled(false)}>
+              Use default colours
+            </Button>
+          </div>
+        )}
+
+        {customActive && (
           <div className="space-y-5">
             {/* Presets */}
             <div className="space-y-2">

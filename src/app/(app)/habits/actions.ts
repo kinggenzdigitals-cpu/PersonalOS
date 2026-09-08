@@ -61,6 +61,36 @@ export async function upsertHabit(
     reminder_time: input.reminder_time,
   };
 
+  // Reminders carry their own plan allowance, separate from the habit count:
+  // a reminder is an active habit with a time set. Only ADDING one consumes
+  // allowance — someone who is over the cap after a downgrade must still be
+  // able to edit the reminders they already have.
+  if (input.reminder_time) {
+    let isNewReminder = true;
+    if (input.id) {
+      const { data: existing } = await supabase
+        .from("habits")
+        .select("reminder_time")
+        .eq("id", input.id)
+        .maybeSingle<{ reminder_time: string | null }>();
+      isNewReminder = !existing?.reminder_time;
+    }
+
+    if (isNewReminder) {
+      let query = supabase
+        .from("habits")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("active", true)
+        .not("reminder_time", "is", null);
+      // Don't let a habit count against its own edit.
+      if (input.id) query = query.neq("id", input.id);
+      const { count: reminderCount } = await query;
+      const capError = await checkCap("reminders", reminderCount ?? 0);
+      if (capError) return { ok: false, error: capError };
+    }
+  }
+
   if (input.id) {
     const { error } = await supabase
       .from("habits")

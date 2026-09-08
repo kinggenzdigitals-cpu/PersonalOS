@@ -9,6 +9,7 @@ const CAP_NOUN = {
   habits: "habits",
   budgets: "budgets",
   recurring: "recurring bills",
+  reminders: "reminders",
 } as const;
 
 export type CapKey = keyof typeof CAP_NOUN;
