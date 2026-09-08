@@ -1,5 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
+import { getAuthUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   ensureSuperAdminRole,
@@ -123,9 +124,10 @@ const ANON: Entitlement = {
  */
 export async function getEntitlement(): Promise<Entitlement> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Shares lib/auth's per-request memo instead of calling auth.getUser() again:
+  // every protected page renders inside (app)/layout.tsx, which awaits both the
+  // auth gate and this, so the identity was already fetched a moment ago.
+  const user = await getAuthUser();
   if (!user) return ANON;
 
   // `select("*")` so naming role_source can't fail the read before migration

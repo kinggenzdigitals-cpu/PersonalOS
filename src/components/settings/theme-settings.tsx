@@ -15,7 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { ThemeToggle } from "@/components/nav/theme-toggle";
+import { PrivacyToggle } from "@/components/nav/privacy-toggle";
 import { useThemeCustomizer } from "@/components/providers/theme-customizer";
 import {
   PRESETS,
@@ -31,9 +31,9 @@ export function ThemeSettings({
   canCustomize = true,
 }: {
   /**
-   * Whether the plan includes custom brand colors. Light/dark stays available
-   * on every plan — only the palette engine is gated, which is what the
-   * pricing page advertises (Free: 0 custom palettes).
+   * Whether the plan includes custom brand colors. Only the palette engine is
+   * gated, which is what the pricing page advertises (Free: 0 custom palettes);
+   * the privacy control above it stays available on every plan.
    */
   canCustomize?: boolean;
 }) {
@@ -56,15 +56,21 @@ export function ThemeSettings({
   return (
     <Card className="shadow-card">
       <CardContent className="space-y-5 pt-6">
-        {/* Light / dark */}
+        {/* Privacy, where the light/dark switch used to be. The app ships in
+            one theme now, so the old ThemeToggle became a control that could
+            not change anything — next-themes' forcedTheme makes setTheme() a
+            no-op on the applied class — and leaving the row empty would have
+            been odd. The same toggle also sits in the mobile top bar and the
+            desktop sidebar footer; this copy is the discoverable one, and the
+            only place the setting is spelled out in words. */}
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-medium">Appearance</p>
+            <p className="text-sm font-medium">Hide amounts</p>
             <p className="text-xs text-muted-foreground">
-              Switch between light and dark.
+              Mask balances and transaction amounts on screen.
             </p>
           </div>
-          <ThemeToggle className="border border-border" />
+          <PrivacyToggle className="border border-border" />
         </div>
 
         <div className="border-t border-border" />

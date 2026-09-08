@@ -1,4 +1,4 @@
-import { requireOnboardedProfile } from "@/lib/auth";
+import { requireOnboardedAccount } from "@/lib/auth";
 import { getEntitlement } from "@/lib/entitlement";
 import { getAccounts, getCategories } from "@/lib/queries/money";
 import { getDueBillCount } from "@/lib/queries/planning";
@@ -18,7 +18,12 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const profile = await requireOnboardedProfile();
+  // The account menus (sidebar footer on desktop, top bar on mobile) show the
+  // signed-in address, which the profile row doesn't carry. Taking it off the
+  // gate that already fetched the auth user costs nothing; getEntitlement()
+  // below reads its user through the same memoized lookup, so the whole layout
+  // still makes one supabase.auth.getUser() round-trip.
+  const { profile, email } = await requireOnboardedAccount();
   const [accounts, categories, dueBills, ent] = await Promise.all([
     getAccounts(false),
     getCategories(),
@@ -40,8 +45,8 @@ export default async function AppLayout({
         <UpgradeProvider>
         <ActiveUseTimer eligible={upgradeEligible} />
         <div className="min-h-dvh md:pl-60">
-          <DesktopSidebar moneyBadge={dueBills} isAdmin={admin} />
-          <MobileTopBar />
+          <DesktopSidebar email={email} moneyBadge={dueBills} isAdmin={admin} />
+          <MobileTopBar email={email} />
           <main className="mx-auto w-full max-w-2xl px-4 pb-24 pt-6 md:max-w-3xl md:pb-16">
             {children}
           </main>

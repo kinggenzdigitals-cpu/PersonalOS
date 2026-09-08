@@ -8,7 +8,6 @@ import {
   CalendarIcon,
   WalletIcon,
   SparklesIcon,
-  LogOutIcon,
   BarChart3Icon,
   ListTodoIcon,
   TimerIcon,
@@ -19,15 +18,14 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuickAdd } from "@/components/nav/quick-add";
-import { ThemeToggle } from "@/components/nav/theme-toggle";
-import { SidebarControls } from "@/components/nav/sidebar-controls";
+import { PrivacyToggle } from "@/components/nav/privacy-toggle";
+import { UserMenu } from "@/components/nav/user-menu";
 import {
   Sheet,
   SheetContent,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useProfile } from "@/components/providers/profile-provider";
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -124,113 +122,111 @@ function SidebarBody({
   onNavigate?: () => void;
   isAdmin?: boolean;
 }) {
-  const profile = useProfile();
-  const initial =
-    profile.display_name?.trim()?.charAt(0)?.toUpperCase() ?? "?";
   // The server-side entitlement is the only authority. ORing the raw profile
   // role kept the Admin link visible for a request after a demotion, and
   // permanently if the demotion write ever fails.
   const admin = isAdmin;
   const secondary = admin ? [...SECONDARY, ADMIN_ITEM] : SECONDARY;
 
+  // The nav lists are the whole body now. The theme toggle is gone (one theme)
+  // and the privacy + account controls moved OUT of this shared body to the
+  // two places that own chrome: the mobile top bar and the desktop sidebar
+  // footer. They cannot live here — the mobile "More" drawer renders this body
+  // too, and would then show a second copy of controls already in the top bar.
+  // No `flex-1` and no trailing divider: both only existed to pin the old
+  // footers down, and left a stray border and dead space once they were gone.
   return (
-    <>
-      <nav aria-label="Primary" className="flex-1 space-y-4">
-        <ul className="space-y-1">
-          {PRIMARY.map((item) => (
-            <li key={item.href}>
-              <NavLink
-                item={item}
-                active={isActive(pathname, item.href)}
-                moneyBadge={moneyBadge}
-                onNavigate={onNavigate}
-              />
-            </li>
-          ))}
-        </ul>
-        <div className="space-y-1 border-t border-border pt-3">
-          {secondary.map((item) => (
+    <nav aria-label="Primary" className="space-y-4">
+      <ul className="space-y-1">
+        {PRIMARY.map((item) => (
+          <li key={item.href}>
             <NavLink
-              key={item.href}
               item={item}
               active={isActive(pathname, item.href)}
               moneyBadge={moneyBadge}
               onNavigate={onNavigate}
             />
-          ))}
-        </div>
-      </nav>
-
-      <div className="mt-4 border-t border-border pt-3">
-        <SidebarControls />
+          </li>
+        ))}
+      </ul>
+      <div className="space-y-1 border-t border-border pt-3">
+        {secondary.map((item) => (
+          <NavLink
+            key={item.href}
+            item={item}
+            active={isActive(pathname, item.href)}
+            moneyBadge={moneyBadge}
+            onNavigate={onNavigate}
+          />
+        ))}
       </div>
-
-      <div className="mt-3 flex items-center gap-3 border-t border-border pt-4">
-        <Link
-          href="/account"
-          onClick={onNavigate}
-          className="flex min-w-0 flex-1 items-center gap-3 rounded-lg -m-1 p-1 transition-colors hover:bg-secondary/60"
-        >
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-sage-soft text-sm font-semibold text-sage">
-            {initial}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">
-              {profile.display_name ?? "You"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Account &amp; subscription
-            </p>
-          </div>
-        </Link>
-        <form action="/auth/signout" method="post">
-          <button
-            type="submit"
-            aria-label="Sign out"
-            className="grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <LogOutIcon className="size-4" />
-          </button>
-        </form>
-      </div>
-    </>
+    </nav>
   );
 }
 
 /** Persistent left sidebar (tablet/desktop). */
 export function DesktopSidebar({
+  email,
   moneyBadge = 0,
   isAdmin = false,
 }: {
+  email: string | null;
   moneyBadge?: number;
   isAdmin?: boolean;
 }) {
   const pathname = usePathname();
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border bg-card px-4 py-6 md:flex">
-      <div className="mb-6 flex items-center justify-between px-1">
+    // overflow-y-auto so the account footer below can never be pushed off a
+    // short viewport by a long nav list (admins get an extra item).
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col overflow-y-auto border-r border-border bg-card px-4 py-6 md:flex">
+      <div className="mb-6 px-1">
         <Brand />
-        <ThemeToggle />
       </div>
       <div className="mb-4">
         <QuickAdd variant="sidebar" />
       </div>
       <SidebarBody pathname={pathname} moneyBadge={moneyBadge} isAdmin={isAdmin} />
+      {/* This sidebar is the ONLY persistent chrome at >=768px — MobileTopBar,
+          which carries the same two controls on phones, is md:hidden. The nav
+          lists above are feature pages only, so without this row a desktop
+          user has no link to /account (and through it /subscription and
+          /settings) and no way to sign out at all: an earlier revision moved
+          the account block out of SidebarBody and left desktop with no exit.
+
+          It lives here rather than in SidebarBody because the mobile "More"
+          drawer also renders SidebarBody, and mobile already has these
+          controls in the top bar. mt-auto pins it to the bottom so the nav
+          list still ends on its own last item. */}
+      <div className="mt-auto flex items-center gap-1 border-t border-border pt-4">
+        <div className="min-w-0 flex-1">
+          <UserMenu email={email} showName />
+        </div>
+        <PrivacyToggle />
+      </div>
     </aside>
   );
 }
 
-/** Mobile top bar: brand + quick add (navigation lives in the bottom bar). */
-export function MobileTopBar() {
+/**
+ * Mobile top bar: brand + the privacy and account controls (navigation lives in
+ * the bottom bar). `email` is threaded down from the server layout because the
+ * profile row has no email column, so the user menu cannot look it up itself.
+ */
+export function MobileTopBar({ email }: { email: string | null }) {
   return (
     <header
       className="sticky top-0 z-40 flex items-center gap-2 border-b border-border bg-card/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-card/80 md:hidden"
       style={{ paddingTop: "max(0.625rem, env(safe-area-inset-top))" }}
     >
-      <div className="flex-1">
+      {/* min-w-0: a flex item defaults to min-width:auto, so without this the
+          brand refuses to shrink below its content and shoves the controls off
+          the right edge of a 320px screen. It wraps to two lines instead, the
+          same way it already does in the 240px sidebar. */}
+      <div className="min-w-0 flex-1">
         <Brand />
       </div>
-      <ThemeToggle />
+      <PrivacyToggle />
+      <UserMenu email={email} />
     </header>
   );
 }

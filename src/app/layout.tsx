@@ -72,12 +72,41 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#012269",
+  // The dark `--background`, matching manifest.ts. Browser/OS chrome is painted
+  // from this before the document exists, so leaving it on the light brand navy
+  // left the surround mismatched against a permanently dark app.
+  themeColor: "#0b1220",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
 };
+
+/**
+ * The product ships in one theme: dark. Two things have to be true for that,
+ * and only one of them is obvious.
+ *
+ * 1. `forcedTheme` (next-themes) makes the *class* dark no matter what. Its
+ *    pre-paint script short-circuits on a forced theme before it ever reads
+ *    localStorage, so a "light" value stored by the old toggle cannot win.
+ *    Deleting the toggle without this would have been worse than useless: the
+ *    provider used to default to "light", so every user without a stored
+ *    preference — i.e. every new user — would have been stranded in a light
+ *    theme with nothing left to switch it back.
+ *
+ * 2. `forcedTheme` alone still leaks. next-themes computes
+ *    `resolvedTheme` from the *stored* value and ignores the forced one, so a
+ *    user carrying "light" in storage would hand `resolvedTheme === "light"`
+ *    to <Toaster/>, which forwards it to sonner. Sonner colours toast
+ *    description text off that flag (`#3f3f3f` in light, near-white in dark),
+ *    and our toasts sit on the dark `--popover`, so descriptions would render
+ *    dark-grey on dark-navy — invisible. Moving to a fresh storage key retires
+ *    every stale value at once, and `defaultTheme="dark"` means the key that
+ *    replaces it reads back "dark".
+ */
+const COLOR_MODE = "dark";
+/** Deliberately not "theme": the old key still holds users' stale "light". */
+const COLOR_MODE_STORAGE_KEY = "fht-color-mode";
 
 export default function RootLayout({
   children,
@@ -89,7 +118,19 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("h-full antialiased", fraunces.variable, karla.variable)}
+      // Server-rendered so the dark palette is live on the very first byte.
+      // next-themes injects its pre-paint script *inside* <body>, below the
+      // provider, so without this class the document would paint with the
+      // :root (light) tokens until the parser reached that script.
+      className={cn(
+        "h-full antialiased",
+        COLOR_MODE,
+        fraunces.variable,
+        karla.variable,
+      )}
+      // Same reasoning for native UI (scrollbars, date pickers, autofill):
+      // next-themes sets this too, just a beat later.
+      style={{ colorScheme: COLOR_MODE }}
     >
       <head>
         {sb && (
@@ -103,15 +144,27 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{document.documentElement.dataset.privacy=localStorage.getItem('fht-privacy')==='1'?'hidden':'';}catch(e){}})();`,
+            // The removeItem tags along in this already-present script rather
+            // than a fourth <script> in the critical path: 'theme' is what the
+            // deleted light/dark toggle wrote, nothing reads it since the
+            // provider moved to COLOR_MODE_STORAGE_KEY, and leaving a stale
+            // "light" behind invites a future reader to think it still counts.
+            // It runs AFTER the masking assignment so it can never pre-empt it.
+            __html: `(function(){try{document.documentElement.dataset.privacy=localStorage.getItem('fht-privacy')==='1'?'hidden':'';localStorage.removeItem('theme');}catch(e){}})();`,
           }}
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
+        {/* Still mounted, not removed: ui/sonner.tsx calls useTheme(), which
+            falls back to an empty context with no provider — leaving sonner on
+            its "light" default and the unreadable descriptions described
+            above. See COLOR_MODE for why it is forced, not merely defaulted. */}
         <ThemeProvider
           attribute="class"
-          defaultTheme="light"
-          enableSystem
+          forcedTheme={COLOR_MODE}
+          defaultTheme={COLOR_MODE}
+          storageKey={COLOR_MODE_STORAGE_KEY}
+          enableSystem={false}
           disableTransitionOnChange
         >
           <ThemeCustomizerProvider>

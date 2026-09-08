@@ -43,6 +43,19 @@ export default async function ReportsPage({
   const offset = Math.max(requestedOffset, minOffset);
   const atHistoryLimit = offset <= minOffset;
 
+  // Derived from the same limit that draws the lock, so the two cannot
+  // disagree: this tooltip said "the last 3 months" long after Free was cut to
+  // one, which made the app claim more history than it would actually show.
+  // Only reachable when monthsLimit is a number — an unlimited plan never locks.
+  const historyLabel =
+    monthsLimit === null
+      ? ""
+      : period === "week"
+        ? `the last ${monthsLimit * 4} weeks`
+        : monthsLimit === 1
+          ? "the current month only"
+          : `the last ${monthsLimit} months`;
+
   const report = await getReport(
     profile.timezone,
     period,
@@ -81,7 +94,7 @@ export default async function ReportsPage({
               <Link
                 href="/settings"
                 aria-label="Upgrade to see older reports"
-                title="Free plan shows the last 3 months — upgrade to Pro for full history"
+                title={`Your plan shows ${historyLabel} — upgrade for a longer history`}
                 className="rounded-lg p-1.5 text-brand hover:bg-secondary"
               >
                 <LockIcon className="size-5" />

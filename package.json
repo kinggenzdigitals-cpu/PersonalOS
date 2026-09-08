@@ -10,10 +10,13 @@
     "typecheck": "tsc --noEmit",
     "test:csv": "tsc src/lib/csv.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/csv-parser.test.cjs",
     "test:reconcile": "tsc src/lib/reconcile.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/reconcile.test.cjs",
-    "test": "npm run test:csv && npm run test:reconcile && npm run test:budget && npm run test:auth && npm run test:budget-report",
+    "test": "npm run test:csv && npm run test:reconcile && npm run test:budget && npm run test:auth && npm run test:budget-report && npm run test:providers && npm run test:plans && npm run test:initials",
     "test:budget": "tsc src/lib/budget-advice.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/budget-advice.test.cjs",
     "test:budget-report": "tsc src/lib/budget-report.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/budget-report.test.cjs",
-    "test:auth": "tsc src/lib/auth-errors.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/auth-errors.test.cjs"
+    "test:auth": "tsc src/lib/auth-errors.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/auth-errors.test.cjs",
+    "test:providers": "tsc src/lib/auth-provider-state.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/auth-provider-state.test.cjs",
+    "test:plans": "tsc src/lib/plan-features.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/plan-features.test.cjs",
+    "test:initials": "tsc src/lib/initials.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/initials.test.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

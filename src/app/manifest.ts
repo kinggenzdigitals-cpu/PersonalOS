@@ -1,5 +1,16 @@
 import type { MetadataRoute } from "next";
 
+/**
+ * The dark `--background` from globals.css, repeated as a literal because the
+ * OS reads these two values straight out of the manifest, long before any CSS
+ * or the forced-dark <html class="dark"> exists. They used to be the light
+ * palette (#FFFFFF / the light brand navy), so every cold launch of the
+ * installed PWA flashed a full-screen white splash and then snapped to the
+ * dark app — the one light flash the forced theme cannot reach from inside the
+ * page. Keep in step with `.dark { --background }`.
+ */
+const DARK_SURFACE = "#0b1220";
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Finance & Habit Tracker",
@@ -8,8 +19,8 @@ export default function manifest(): MetadataRoute.Manifest {
       "Track your money, habits, mood, tasks, and focus sessions — all in one calm place.",
     start_url: "/home",
     display: "standalone",
-    background_color: "#FFFFFF",
-    theme_color: "#012269",
+    background_color: DARK_SURFACE,
+    theme_color: DARK_SURFACE,
     orientation: "portrait",
     icons: [
       {

@@ -1,9 +1,9 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { AuthForm } from "@/components/auth/auth-form";
-import { GoogleButton } from "@/components/auth/google-button";
+import { GoogleSignIn } from "@/components/auth/google-sign-in";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -25,13 +25,14 @@ export default async function LoginPage({
 
       <Card className="shadow-card">
         <CardContent className="space-y-4 pt-6">
-          <GoogleButton next={next} />
-
-          <div className="flex items-center gap-3">
-            <Separator className="flex-1" />
-            <span className="text-xs text-muted-foreground">or</span>
-            <Separator className="flex-1" />
-          </div>
+          {/* Streams in behind the form: asking Supabase whether Google is on
+              must never stand between the user and the email fields. The
+              fallback is empty rather than a skeleton because the button is
+              usually absent, and a placeholder for something that normally
+              never arrives is worse than nothing. */}
+          <Suspense fallback={null}>
+            <GoogleSignIn next={next} />
+          </Suspense>
 
           <AuthForm mode="login" next={next} />
         </CardContent>

@@ -2,7 +2,11 @@
 // Offline *writes* are out of scope; we just show a friendly offline page
 // and serve cached static assets when the network is unavailable.
 
-const CACHE = "life-os-v1";
+// Bumped from v1 so the repainted (dark) offline.html actually reaches people.
+// PRECACHE only re-runs when this file's bytes change, and `activate` deletes
+// every cache whose name isn't this one — so without a bump every existing
+// install would keep serving the old light offline page from v1 forever.
+const CACHE = "life-os-v2";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/icon-192.png", "/icon-512.png"];
 

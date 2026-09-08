@@ -1,9 +1,16 @@
 /**
  * Subscription plans — the single source of truth for tiers, billing periods,
- * prices, discounts, limits, and feature lists. Every pricing/limit consumer
- * reads from here (never hardcodes prices). Editable-by-admin DB tables are a
- * later phase; this config is the canonical default.
+ * prices, discounts and limits. Every pricing/limit consumer reads from here
+ * (never hardcodes prices). Editable-by-admin DB tables are a later phase; this
+ * config is the canonical default.
+ *
+ * The marketing bullets are the one thing NOT defined here: they come from
+ * plan-features.ts so they sit beside the comparison table that makes the same
+ * promises. Kept in two places they drifted, and the bullets — the only pricing
+ * copy a signed-out prospect sees — were the half that stayed wrong.
  */
+
+import { PLAN_BULLETS } from "@/lib/plan-features";
 
 export type PlanId = "free" | "pro" | "premium";
 
@@ -55,6 +62,10 @@ export type PlanLimits = {
   budgets: number | null;
   recurring: number | null;
   reminders: number | null;
+  // Unread by any code path: nothing generates a PDF and nothing saves a
+  // search. They are kept as the intended shape of those features, not as a
+  // claim — do not turn either number back into customer-facing copy until
+  // something enforces it. `customThemes` is read once, and only as `> 0`.
   pdfExportsPerMonth: number;
   customThemes: number;
   savedSearches: number;
@@ -98,14 +109,7 @@ export const PLANS: Record<PlanId, Plan> = {
       csvExport: false,
       netWorth: false,
     },
-    features: [
-      "100 transactions / month",
-      "2 wallets · 3 habits · 1 goal",
-      "2 budgets · 1 recurring · 3 reminders",
-      "Today dashboard + month calendar",
-      "Basic reports + current-month CSV",
-      "Light/Dark, privacy, PWA, feedback",
-    ],
+    features: PLAN_BULLETS.free,
     cta: "Get started free",
   },
   pro: {
@@ -130,15 +134,7 @@ export const PLANS: Record<PlanId, Plan> = {
       csvExport: true,
       netWorth: true,
     },
-    features: [
-      "Everything in Free, plus:",
-      "500 transactions / month",
-      "8 wallets · 15 habits · 5 goals",
-      "10 budgets · 15 recurring · 25 reminders",
-      "Week + Agenda calendar, advanced search",
-      "1-year reports, charts, net worth",
-      "5 PDF exports/mo · 3 custom themes",
-    ],
+    features: PLAN_BULLETS.pro,
     cta: "Start Pro",
     highlighted: true,
   },
@@ -164,15 +160,7 @@ export const PLANS: Record<PlanId, Plan> = {
       csvExport: true,
       netWorth: true,
     },
-    features: [
-      "Everything in Pro, with higher limits:",
-      "2,000 transactions / month",
-      "25 wallets · 50 habits · 20 goals",
-      "30 budgets · 50 recurring · 100 reminders",
-      "5-year reports + financial forecasting",
-      "Advanced dashboard customization",
-      "25 PDF exports/mo · 10 themes · priority support",
-    ],
+    features: PLAN_BULLETS.premium,
     cta: "Start Premium",
   },
 };

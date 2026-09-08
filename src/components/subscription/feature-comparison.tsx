@@ -21,7 +21,10 @@ function Cell({ v }: { v: FeatureCell }) {
       </span>
     );
   }
-  return <span className="tnum">{v}</span>;
+  // Tabular numerals line the digits up down a column, which is the whole point
+  // for "100 / 500 / 2,000" and does nothing for prose but pick a different
+  // glyph set, so only cells that actually carry a number get it.
+  return <span className={/\d/.test(v) ? "tnum" : undefined}>{v}</span>;
 }
 
 const COLS: PlanId[] = ["free", "pro", "premium"];

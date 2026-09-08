@@ -4,9 +4,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Offline · Finance & Habit Tracker</title>
+    <!--
+      A precached static file: the service worker serves it for any failed
+      navigation, so it never loads globals.css and cannot inherit the app's
+      tokens. The values below are hard copies of the dark palette
+      (--background #0b1220, --foreground #e8edf5, --muted-foreground #9aa6bd,
+      --brand #5a9dff, --sage #a6d95f) and must be updated by hand if those
+      change. They were the retired cream/terracotta palette until now, which
+      meant losing connection mid-session threw a dark-adapted user onto a
+      full-screen light page in colours the app no longer even uses.
+    -->
     <style>
       :root {
-        color-scheme: light;
+        color-scheme: dark;
       }
       body {
         margin: 0;
@@ -14,8 +24,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #faf6f1;
-        color: #2d2a26;
+        background: #0b1220;
+        color: #e8edf5;
         font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
         text-align: center;
         padding: 24px;
@@ -28,7 +38,7 @@
         height: 64px;
         margin: 0 auto 20px;
         border-radius: 18px;
-        background: #c4643b;
+        background: #5a9dff;
         display: grid;
         place-items: center;
       }
@@ -36,7 +46,7 @@
         width: 34px;
         height: 34px;
         border-radius: 50%;
-        border: 6px solid #faf6f1;
+        border: 6px solid #0b1220;
         box-sizing: border-box;
         position: relative;
       }
@@ -45,21 +55,22 @@
         position: absolute;
         inset: 6px;
         border-radius: 50%;
-        background: #7c9082;
+        background: #a6d95f;
       }
       h1 {
         font-size: 20px;
         margin: 0 0 8px;
       }
       p {
-        color: #6b6459;
+        color: #9aa6bd;
         font-size: 15px;
         line-height: 1.5;
         margin: 0 0 20px;
       }
       button {
-        background: #c4643b;
-        color: #fff;
+        background: #5a9dff;
+        /* Dark ink on the lifted blue: white would land at ~2.5:1. */
+        color: #04122e;
         border: 0;
         border-radius: 12px;
         padding: 10px 20px;
