@@ -19,7 +19,9 @@ const STEPS = ["Email", "Verify code", "New password"] as const;
 type Step = 0 | 1 | 2;
 
 const CODE_LENGTH = 6;
-const RESEND_SECONDS = 45;
+// Matches Supabase's "Minimum interval per user" (60s). A shorter cooldown
+// just invites a guaranteed rate-limit error on the second send.
+const RESEND_SECONDS = 60;
 
 /** Reason the auth callback bounced a recovery link back here. */
 const LINK_ERRORS: Record<string, string> = {
