@@ -174,21 +174,21 @@ export function QuickAdd({
           <button
             type="button"
             aria-label="Quick add"
-            className="grid size-14 place-items-center rounded-full bg-brand text-primary-foreground shadow-lifted transition-transform hover:bg-brand-hover active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="grid size-14 place-items-center rounded-full bg-brand text-brand-foreground shadow-lifted transition-transform hover:bg-brand-hover active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <PlusIcon className="size-6" />
           </button>
         ) : variant === "bar" ? (
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-soft transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-sm font-medium text-brand-foreground shadow-soft transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <PlusIcon className="size-4" /> Add
           </button>
         ) : (
           <button
             type="button"
-            className="flex w-full items-center gap-3 rounded-xl bg-brand px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-soft transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex w-full items-center gap-3 rounded-xl bg-brand px-4 py-2.5 text-sm font-medium text-brand-foreground shadow-soft transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <PlusIcon className="size-4" /> Quick add
           </button>

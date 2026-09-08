@@ -45,9 +45,23 @@ export default async function AppLayout({
         <UpgradeProvider>
         <ActiveUseTimer eligible={upgradeEligible} />
         <div className="min-h-dvh md:pl-60">
+          {/* Skip link — WCAG 2.4.1 (Bypass Blocks). The sidebar puts a dozen
+              nav links ahead of the content, so without this a keyboard or
+              screen-reader user tabs through all of them on EVERY page. Hidden
+              until focused, then pinned top-left above the sticky header. */}
+          <a
+            href="#main-content"
+            className="sr-only z-50 focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:rounded-lg focus:bg-brand focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-brand-foreground focus:shadow-card focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            Skip to main content
+          </a>
           <DesktopSidebar email={email} moneyBadge={dueBills} isAdmin={admin} />
           <MobileTopBar email={email} />
-          <main className="mx-auto w-full max-w-2xl px-4 pb-24 pt-6 md:max-w-3xl md:pb-16">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="mx-auto w-full max-w-2xl px-4 pb-24 pt-6 md:max-w-3xl md:pb-16"
+          >
             {children}
           </main>
           <MobileBottomNav moneyBadge={dueBills} isAdmin={admin} />

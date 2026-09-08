@@ -49,6 +49,7 @@
   /* brand / semantic extensions */
   --color-brand: var(--brand);
   --color-brand-hover: var(--brand-hover);
+  --color-brand-foreground: var(--brand-foreground);
   --color-brand-2: var(--brand-2);
   --color-brand-2-hover: var(--brand-2-hover);
   --color-accent-brand: var(--accent-brand);
@@ -115,6 +116,9 @@
 
   /* brand extensions */
   --brand: #012269;        /* Ocean Blue — primary brand */
+  /* Text/icon colour for filled --brand surfaces. Light theme's brand is a
+     dark navy, so white sits on it at 14.6:1. */
+  --brand-foreground: #ffffff;
   --brand-hover: #01184e;
   --brand-2: #017dfe;      /* Azure — links, hovers, secondary */
   --brand-2-hover: #0166d1;
@@ -177,6 +181,12 @@
   --ring: #4aa3ff;
 
   --brand: #5a9dff;        /* Ocean Blue lifts to a readable blue in dark */
+  /* Dark theme lifts --brand to a light blue so it stays readable AS TEXT on
+     the dark ground — but that makes it a light BACKGROUND, and white on it
+     measured 2.73:1 (hover #7cb2ff was worse, 2.17:1) against a 4.5:1 floor.
+     Dark ink restores it to 6.81:1 / 8.55:1. Same pattern the sidebar already
+     uses (--sidebar-primary-foreground below). */
+  --brand-foreground: #04122e;
   --brand-hover: #7cb2ff;
   --brand-2: #38b6ff;      /* Azure */
   --brand-2-hover: #62c6ff;

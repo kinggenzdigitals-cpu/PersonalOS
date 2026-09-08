@@ -49,7 +49,7 @@ export default async function InvitePage({
     <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-[400px] space-y-4">
         <div className="space-y-1 text-center">
-          <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-brand text-primary-foreground shadow-soft">
+          <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-brand text-brand-foreground shadow-soft">
             <SparklesIcon className="size-6" />
           </span>
           <h1 className="font-display text-2xl tracking-tight">You&apos;re invited</h1>

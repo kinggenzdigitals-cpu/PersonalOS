@@ -44,7 +44,7 @@ export default async function SubscriptionPage() {
             className={
               ent.plan === "free"
                 ? "rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
-                : "rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-primary-foreground"
+                : "rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-brand-foreground"
             }
           >
             {planName} plan

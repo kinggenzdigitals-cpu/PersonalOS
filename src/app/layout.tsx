@@ -78,7 +78,9 @@ export const viewport: Viewport = {
   themeColor: "#0b1220",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  // No maximumScale: locking pinch-zoom fails WCAG 1.4.4 (Resize Text), and on
+  // a screen full of small financial figures it is exactly the wrong thing to
+  // take away. axe flagged it "critical" on every public page.
   viewportFit: "cover",
 };
 

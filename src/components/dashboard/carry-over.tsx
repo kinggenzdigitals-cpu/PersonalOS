@@ -43,7 +43,7 @@ export function CarryOver({ count }: { count: number }) {
         type="button"
         onClick={moveAll}
         disabled={busy}
-        className="inline-flex items-center gap-1 rounded-lg bg-brand px-2.5 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-brand-hover disabled:opacity-60"
+        className="inline-flex items-center gap-1 rounded-lg bg-brand px-2.5 py-1 text-xs font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-60"
       >
         {busy && <Loader2Icon className="size-3 animate-spin" />}
         Move to today

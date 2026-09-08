@@ -5,7 +5,7 @@ export function MarketingHeader() {
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
         <Link href="/" className="flex items-center gap-2">
-          <span className="grid size-9 place-items-center rounded-xl bg-brand text-primary-foreground shadow-soft">
+          <span className="grid size-9 place-items-center rounded-xl bg-brand text-brand-foreground shadow-soft">
             <span className="font-display text-lg leading-none">F</span>
           </span>
           <span className="font-display text-lg tracking-tight">Finance & Habit Tracker</span>
@@ -27,7 +27,7 @@ export function MarketingHeader() {
           </Link>
           <Link
             href="/signup"
-            className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-primary-foreground shadow-soft transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-brand-foreground shadow-soft transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Get started
           </Link>

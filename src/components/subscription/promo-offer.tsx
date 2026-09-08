@@ -93,7 +93,7 @@ export function PromoOffer({
         <p className="flex items-center gap-1.5 text-sm font-semibold text-brand">
           <SparklesIcon className="size-4" /> Limited upgrade offer
         </p>
-        <span className="tnum flex items-center gap-1 rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
+        <span className="tnum flex items-center gap-1 rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-brand-foreground">
           <TimerIcon className="size-3.5" aria-hidden /> {mm}:{ss}
         </span>
       </div>

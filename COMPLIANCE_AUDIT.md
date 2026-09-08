@@ -1,4 +1,4 @@
-# Compliance & Risk Audit — Finance & Habit Tracker
+| M-11 ✅ | | M-10 ✅ | | M-08 ✅ | # Compliance & Risk Audit — Finance & Habit Tracker
 
 **Audit date:** 2026-09-08
 **Scope:** repository at commit `8f26176` + live deployment `https://financialhabittracker.vercel.app`
@@ -17,14 +17,15 @@ What was **not** testable, and why:
 | Not tested | Reason |
 |---|---|
 | Authenticated UI (all `(app)` routes) | Auth-gated; the auditor had no credentials and did not sign in. Protected-route findings come from **source reading**, not from loading the pages. |
-| Accessibility (WCAG 2.2 AA) | **NOT AUDITED.** The a11y agent terminated on a session limit before producing findings. No accessibility claim is made in this document, in either direction. |
+| Accessibility (WCAG 2.2 AA) | **PARTIALLY AUDITED — see §11.** Public routes scanned with axe-core 4.10.2; auth-gated routes source-reviewed only. Automated scanning cannot establish conformance. |
 | Full security-posture sweep | **PARTIAL.** The dedicated security agent also terminated early. Security findings below come from the third-party, storage and data lenses only. |
 | Supabase backup / PITR window | Not readable from the repo or via available tooling. Must be read off the Supabase dashboard. |
 | Unsplash per-photo licence tier | `images.unsplash.com` returns bytes with no attribution metadata. |
 | Owner business registration | Nothing in repo, database or live site references any. **Not invented.** |
 
-No accessibility conformance is claimed. Automated tooling alone could not establish it even
-had it run.
+No accessibility conformance is claimed. Automated tooling detects only a fraction of WCAG
+issues, and the authenticated app was never loaded — see §11 for exactly what was and was not
+tested.
 
 ---
 
@@ -71,7 +72,7 @@ browser storage|tracking|analytic|session" src/app/privacy/page.tsx` → **0 hit
 - **Evidence:** `src/app/page.tsx:248` and `:43` — *"unlimited accounts, goals, net worth, and CSV export."* Pro is capped at **8 accounts / 5 goals / 15 habits**, enforced server-side. Confirmed live.
 - **Legal area:** RA 7394 (Consumer Act) misleading advertising; RA 11967 product-description duties.
 - **Fix:** Replace with the real numbers at `src/app/page.tsx:43`, `:248`, `src/app/(app)/account/page.tsx:158`.
-- **Status:** Not fixed. **LAWYER.**
+- **Status:** **FIXED** in `68e54c7`. The copy now interpolates `PLANS.pro.limits` directly, so it cannot drift from the enforced cap again. **LAWYER** should still review the historical exposure.
 
 ---
 
@@ -137,7 +138,7 @@ can neither see, export, nor delete their own entries. RA 10173 access/erasure r
 Exhaustive grep across `.ts/.tsx/.sql/.md/.json` → **zero hits**. **The Terms must not mention
 it.** If wanted, it must be built first. **OWNER.**
 
-### H-12 — 13 production vulnerabilities; 10 trace to a misplaced build tool
+### H-12 ✅ FIXED (`4f6ab94`) — 13 production vulnerabilities; 10 traced to a misplaced build tool
 `npm audit --omit=dev` → **0 critical, 10 high, 3 moderate, 461 prod deps**. Ten stem from
 `shadcn@4.13.1` sitting in `dependencies` — a CLI no application code imports
 (`grep "from 'shadcn'" src scripts` → 0 hits) that drags in an MCP server, `express` and
@@ -156,7 +157,7 @@ it is **overprinted with tiled "pngtree" watermark text and the PNGTree logo** �
 unlicensed comp, not a purchased asset. Nothing references it; it is **not** deployed.
 **File left untouched.** **OWNER: produce the licence/receipt, or delete it.**
 
-### H-15 — No security response headers on any route
+### H-15 ✅ FIXED (`1249b14`) — No security response headers on any route
 No `Content-Security-Policy`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` or
 `X-Content-Type-Options`. `next.config.ts` has no `headers()`. HSTS is present (Vercel default).
 
@@ -187,10 +188,10 @@ No `Content-Security-Policy`, `X-Frame-Options`, `Referrer-Policy`, `Permissions
 
 ## 5. Low / Info
 
-- **L-01** `/invite/[token]` renders a third party's **email address** to any unauthenticated holder of the link; no `noindex`. (`invite/[token]/page.tsx:60-62`)
-- **L-02** `/subscription` files the visual "Hide sensitive info" mask under a heading called **"Security"**. It is a CSS mask, not security. (`plan-features.ts:127-131`)
-- **L-03** Marketing header/footer render the logo letter **"L"** while the product is "Finance & Habit Tracker".
-- **L-04** `next.config.ts` allow-lists two unused `picsum.photos` hosts — a needless open image proxy.
+- **L-01 ✅ FIXED (`1249b14`)** `/invite/[token]` renders a third party's **email address** to any unauthenticated holder of the link; no `noindex`. (`invite/[token]/page.tsx:60-62`)
+- **L-02 ✅ FIXED (`1249b14`)** `/subscription` files the visual "Hide sensitive info" mask under a heading called **"Security"**. It is a CSS mask, not security. (`plan-features.ts:127-131`)
+- **L-03 ✅ FIXED (`1249b14`)** Marketing header/footer render the logo letter **"L"** while the product is "Finance & Habit Tracker".
+- **L-04 ✅ FIXED (`1249b14`)** `next.config.ts` allow-lists two unused `picsum.photos` hosts — a needless open image proxy.
 - **L-05** Sessions have no absolute expiry (`not_after` null on both live rows); sign-out leaves per-device state in `localStorage`, including account/task/habit UUIDs.
 - **L-06** Super admins can read every user's email, plan and last-login, plus all feedback text — undisclosed.
 - **L-07** Supabase advisors: leaked-password protection **off**; three `SECURITY DEFINER` helpers callable via RPC by `anon`.
@@ -268,15 +269,61 @@ Legal pages cannot be published until these exist:
 
 ## 9. Implementation status
 
-**No code changes were made in this audit.** The two fix agents (accessibility, security
-headers + claims) and the four policy drafts terminated on a session limit before producing
-output. `git status` is unchanged apart from the pre-existing untracked PNG.
+Fixes landed in three commits after the audit was first written:
+
+| Commit | Items |
+|---|---|
+| `4f6ab94` | H-12 — `shadcn` moved out of production deps: 461 → 150 prod deps, 13 → 4 vulnerabilities |
+| `68e54c7` | C-02, M-02, M-03 — false public claims corrected against real `PLANS` limits; the absolute "no other user can ever see your data" guarantee replaced with what is actually true |
+| `1249b14` | H-15, M-08, M-10, M-11, L-01, L-02, L-03, L-04 — security headers, export column allow-list, guarded storage reads, auth-cookie preservation on redirects, invite `noindex`, dead image allowlist removed |
+| *(this pass)* | A11Y-01, A11Y-02, A11Y-03 — see §11 |
+
+Everything above was verified with `tsc`, `lint`, the 241-assertion suite and a production
+build; the security headers and the axe re-scan were confirmed against a running server rather
+than asserted from config.
 
 **No legal pages were drafted or published.** That was deliberate: an accurate Privacy Policy
 requires items 1–10 above, and publishing a policy containing placeholders would be worse than
 publishing none.
 
 ---
+
+## 11. Accessibility (WCAG 2.2 Level AA)
+
+**Method:** axe-core 4.10.2 executed in-page against the live public routes
+(`/`, `/login`, `/pricing`) with rulesets `wcag2a, wcag2aa, wcag21a, wcag21aa,
+wcag22a, wcag22aa`. Auth-gated routes could not be loaded and were source-reviewed.
+
+**No conformance claim is made.** Automated tooling detects roughly a third of WCAG
+issues; the manual checks below were partial, and a full audit needs screen-reader
+testing and keyboard walkthroughs of the authenticated app.
+
+### Found and FIXED
+
+| ID | Issue | SC | Evidence |
+|---|---|---|---|
+| A11Y-01 | `maximumScale: 1` disabled pinch-zoom on every page | **1.4.4 Resize Text** (AA) | axe `meta-viewport`, impact **critical**, on `/`, `/login`, `/pricing`. Fixed by removing `maximumScale` from `src/app/layout.tsx`. |
+| A11Y-02 | White on `--brand` measured **2.73:1**; hover `#7cb2ff` **2.17:1** — against a 4.5:1 floor | **1.4.3 Contrast** (AA) | axe `color-contrast`, impact **serious**, 4 nodes on `/`, 3 on `/pricing` — the primary CTAs. Root cause: dark mode lifts `--brand` to a light blue so it reads as *text* on the dark ground, but the same token is also a button *background*, where a light fill needs dark ink. Fixed with a dedicated `--brand-foreground` (`#ffffff` light / `#04122e` dark) applied to 27 lines across 19 files → **6.81:1**, hover **8.55:1**. |
+| A11Y-03 | No skip-to-content link anywhere | **2.4.1 Bypass Blocks** (A) | `grep` for skip-link patterns returned zero. The sidebar places ~12 nav links before `<main>`, so keyboard users traverse them on every page. Added to `(app)/layout.tsx`; `<main>` given `id="main-content"` and `tabIndex={-1}` so focus lands. |
+
+**Re-scan after fixes:** `/` → **0 violations** (26 passes, was 25 with 2 violations).
+`/pricing` → **0 violations** (25 passes). Verified on a running build, not asserted.
+
+### Found, NOT fixed — needs a design decision
+
+| ID | Issue | Why not auto-fixed |
+|---|---|---|
+| A11Y-04 | White on `--primary` `#2f7dff` = **3.82:1** (below the 4.5:1 text floor) | `bg-primary` backs shadcn primitives — button default, badge, checkbox, slider and the **switch thumb** (`dark:data-checked:bg-primary-foreground`). Darkening `--primary-foreground` to `#04122e` reaches 4.86:1 but turns the switch thumb dark navy, a visible control change. Note **1.4.11 Non-text Contrast** requires only 3:1 for UI components, which 3.82 already meets — so only the *text* uses (button, badge) fail. **OWNER DECISION.** |
+
+### NOT tested — honest gaps
+
+- Every authenticated route (`/home`, `/money/*`, `/habits`, `/settings`, `/admin`) — no credentials
+- The skip link could not be exercised live; it sits in the auth-gated layout, so only its markup was verified
+- Screen-reader behaviour (NVDA/JAWS/VoiceOver) — not run
+- Full keyboard walkthrough of dialogs, focus trapping and focus restoration
+- Reduced-motion preferences
+- Touch-target sizing across the authenticated app
+- Financial charts and table semantics (`budget-vs-actual.tsx`, `trend-chart.tsx`, `category-donut.tsx`)
 
 ## 10. Remaining unverified
 

@@ -62,7 +62,7 @@ function isActive(pathname: string, href: string) {
 function Brand() {
   return (
     <Link href="/home" className="flex items-center gap-2">
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand text-primary-foreground shadow-soft">
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand text-brand-foreground shadow-soft">
         <span className="font-display text-lg leading-none">F</span>
       </span>
       <span className="font-display text-base leading-tight tracking-tight">

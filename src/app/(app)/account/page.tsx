@@ -94,7 +94,7 @@ export default async function AccountPage() {
             <span
               className={
                 hasPaidAccess
-                  ? "rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-primary-foreground"
+                  ? "rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-brand-foreground"
                   : "rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
               }
             >

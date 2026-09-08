@@ -95,7 +95,7 @@ export default async function LandingPage() {
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
                 href="/signup"
-                className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-base font-medium text-primary-foreground shadow-card transition-all hover:-translate-y-0.5 hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-base font-medium text-brand-foreground shadow-card transition-all hover:-translate-y-0.5 hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 Get started — it&apos;s free <ArrowRightIcon className="size-4" />
               </Link>
@@ -231,7 +231,7 @@ export default async function LandingPage() {
                 },
               ].map((s) => (
                 <div key={s.n} className="text-center">
-                  <span className="mx-auto grid size-12 place-items-center rounded-full bg-brand font-display text-xl text-primary-foreground shadow-soft">
+                  <span className="mx-auto grid size-12 place-items-center rounded-full bg-brand font-display text-xl text-brand-foreground shadow-soft">
                     {s.n}
                   </span>
                   <h3 className="mt-4 font-display text-xl">{s.t}</h3>
@@ -258,7 +258,7 @@ export default async function LandingPage() {
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <Link
                 href="/signup"
-                className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-medium text-primary-foreground shadow-soft transition-colors hover:bg-brand-hover"
+                className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-medium text-brand-foreground shadow-soft transition-colors hover:bg-brand-hover"
               >
                 Get started free
               </Link>
@@ -300,7 +300,7 @@ export default async function LandingPage() {
             </p>
             <Link
               href="/signup"
-              className="mt-8 inline-flex items-center gap-2 rounded-full bg-brand px-7 py-3.5 text-base font-medium text-primary-foreground shadow-card transition-all hover:-translate-y-0.5 hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="mt-8 inline-flex items-center gap-2 rounded-full bg-brand px-7 py-3.5 text-base font-medium text-brand-foreground shadow-card transition-all hover:-translate-y-0.5 hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               Get started — it&apos;s free <ArrowRightIcon className="size-4" />
             </Link>

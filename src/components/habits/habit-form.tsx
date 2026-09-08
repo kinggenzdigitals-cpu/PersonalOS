@@ -133,7 +133,7 @@ export function HabitForm({
                 className={cn(
                   "size-9 rounded-full text-xs font-medium transition-colors",
                   active
-                    ? "bg-brand text-primary-foreground"
+                    ? "bg-brand text-brand-foreground"
                     : "bg-secondary text-muted-foreground hover:text-foreground",
                 )}
               >

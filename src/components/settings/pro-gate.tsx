@@ -23,7 +23,7 @@ export function ProGate({
           <LockIcon className="size-6" />
         </span>
         <div className="space-y-1.5">
-          <span className="inline-block rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
+          <span className="inline-block rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-brand-foreground">
             Pro
           </span>
           <h2 className="font-display text-xl">{title}</h2>

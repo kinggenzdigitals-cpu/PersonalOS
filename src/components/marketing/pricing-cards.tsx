@@ -85,7 +85,7 @@ function PlanCard({ plan, period }: { plan: Plan; period: BillingPeriod }) {
           className={cn(
             "absolute -top-3 left-6 rounded-full px-3 py-0.5 text-xs font-medium",
             plan.highlighted
-              ? "bg-brand text-primary-foreground"
+              ? "bg-brand text-brand-foreground"
               : "bg-secondary text-foreground",
           )}
         >
@@ -134,7 +134,7 @@ function PlanCard({ plan, period }: { plan: Plan; period: BillingPeriod }) {
         className={cn(
           "mt-4 inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium transition-colors",
           plan.highlighted
-            ? "bg-brand text-primary-foreground shadow-soft hover:bg-brand-hover"
+            ? "bg-brand text-brand-foreground shadow-soft hover:bg-brand-hover"
             : "border border-border hover:bg-secondary",
         )}
       >

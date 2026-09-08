@@ -308,7 +308,7 @@ function MonthGrid({
               <span
                 className={cn(
                   "flex size-6 items-center justify-center rounded-full",
-                  isToday && "bg-brand font-medium text-primary-foreground",
+                  isToday && "bg-brand font-medium text-brand-foreground",
                 )}
               >
                 {format(d, "d")}

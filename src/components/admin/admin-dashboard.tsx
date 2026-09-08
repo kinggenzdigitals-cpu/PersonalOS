@@ -177,7 +177,7 @@ function planBadge(u: AdminUser): { label: string; className: string } {
       // address is removed. An unmarked Super Admin was granted deliberately.
       label:
         u.roleSource === "bootstrap" ? "Super Admin · auto" : "Super Admin",
-      className: "bg-brand text-primary-foreground",
+      className: "bg-brand text-brand-foreground",
     };
   }
   const paid = u.plan !== "free";
@@ -187,7 +187,7 @@ function planBadge(u: AdminUser): { label: string; className: string } {
   if (u.accessType === "complimentary_pro" && paid)
     return { label: "Complimentary", className: "bg-brand-2/15 text-brand-2" };
   if (u.plan === "premium")
-    return { label: "Premium", className: "bg-brand text-primary-foreground" };
+    return { label: "Premium", className: "bg-brand text-brand-foreground" };
   if (u.plan === "pro")
     return { label: "Pro", className: "bg-success/15 text-success" };
   return { label: "Free", className: "bg-secondary text-muted-foreground" };

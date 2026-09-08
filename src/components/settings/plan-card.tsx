@@ -181,7 +181,7 @@ export function PlanCard({
             className={
               isFree
                 ? "rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
-                : "rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-primary-foreground"
+                : "rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-brand-foreground"
             }
           >
             {PLANS[plan].name}

@@ -81,7 +81,7 @@ export function ThemeSettings({
             <p className="text-sm font-medium">
               Custom theme
               {!canCustomize && (
-                <span className="ml-2 rounded-full bg-brand px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
+                <span className="ml-2 rounded-full bg-brand px-2 py-0.5 text-[10px] font-medium text-brand-foreground">
                   Pro
                 </span>
               )}
