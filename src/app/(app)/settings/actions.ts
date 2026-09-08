@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { DASHBOARD_CARDS } from "@/lib/dashboard-cards";
 import { isSchemaMissing, migrationRequired } from "@/lib/supabase/errors";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { isOwnerEmail } from "@/lib/entitlement";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -200,5 +202,123 @@ export async function deleteAllData(): Promise<ActionResult> {
     .eq("user_id", user.id);
 
   revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * Permanently deletes the account itself, not just its rows.
+ *
+ * Why this exists: the privacy policy promises users can "delete your entire
+ * account at any time", and until now nothing could. `deleteAllData()` above
+ * keeps the login and only clears owned rows — a data reset, not a deletion.
+ *
+ * WHAT THE DATABASE DOES FOR US, AND WHAT IT DOESN'T
+ *
+ * 25 tables carry `references auth.users (id) on delete cascade`, so removing
+ * the auth user takes every one of them with it — accounts, transactions,
+ * habits, mood entries (journal and prayer_requests included), tasks, budgets,
+ * bills, goals, assets, liabilities, subscriptions, feedback, the profile.
+ *
+ * Five columns are `on delete set null` instead, and THAT is the trap: those
+ * rows SURVIVE with the foreign key nulled, while the personal data sitting in
+ * their other columns stays exactly where it was. Nulling `user_id` is not
+ * erasure when the row still carries the person's email address. So the three
+ * that actually hold identifiers are scrubbed here, BEFORE the delete:
+ *
+ *   • admin_audit_log.detail — jsonb written with { email, username, ... }.
+ *     target_user_id nulls itself; the email inside detail would not.
+ *   • billing_events.external_id — built as `sub_<uuid>_<plan>_<period>_<ts>`,
+ *     so the raw user id survives inside a text column. The ROW is kept on
+ *     purpose (it is a payment record, and financial records are normally
+ *     retained for tax) but the identifier is redacted.
+ *   • user_invitations — the invitee's own email and full name.
+ *
+ * Deliberately NOT scrubbed: admin_audit_log rows where this user was the
+ * ADMIN cascade away with them, and invitations they sent to other people keep
+ * those other people's data, which is not this user's to erase.
+ *
+ * Confirmation is the exact email address rather than a password, because it
+ * also works for OAuth accounts, which have no password to re-enter.
+ */
+export async function deleteAccount(
+  confirmEmail: string,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You're not signed in." };
+
+  const typed = confirmEmail.trim().toLowerCase();
+  const actual = (user.email ?? "").toLowerCase();
+  if (!actual || typed !== actual) {
+    return {
+      ok: false,
+      error: "That doesn't match the email on this account.",
+    };
+  }
+
+  // An owner-allowlisted address regains super admin on its next sign-in, so
+  // deleting it would destroy the data and hand the rebuilt account straight
+  // back — and if it is the LAST owner, nobody can reach /admin in between.
+  // Removing an owner is a deliberate operations task, not a self-service one.
+  if (isOwnerEmail(user.email)) {
+    return {
+      ok: false,
+      error:
+        "This is an owner account. Remove it from the owner allow-list first, then delete it.",
+    };
+  }
+
+  const admin = createAdminClient();
+
+  // --- Scrub the PII that `on delete set null` would otherwise leave behind ---
+
+  const { data: auditRows } = await admin
+    .from("admin_audit_log")
+    .select("id, detail")
+    .eq("target_user_id", user.id);
+
+  for (const row of auditRows ?? []) {
+    const detail = (row.detail ?? {}) as Record<string, unknown>;
+    // Keep the shape and the action history; drop the identifiers.
+    for (const key of ["email", "username", "display_name", "displayName"]) {
+      if (key in detail) detail[key] = "[deleted]";
+    }
+    await admin
+      .from("admin_audit_log")
+      .update({ detail })
+      .eq("id", row.id);
+  }
+
+  const { data: billingRows } = await admin
+    .from("billing_events")
+    .select("id, external_id")
+    .eq("user_id", user.id);
+
+  for (const row of billingRows ?? []) {
+    if (!row.external_id?.includes(user.id)) continue;
+    await admin
+      .from("billing_events")
+      .update({ external_id: row.external_id.replace(user.id, "[deleted]") })
+      .eq("id", row.id);
+  }
+
+  if (user.email) {
+    await admin.from("user_invitations").delete().ilike("email", user.email);
+  }
+
+  // --- Then remove the account, which cascades the 25 owned tables ----------
+
+  const { error } = await admin.auth.admin.deleteUser(user.id);
+  if (error) {
+    return {
+      ok: false,
+      error: `Couldn't delete the account: ${error.message}`,
+    };
+  }
+
+  // The session is dead server-side; clear the cookie so the browser agrees.
+  await supabase.auth.signOut();
   return { ok: true };
 }

@@ -66,7 +66,7 @@ browser storage|tracking|analytic|session" src/app/privacy/page.tsx` → **0 hit
 - **Evidence:** `src/app/privacy/page.tsx:55` — *"Delete your data or your entire account at any time."* The only deletion control is `deleteAllData()` (`src/app/(app)/settings/actions.ts:144`), whose own docstring says the login is kept. `grep -rn "deleteUser\|auth.admin.delete" src/` → **0 hits**. `auth.users` is never touched.
 - **Legal area:** RA 10173 §16(e) right to erasure; RA 7394 misrepresentation.
 - **Fix:** Either build real deletion (server action under re-authentication calling `admin.auth.admin.deleteUser(userId)` so `ON DELETE CASCADE` fires), or correct the sentence to describe what actually happens.
-- **Status:** Not fixed. **OWNER DECISION + LAWYER.**
+- **Status:** **FIXED** — `deleteAccount()` added in `src/app/(app)/settings/actions.ts`, exposed in Settings → Danger zone, confirmed by typing the account email. It scrubs the PII that `on delete set null` would otherwise strand (`admin_audit_log.detail`, the user id embedded in `billing_events.external_id`, the user's own `user_invitations` row) and then calls `admin.auth.admin.deleteUser()`, which cascades the 25 owner-scoped tables. Owner-allowlisted addresses are refused — deleting one would destroy the data and hand super admin back on the next sign-in. Payment rows are deliberately retained with identifiers redacted. **LAWYER** should confirm the retention stance and the redaction approach.
 
 ### C-02 — Landing page advertises "unlimited" against enforced hard caps
 - **Evidence:** `src/app/page.tsx:248` and `:43` — *"unlimited accounts, goals, net worth, and CSV export."* Pro is capped at **8 accounts / 5 goals / 15 habits**, enforced server-side. Confirmed live.

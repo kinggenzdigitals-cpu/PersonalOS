@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ChevronLeftIcon } from "lucide-react";
-import { requireOnboardedProfile } from "@/lib/auth";
+import { requireOnboardedAccount } from "@/lib/auth";
 import {
   getActivePlan,
   getSubscription,
@@ -24,7 +24,7 @@ export default async function SettingsPage({
 }: {
   searchParams: Promise<{ upgraded?: string; checkout?: string }>;
 }) {
-  const profile = await requireOnboardedProfile();
+  const { profile, email } = await requireOnboardedAccount();
   const plan = await getActivePlan();
   const subscription = await getSubscription();
   const sp = await searchParams;
@@ -111,7 +111,7 @@ export default async function SettingsPage({
         </Button>
       </form>
 
-      <DangerZone />
+      <DangerZone email={email} />
     </div>
   );
 }
