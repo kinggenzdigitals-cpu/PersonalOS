@@ -155,8 +155,10 @@ export default async function AccountPage() {
                 <SparklesIcon className="size-4" /> Unlock Pro
               </p>
               <p className="text-muted-foreground">
-                Unlimited accounts, habits, budgets &amp; goals, net worth
-                tracking, full report history, and CSV export.
+                {PLANS.pro.limits.accounts} accounts, {PLANS.pro.limits.habits} habits,{" "}
+                {PLANS.pro.limits.budgets} budgets &amp; {PLANS.pro.limits.goals} goals,{" "}
+                net worth tracking, {PLANS.pro.limits.reportsMonths} months of report
+                history, and CSV export.
               </p>
             </div>
           )}

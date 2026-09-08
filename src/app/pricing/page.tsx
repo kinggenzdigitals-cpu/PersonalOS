@@ -23,7 +23,7 @@ const FAQS = [
   },
   {
     q: "What happens to my data if I downgrade?",
-    a: "Your data is never deleted. If you exceed Free limits, older items become read-only until you're back within the plan.",
+    a: "Your data is never deleted, and everything you already created stays fully editable. While you are over a Free limit you simply cannot add new items of that type until you remove some or upgrade again.",
   },
 ];
 

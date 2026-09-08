@@ -12,6 +12,13 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
+import { PLANS } from "@/lib/plans";
+
+// Public copy quotes the REAL caps, read straight from the plan config, because
+// this page previously advertised "unlimited accounts, goals" while the server
+// hard-enforced 8 and 5. Interpolating the source of truth means the claim
+// cannot drift away from what the code actually allows.
+const PRO = PLANS.pro.limits;
 
 export const metadata: Metadata = {
   title: "Finance & Habit Tracker — your whole life, in one calm place",
@@ -28,7 +35,7 @@ export const metadata: Metadata = {
 const FAQS: { q: string; a: string }[] = [
   {
     q: "Is my financial data private?",
-    a: "Yes. Every record is scoped to your account with database-level row security — no other user can ever see your data.",
+    a: "Every record is scoped to your account with database-level row security, so other users cannot read or write your data. Authorised administrators can see account-level details (your email, plan and last sign-in) and any feedback you send, but not your transactions, budgets or journal entries.",
   },
   {
     q: "Do I need to connect my bank?",
@@ -40,7 +47,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "Is there a free plan?",
-    a: "Yes. The Free plan covers your everyday life. Upgrade to Pro anytime for unlimited accounts, habits, goals, net-worth tracking, and CSV export.",
+    a: `Yes. The Free plan covers your everyday life. Upgrade to Pro anytime for ${PRO.accounts} accounts, ${PRO.habits} habits, ${PRO.goals} goals, ${PRO.transactionsPerMonth} transactions a month, net-worth tracking, and CSV export.`,
   },
 ];
 
@@ -210,7 +217,7 @@ export default async function LandingPage() {
                 {
                   n: "1",
                   t: "Create your account",
-                  d: "Sign up with email or Google in seconds — nothing to install.",
+                  d: "Sign up with your email in seconds — nothing to install.",
                 },
                 {
                   n: "2",
@@ -244,8 +251,9 @@ export default async function LandingPage() {
               Simple, honest pricing
             </h2>
             <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-              Start free — everything to run your everyday life. Go Pro for
-              unlimited accounts, goals, net worth, and CSV export.
+              Start free — everything to run your everyday life. Go Pro for{" "}
+              {PRO.accounts} accounts, {PRO.goals} goals, net worth tracking,
+              and CSV export.
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <Link
