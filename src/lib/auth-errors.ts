@@ -7,19 +7,21 @@
 export function friendlyAuthError(message: string | undefined | null): string {
   const m = (message ?? "").toLowerCase();
 
+  // Specific, recognisable failures are matched FIRST.
+  //
+  // The network catch-all below used to run first and matched the bare
+  // substring "fetch", which is broad enough to swallow real, actionable
+  // errors and relabel them "temporarily unavailable" — telling the user to
+  // wait when waiting would never help. Anything identifiable must win.
+
+  // The mail provider rejected the send. Not transient, and not the user's
+  // fault: the project's SMTP configuration needs attention.
   if (
-    !m ||
-    m.includes("failed to fetch") ||
-    m.includes("networkerror") ||
-    m.includes("network error") ||
-    m.includes("fetch") ||
-    m.includes("load failed") ||
-    m.includes("bad gateway") ||
-    m.includes("timeout") ||
-    m.includes("503") ||
-    m.includes("502")
+    m.includes("error sending") ||
+    m.includes("smtp") ||
+    m.includes("failed to send")
   ) {
-    return "Our service is temporarily unavailable. Please try again in a moment.";
+    return "We couldn't send that email — the mail service rejected it. This is on our side, not yours. Please contact support.";
   }
   if (m.includes("invalid login credentials")) {
     return "That email or password doesn't match our records.";
@@ -36,11 +38,6 @@ export function friendlyAuthError(message: string | undefined | null): string {
 
   // ---- Password recovery -------------------------------------------------
 
-  // Supabase couldn't hand the message off to its mail provider. Almost always
-  // configuration rather than anything the person typed.
-  if (m.includes("error sending") || m.includes("smtp")) {
-    return "We couldn't send that email. Please try again shortly — if it keeps failing, the email service needs attention.";
-  }
   if (m.includes("redirect") && m.includes("invalid")) {
     return "This sign-in link isn't configured correctly yet. Please contact support.";
   }
@@ -59,6 +56,23 @@ export function friendlyAuthError(message: string | undefined | null): string {
   }
   if (m.includes("password should be") || m.includes("weak password")) {
     return "Choose a stronger password — at least 8 characters.";
+  }
+
+  // Genuine transport failures, matched last and narrowly. "failed to fetch"
+  // is the browser's wording when the project is paused or unreachable; a bare
+  // "fetch" is NOT matched, because real error text often contains that word.
+  if (
+    !m ||
+    m.includes("failed to fetch") ||
+    m.includes("networkerror") ||
+    m.includes("network error") ||
+    m.includes("load failed") ||
+    m.includes("bad gateway") ||
+    m.includes("timeout") ||
+    m.includes("503") ||
+    m.includes("502")
+  ) {
+    return "Our service is temporarily unavailable. Please try again in a moment.";
   }
 
   // Errors that survive with no readable text ("{}", "[object Object]") tell
