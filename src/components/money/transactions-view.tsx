@@ -102,13 +102,29 @@ export function TransactionsView({
    *
    * The server page is always unfiltered, so when a filter is active it can't
    * be adopted as-is; bump a token and let the fetch effect re-run instead.
+   *
+   * It is only ever ONE page, though, and a fresh `initial` no longer means a
+   * mutation: the month selector in Budget vs. Actual pushes `?month=` on this
+   * same route, which re-runs the page and hands this list a brand-new array of
+   * the identical rows. Adopting it wholesale threw away every "Load more" the
+   * user had pressed — and with `scroll: false` they were left parked over a
+   * list that had silently shrunk. So whenever more than one page is loaded,
+   * re-fetch that many rows instead of truncating to the first fifty.
    */
   const [syncedInitial, setSyncedInitial] = React.useState(initial);
-  const [refreshToken, setRefreshToken] = React.useState(0);
+  const [syncedFilters, setSyncedFilters] = React.useState(filters);
+  /** What the fetch effect should ask for: a bump to re-run it, and how many
+   *  rows to restore. Changing a filter always starts over at one page. */
+  const [request, setRequest] = React.useState({ token: 0, size: PAGE });
+
+  if (syncedFilters !== filters) {
+    setSyncedFilters(filters);
+    setRequest((r) => (r.size === PAGE ? r : { ...r, size: PAGE }));
+  }
   if (syncedInitial !== initial) {
     setSyncedInitial(initial);
-    if (anyFilter) {
-      setRefreshToken((n) => n + 1);
+    if (anyFilter || offset > initial.length) {
+      setRequest((r) => ({ token: r.token + 1, size: Math.max(offset, PAGE) }));
     } else {
       setItems(initial);
       setOffset(initial.length);
@@ -124,12 +140,13 @@ export function TransactionsView({
     }
     let active = true;
     setLoading(true);
-    fetchTransactionsAction({ ...filters, limit: PAGE, offset: 0 })
+    const size = request.size;
+    fetchTransactionsAction({ ...filters, limit: size, offset: 0 })
       .then((rows) => {
         if (!active) return;
         setItems(rows);
         setOffset(rows.length);
-        setHasMore(rows.length >= PAGE);
+        setHasMore(rows.length >= size);
       })
       .catch(() => {
         if (!active) return;
@@ -141,7 +158,7 @@ export function TransactionsView({
     return () => {
       active = false;
     };
-  }, [filters, refreshToken]);
+  }, [filters, request]);
 
   async function loadMore() {
     setLoading(true);
