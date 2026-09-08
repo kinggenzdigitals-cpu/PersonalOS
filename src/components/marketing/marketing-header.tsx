@@ -6,7 +6,7 @@ export function MarketingHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
         <Link href="/" className="flex items-center gap-2">
           <span className="grid size-9 place-items-center rounded-xl bg-brand text-primary-foreground shadow-soft">
-            <span className="font-display text-lg leading-none">L</span>
+            <span className="font-display text-lg leading-none">F</span>
           </span>
           <span className="font-display text-lg tracking-tight">Finance & Habit Tracker</span>
         </Link>

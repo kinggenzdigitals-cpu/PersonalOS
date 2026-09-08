@@ -119,9 +119,19 @@ export async function exportAllData(): Promise<ExportDataResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You're not signed in." };
 
+  // Per-table column allow-lists. `select("*")` on feedback would hand the
+  // user the internal `admin_note` — the column 0008 marks "internal; not
+  // selected by user-facing queries" and that getMyFeedback deliberately omits.
+  const EXPORT_COLUMNS: Partial<Record<(typeof OWNED_TABLES)[number], string>> = {
+    feedback:
+      "id, category, title, message, screenshot_url, status, admin_response, created_at, updated_at",
+  };
+
   const tables: Record<string, unknown[]> = {};
   for (const table of OWNED_TABLES) {
-    const { data, error } = await supabase.from(table).select("*");
+    const { data, error } = await supabase
+      .from(table)
+      .select(EXPORT_COLUMNS[table] ?? "*");
     // Tolerate tables that don't exist yet (migrations not applied).
     if (error && !isSchemaMissing(error)) {
       return { ok: false, error: `${table}: ${error.message}` };

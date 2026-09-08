@@ -132,7 +132,11 @@ export const FEATURE_SECTIONS: FeatureSection[] = [
     ],
   },
   {
-    title: "Security",
+    // Renamed from "Security": the rows here are "Hide sensitive info" (a visual
+  // CSS mask over amounts), account recovery and PWA install. None of them is a
+  // security control, and filing the mask under "Security" invites a user to
+  // read it as encryption or access control, which it is not.
+  title: "Privacy & access",
     rows: [
       { label: "Hide sensitive info", free: true, pro: true, premium: true },
       // Was "Passkeys & account recovery". Recovery is real (the code-based

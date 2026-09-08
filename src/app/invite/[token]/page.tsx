@@ -9,7 +9,12 @@ import { Button } from "@/components/ui/button";
 import { AcceptInviteForm } from "@/components/invite/accept-invite-form";
 import type { Invitation } from "@/lib/supabase/types";
 
-export const metadata: Metadata = { title: "Accept invitation" };
+// noindex: this page prints the invitee's email address to anyone holding the
+// link, so it must never be crawled or cached by a search engine.
+export const metadata: Metadata = {
+  title: "Accept invitation",
+  robots: { index: false, follow: false },
+};
 
 export default async function InvitePage({
   params,

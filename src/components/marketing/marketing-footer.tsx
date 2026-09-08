@@ -6,7 +6,7 @@ export function MarketingFooter() {
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-10 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <span className="grid size-7 place-items-center rounded-lg bg-brand text-primary-foreground">
-            <span className="font-display text-sm leading-none">L</span>
+            <span className="font-display text-sm leading-none">F</span>
           </span>
           <span className="font-medium text-foreground">Finance & Habit Tracker</span>
           <span className="text-muted-foreground">

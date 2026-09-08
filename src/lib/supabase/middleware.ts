@@ -60,19 +60,30 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Carry any cookies Supabase just refreshed or cleared onto a redirect.
+  //
+  // setAll() accumulates onto `supabaseResponse`, but each redirect below
+  // builds a BRAND-NEW response — so returning one as-is silently discards a
+  // rotated refresh token or a cleared session, and the next request has to
+  // redo the round-trip (or, on sign-out, keeps a stale cookie).
+  function withAuthCookies(res: NextResponse) {
+    supabaseResponse.cookies.getAll().forEach((c) => res.cookies.set(c));
+    return res;
+  }
+
   // Unauthenticated users hitting a protected route → login.
   if (!user && !isPublicPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+    return withAuthCookies(NextResponse.redirect(url));
   }
 
   // Authenticated users hitting an auth page → app home.
   if (user && (pathname === "/login" || pathname === "/signup")) {
     const url = request.nextUrl.clone();
     url.pathname = "/home";
-    return NextResponse.redirect(url);
+    return withAuthCookies(NextResponse.redirect(url));
   }
 
   return supabaseResponse;

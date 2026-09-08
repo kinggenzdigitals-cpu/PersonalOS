@@ -26,15 +26,30 @@ type Ctx = {
 
 const ThemeCustomizerContext = React.createContext<Ctx | null>(null);
 
+/**
+ * Read the saved palette, tolerating a browser that refuses site data.
+ *
+ * This runs inside a useState initialiser in an app-wide provider, so an
+ * exception here is not contained: it escapes during render and blanks every
+ * page. Browsers set to block site data (and Safari private mode) throw on
+ * localStorage access rather than returning null, so the read needs the same
+ * try/catch the write below already had.
+ */
+function readStoredTheme(): ThemeConfig {
+  try {
+    return parseTheme(window.localStorage.getItem(THEME_STORAGE_KEY));
+  } catch {
+    return DEFAULT_THEME;
+  }
+}
+
 export function ThemeCustomizerProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const [config, setConfig] = React.useState<ThemeConfig>(() =>
-    typeof window === "undefined"
-      ? DEFAULT_THEME
-      : parseTheme(window.localStorage.getItem(THEME_STORAGE_KEY)),
+    typeof window === "undefined" ? DEFAULT_THEME : readStoredTheme(),
   );
 
   // Apply + persist whenever the config changes (also runs once on mount,
