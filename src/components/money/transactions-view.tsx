@@ -89,6 +89,33 @@ export function TransactionsView({
     [type, accountId, categoryId],
   );
 
+  const anyFilter = type !== "all" || accountId !== "all" || categoryId !== "all";
+
+  /**
+   * Adopt a fresh server page whenever one arrives.
+   *
+   * `items` is seeded from `initial` via useState, which reads the prop exactly
+   * ONCE. Saving a transaction anywhere in the app revalidates this route, so
+   * the server sends a new `initial` — but the list went on rendering the first
+   * one it ever saw. On a new account that meant "No transactions yet" stayed
+   * on screen after every single entry, until a full page reload.
+   *
+   * The server page is always unfiltered, so when a filter is active it can't
+   * be adopted as-is; bump a token and let the fetch effect re-run instead.
+   */
+  const [syncedInitial, setSyncedInitial] = React.useState(initial);
+  const [refreshToken, setRefreshToken] = React.useState(0);
+  if (syncedInitial !== initial) {
+    setSyncedInitial(initial);
+    if (anyFilter) {
+      setRefreshToken((n) => n + 1);
+    } else {
+      setItems(initial);
+      setOffset(initial.length);
+      setHasMore(initial.length >= PAGE);
+    }
+  }
+
   const firstRender = React.useRef(true);
   React.useEffect(() => {
     if (firstRender.current) {
@@ -97,42 +124,59 @@ export function TransactionsView({
     }
     let active = true;
     setLoading(true);
-    fetchTransactionsAction({ ...filters, limit: PAGE, offset: 0 }).then(
-      (rows) => {
+    fetchTransactionsAction({ ...filters, limit: PAGE, offset: 0 })
+      .then((rows) => {
         if (!active) return;
         setItems(rows);
         setOffset(rows.length);
         setHasMore(rows.length >= PAGE);
-        setLoading(false);
-      },
-    );
+      })
+      .catch(() => {
+        if (!active) return;
+        toast.error("Couldn't load transactions. Check your connection.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
     return () => {
       active = false;
     };
-  }, [filters]);
+  }, [filters, refreshToken]);
 
   async function loadMore() {
     setLoading(true);
-    const rows = await fetchTransactionsAction({
-      ...filters,
-      limit: PAGE,
-      offset,
-    });
-    setItems((prev) => [...prev, ...rows]);
-    setOffset((o) => o + rows.length);
-    setHasMore(rows.length >= PAGE);
-    setLoading(false);
+    try {
+      const rows = await fetchTransactionsAction({
+        ...filters,
+        limit: PAGE,
+        offset,
+      });
+      setItems((prev) => [...prev, ...rows]);
+      setOffset((o) => o + rows.length);
+      setHasMore(rows.length >= PAGE);
+    } catch {
+      toast.error("Couldn't load more transactions.");
+    } finally {
+      // Always clear, or a single failed fetch leaves the button spinning.
+      setLoading(false);
+    }
   }
 
   async function refetch() {
-    const rows = await fetchTransactionsAction({
-      ...filters,
-      limit: Math.max(offset, PAGE),
-      offset: 0,
-    });
-    setItems(rows);
-    setOffset(rows.length);
-    setHasMore(rows.length >= Math.max(offset, PAGE));
+    // Keep however many pages the user had already loaded.
+    const size = Math.max(offset, PAGE);
+    try {
+      const rows = await fetchTransactionsAction({
+        ...filters,
+        limit: size,
+        offset: 0,
+      });
+      setItems(rows);
+      setOffset(rows.length);
+      setHasMore(rows.length >= size);
+    } catch {
+      toast.error("Couldn't refresh the list.");
+    }
   }
 
   function dayKey(iso: string) {
@@ -166,8 +210,6 @@ export function TransactionsView({
     if (t.type === "income") g.net += Number(t.amount);
     else if (t.type === "expense") g.net -= Number(t.amount);
   }
-
-  const anyFilter = type !== "all" || accountId !== "all" || categoryId !== "all";
 
   return (
     <div className="space-y-4">
@@ -238,7 +280,9 @@ export function TransactionsView({
           description={
             anyFilter
               ? "Try clearing your filters."
-              : "Add your first expense or income with the + button."
+              : accounts.length === 0
+                ? "Add an account on the Overview tab first, then log your first expense or income."
+                : "Add your first expense or income with the + button."
           }
           className="py-10"
         />

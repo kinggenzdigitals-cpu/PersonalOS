@@ -73,7 +73,14 @@ export async function getTransactions(
   const offset = filters.offset ?? 0;
   query = query.range(offset, offset + limit - 1);
 
-  const { data } = await query.returns<Transaction[]>();
+  const { data, error } = await query.returns<Transaction[]>();
+  if (error) {
+    // An empty array and a failed query render identically ("No transactions
+    // yet"), which makes a real outage look like an empty ledger. Log it so the
+    // difference is at least visible in the server logs.
+    console.error("[getTransactions] query failed:", error.message);
+    return [];
+  }
   return data ?? [];
 }
 
