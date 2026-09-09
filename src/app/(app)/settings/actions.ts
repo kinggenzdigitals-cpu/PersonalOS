@@ -98,10 +98,17 @@ const OWNED_TABLES = [
   "feedback",
   "subscriptions",
   "promotion_offers",
+  // Bank-statement uploads: filename, row counts, which account. Owner-scoped
+  // under RLS (0020), so the user can read it; leaving it out made the export
+  // an incomplete copy.
+  "import_batches",
 ] as const;
 
 export type DataExport = {
   exportedAt: string;
+  /** The account the file belongs to. Lives in auth.users, not profiles, so
+   *  nothing in the table dump identifies whose data this is without it. */
+  account: { email: string | null; createdAt: string };
   tables: Record<string, unknown[]>;
 };
 
@@ -143,7 +150,11 @@ export async function exportAllData(): Promise<ExportDataResult> {
 
   return {
     ok: true,
-    data: { exportedAt: new Date().toISOString(), tables },
+    data: {
+      exportedAt: new Date().toISOString(),
+      account: { email: user.email ?? null, createdAt: user.created_at },
+      tables,
+    },
   };
 }
 
@@ -181,6 +192,10 @@ export async function deleteAllData(): Promise<ActionResult> {
     "liabilities",
     "savings_goals",
     "feedback",
+    // Uploaded bank-statement filenames survived a "delete all data" reset.
+    // The row is the user's own (0020 owner policy), so deleting it here is
+    // both permitted and what the button promises.
+    "import_batches",
     "accounts",
   ] as const;
 

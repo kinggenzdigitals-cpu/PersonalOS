@@ -130,7 +130,8 @@ in this audit.**
 RA 10173 §11(e). **A policy stating a retention period would be unenforceable without building
 the purge first.** **OWNER + LAWYER.**
 
-### H-09 — "Delete all data" leaves eight tables of personal data behind
+### H-09 ✅ FIXED — "Delete all data" leaves eight tables of personal data behind
+**Status:** **FIXED** — `import_batches` added to the reset list, placed before `accounts` so both SET NULL foreign keys resolve children-first. Still kept, each on purpose: `profiles` and `categories` (a reset keeps the login, and categories are seeded only at signup, so wiping them would leave onboarding with none); `subscriptions` / `promotion_offers` / `billing_events` (a data reset must not strip access the user has paid for, and `billing_events` is service-role-only regardless); `user_invitations` / `admin_audit_log` (not owner-deletable under RLS — `deleteAccount()` handles them via the admin client).
 `src/app/(app)/settings/actions.ts:153-173` deletes 19 tables. Not deleted: `profiles`
 (display_name, username, last_login_at, timezone survive), `categories`, `import_batches`
 (**holds uploaded bank-statement filenames**), `subscriptions`, `promotion_offers`,
@@ -182,7 +183,7 @@ No `Content-Security-Policy`, `X-Frame-Options`, `Referrer-Policy`, `Permissions
 | M-06 | `billing_events` RLS on, **zero policies** — users cannot see their own payment history | `0016_billing_events.sql:33` |
 | M-07 | `user_invitations` retains invitee email + full name indefinitely | `0009_invitations.sql:11-12` |
 | M-08 ✅ | Internal `admin_note` on feedback leaks back to the user via JSON export | `settings/actions.ts:124` | fixed in `1249b14` |
-| M-09 | Data export omits 4 tables and the account email — not a complete copy | `settings/actions.ts:75-99` |
+| M-09 ✅ | Data export omits 4 tables and the account email — not a complete copy | `settings/actions.ts:75-99` | fixed — `import_batches` and the account email + created_at now included. Still excluded on purpose: `billing_events` (no owner policy, see M-06), `user_invitations` (carries `token_hash`), `admin_audit_log` (admin-only). |
 | M-10 ✅ | Unguarded `localStorage` read in an app-wide provider blanks the whole site where site data is blocked | `theme-customizer.tsx:34-38` | fixed in `1249b14` |
 | M-11 ✅ | Middleware discards refreshed/cleared auth cookies on redirect responses | `middleware.ts:64-76` | fixed in `1249b14` |
 | M-12 | Two `localStorage` keys measure engagement to trigger an upsell — the only non-necessary/non-preference items | `active-use-timer.tsx:6-8` |
