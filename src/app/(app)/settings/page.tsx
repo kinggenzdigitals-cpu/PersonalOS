@@ -112,6 +112,19 @@ export default async function SettingsPage({
       </form>
 
       <DangerZone email={email} />
+
+      {/* The marketing footer carries these, but a signed-in user never
+          sees it — the app layout has no footer. Without this the only
+          in-app route to the policies you agreed to at signup is the URL bar. */}
+      <p className="pt-2 text-center text-xs text-muted-foreground">
+        <Link href="/terms" className="underline underline-offset-4 hover:text-foreground">
+          Terms of Service
+        </Link>
+        {" · "}
+        <Link href="/privacy" className="underline underline-offset-4 hover:text-foreground">
+          Privacy Policy
+        </Link>
+      </p>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-| M-11 ✅ | | M-10 ✅ | | M-08 ✅ | # Compliance & Risk Audit — Finance & Habit Tracker
+# Compliance & Risk Audit — Finance & Habit Tracker
 
 **Audit date:** 2026-09-08
 **Scope:** repository at commit `8f26176` + live deployment `https://financialhabittracker.vercel.app`
@@ -89,11 +89,18 @@ Grep for `DTI|SEC|BIR|TIN|registered business|business permit|\+63|Data Protecti
 DPO|NPC` → **zero** business-disclosure hits. RA 11967 (Internet Transactions Act) online-merchant
 disclosure; RA 8792. See §8 for the owner deliverable list. **OWNER + LAWYER.**
 
-### H-03 — Signup collects an account under a false privacy line, with no policy links
+### H-03 ✅ FIXED — Signup collects an account under a false privacy line, with no policy links
 `src/app/(auth)/signup/page.tsx:41-43` is the *entire* legal text at account creation:
 *"By continuing you agree to keep your data yours. We never share it."* Data **is** shared with
 Supabase, Vercel and Xendit. No link to `/terms` or `/privacy`. RA 10173 transparency; RA 8792
 electronic contract formation. **LAWYER.**
+**Status:** The false "we never share it" line is replaced with an accurate notice linking
+both documents, using different verbs deliberately — Terms are *agreed to*, the Privacy
+Policy is a *notice*, because consent is the wrong lawful basis for a privacy notice.
+Policy links were also added to Settings, since a signed-in user never sees the marketing
+footer that previously carried the only in-app links. **Still outstanding:** the brief's
+required unchecked Terms checkbox with recorded version/timestamp/user-id — that needs a
+schema change and has not been built.
 
 ### H-04 — Privacy Policy omits Xendit, Vercel, Singapore, retention, DPO and the NPC route
 `src/app/privacy/page.tsx` names exactly one third party ("Supabase"). Missing: Xendit
@@ -174,15 +181,15 @@ No `Content-Security-Policy`, `X-Frame-Options`, `Referrer-Policy`, `Permissions
 | M-05 | `ledger_entries.party` stores identifiable **non-user third parties** who never consented | `0003_ledger.sql:14` |
 | M-06 | `billing_events` RLS on, **zero policies** — users cannot see their own payment history | `0016_billing_events.sql:33` |
 | M-07 | `user_invitations` retains invitee email + full name indefinitely | `0009_invitations.sql:11-12` |
-| M-08 | Internal `admin_note` on feedback leaks back to the user via JSON export | `settings/actions.ts:124` |
+| M-08 ✅ | Internal `admin_note` on feedback leaks back to the user via JSON export | `settings/actions.ts:124` | fixed in `1249b14` |
 | M-09 | Data export omits 4 tables and the account email — not a complete copy | `settings/actions.ts:75-99` |
-| M-10 | Unguarded `localStorage` read in an app-wide provider blanks the whole site where site data is blocked | `theme-customizer.tsx:34-38` |
-| M-11 | Middleware discards refreshed/cleared auth cookies on redirect responses | `middleware.ts:64-76` |
+| M-10 ✅ | Unguarded `localStorage` read in an app-wide provider blanks the whole site where site data is blocked | `theme-customizer.tsx:34-38` | fixed in `1249b14` |
+| M-11 ✅ | Middleware discards refreshed/cleared auth cookies on redirect responses | `middleware.ts:64-76` | fixed in `1249b14` |
 | M-12 | Two `localStorage` keys measure engagement to trigger an upsell — the only non-necessary/non-preference items | `active-use-timer.tsx:6-8` |
 | M-13 | Google's "G" trademark is **hand-redrawn** rather than Google's official asset | `google-button.tsx:60-84` |
 | M-14 | No credits/attribution page, while the bundle carries ISC, MIT, Apache-2.0 and OFL notice obligations | no such route exists |
 | M-15 | Four Unsplash photos hotlinked with no provenance record kept | `src/app/page.tsx:51-58` |
-| M-16 | OpenGraph share image unreachable in production (blocked by the proxy matcher) | `src/proxy.ts:15` |
+| M-16 ✅ | OpenGraph share image unreachable in production (blocked by the proxy matcher) | `src/proxy.ts:15` | fixed — next/og routes have no file extension, so the matcher's image escape never caught them |
 
 ---
 
