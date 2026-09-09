@@ -60,8 +60,8 @@ export function ThemeSettings({
             one theme now, so the old ThemeToggle became a control that could
             not change anything — next-themes' forcedTheme makes setTheme() a
             no-op on the applied class — and leaving the row empty would have
-            been odd. The same toggle also sits in the mobile top bar and the
-            desktop sidebar footer; this copy is the discoverable one, and the
+            been odd. The same toggle also sits in the top bar on every screen
+            size; this copy is the discoverable one, and the
             only place the setting is spelled out in words. */}
         <div className="flex items-center justify-between gap-3">
           <div>

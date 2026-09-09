@@ -102,6 +102,11 @@ export function themeVars(colors: Record<ThemeRole, string>): Record<string, str
     "--brand-hover": colors.primary,
     "--sidebar-primary": colors.primary,
     "--sidebar-primary-foreground": readableForeground(colors.primary),
+    // Every filled --brand surface reads its ink from this token. Without it
+    // a dark custom primary kept the dark theme's navy foreground and turned
+    // 27 buttons into navy-on-navy — the contrast fix had introduced a token
+    // the palette engine never learned about.
+    "--brand-foreground": readableForeground(colors.primary),
     "--ring": colors.secondary,
     "--sidebar-ring": colors.secondary,
     "--brand-2": colors.secondary,

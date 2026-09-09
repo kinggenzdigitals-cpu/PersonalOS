@@ -166,18 +166,16 @@ function SidebarBody({
 
 /** Persistent left sidebar (tablet/desktop). */
 export function DesktopSidebar({
-  email,
   moneyBadge = 0,
   isAdmin = false,
 }: {
-  email: string | null;
   moneyBadge?: number;
   isAdmin?: boolean;
 }) {
   const pathname = usePathname();
   return (
-    // overflow-y-auto so the account footer below can never be pushed off a
-    // short viewport by a long nav list (admins get an extra item).
+    // overflow-y-auto so a long nav list (admins get an extra item) scrolls
+    // inside the sidebar instead of overflowing a short viewport.
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col overflow-y-auto border-r border-border bg-card px-4 py-6 md:flex">
       <div className="mb-6 px-1">
         <Brand />
@@ -186,36 +184,28 @@ export function DesktopSidebar({
         <QuickAdd variant="sidebar" />
       </div>
       <SidebarBody pathname={pathname} moneyBadge={moneyBadge} isAdmin={isAdmin} />
-      {/* This sidebar is the ONLY persistent chrome at >=768px — MobileTopBar,
-          which carries the same two controls on phones, is md:hidden. The nav
-          lists above are feature pages only, so without this row a desktop
-          user has no link to /account (and through it /subscription and
-          /settings) and no way to sign out at all: an earlier revision moved
-          the account block out of SidebarBody and left desktop with no exit.
-
-          It lives here rather than in SidebarBody because the mobile "More"
-          drawer also renders SidebarBody, and mobile already has these
-          controls in the top bar. mt-auto pins it to the bottom so the nav
-          list still ends on its own last item. */}
-      <div className="mt-auto flex items-center gap-1 border-t border-border pt-4">
-        <div className="min-w-0 flex-1">
-          <UserMenu email={email} showName />
-        </div>
-        <PrivacyToggle />
-      </div>
     </aside>
   );
 }
 
 /**
- * Mobile top bar: brand + the privacy and account controls (navigation lives in
- * the bottom bar). `email` is threaded down from the server layout because the
- * profile row has no email column, so the user menu cannot look it up itself.
+ * Top bar, on every screen size: the privacy toggle and the account menu,
+ * right-aligned. On phones it also carries the brand, since there is no
+ * sidebar; at md+ the sidebar already shows it, so the left side is left
+ * empty and the controls simply sit top-right.
+ *
+ * These two controls used to live in the desktop sidebar's footer instead,
+ * bottom-left, which is where nobody looks for "hide my balances" or
+ * "sign out". Putting them in one persistent bar at every width also lets
+ * the sidebar end on its last nav item, as originally intended.
+ *
+ * `email` is threaded down from the server layout because the profile row
+ * has no email column, so the user menu cannot look it up itself.
  */
-export function MobileTopBar({ email }: { email: string | null }) {
+export function TopBar({ email }: { email: string | null }) {
   return (
     <header
-      className="sticky top-0 z-40 flex items-center gap-2 border-b border-border bg-card/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-card/80 md:hidden"
+      className="sticky top-0 z-40 flex items-center gap-2 border-b border-border bg-card/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-card/80"
       style={{ paddingTop: "max(0.625rem, env(safe-area-inset-top))" }}
     >
       {/* min-w-0: a flex item defaults to min-width:auto, so without this the
@@ -223,7 +213,11 @@ export function MobileTopBar({ email }: { email: string | null }) {
           the right edge of a 320px screen. It wraps to two lines instead, the
           same way it already does in the 240px sidebar. */}
       <div className="min-w-0 flex-1">
-        <Brand />
+        {/* Hidden at md+: the sidebar already carries the brand there. The
+            flex-1 wrapper stays so the controls keep sitting at the right. */}
+        <span className="md:hidden">
+          <Brand />
+        </span>
       </div>
       <PrivacyToggle />
       <UserMenu email={email} />

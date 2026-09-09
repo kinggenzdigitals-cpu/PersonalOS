@@ -8,7 +8,7 @@ import { UpgradeProvider } from "@/components/providers/upgrade-provider";
 import { ActiveUseTimer } from "@/components/providers/active-use-timer";
 import {
   DesktopSidebar,
-  MobileTopBar,
+  TopBar,
   MobileBottomNav,
 } from "@/components/nav/main-nav";
 import { QuickAdd } from "@/components/nav/quick-add";
@@ -55,8 +55,8 @@ export default async function AppLayout({
           >
             Skip to main content
           </a>
-          <DesktopSidebar email={email} moneyBadge={dueBills} isAdmin={admin} />
-          <MobileTopBar email={email} />
+          <DesktopSidebar moneyBadge={dueBills} isAdmin={admin} />
+          <TopBar email={email} />
           <main
             id="main-content"
             tabIndex={-1}
