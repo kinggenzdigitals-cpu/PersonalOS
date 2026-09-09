@@ -7,18 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { useReference } from "@/components/providers/reference-provider";
 import { useCurrency } from "@/components/providers/profile-provider";
 import { currencySymbol } from "@/lib/format";
 import { upsertBudget, deleteBudget } from "@/app/(app)/money/planning-actions";
-import type { Budget } from "@/lib/supabase/types";
+import { createCategory } from "@/app/(app)/money/actions";
+import type { Budget, Category } from "@/lib/supabase/types";
 import { toast } from "sonner";
 import { useUpgrade } from "@/components/providers/upgrade-provider";
 
@@ -48,9 +43,45 @@ export function BudgetForm({
   );
   const [saving, setSaving] = React.useState(false);
 
-  const available = expenseCategories.filter(
-    (c) => c.id === initial?.category_id || !usedCategoryIds.includes(c.id),
+  // A category created from inside this modal has to be selectable immediately.
+  // ReferenceProvider is fed by the server layout, so it only learns about the
+  // new row once router.refresh() completes — until then the option would not
+  // exist and the field would render blank right after creating it.
+  const [justCreated, setJustCreated] = React.useState<Category[]>([]);
+
+  const available = React.useMemo(() => {
+    const merged = [...expenseCategories];
+    for (const c of justCreated) {
+      if (!merged.some((m) => m.id === c.id)) merged.push(c);
+    }
+    // An existing budget already occupies its category; offering it again would
+    // let the user try to create a second budget for the same one.
+    return merged.filter(
+      (c) => c.id === initial?.category_id || !usedCategoryIds.includes(c.id),
+    );
+  }, [expenseCategories, justCreated, usedCategoryIds, initial?.category_id]);
+
+  const options = React.useMemo(
+    () => available.map((c) => ({ value: c.id, label: c.name })),
+    [available],
   );
+
+  /**
+   * Create-or-reuse. The action returns an EXISTING category when the typed name
+   * normalises onto one, so "food" never mints a second "Food".
+   */
+  async function handleCreate(name: string): Promise<string | null> {
+    const res = await createCategory(name, "expense");
+    if (!res.ok) {
+      toast.error(res.error);
+      return null;
+    }
+    setJustCreated((prev) =>
+      prev.some((c) => c.id === res.category.id) ? prev : [...prev, res.category],
+    );
+    router.refresh();
+    return res.category.id;
+  }
 
   async function save() {
     if (!categoryId) return toast.error("Pick a category.");
@@ -91,23 +122,20 @@ export function BudgetForm({
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label>Category</Label>
-        <Select
+        <Label htmlFor="budget-category">Category</Label>
+        <Combobox
+          id="budget-category"
+          options={options}
           value={categoryId}
-          onValueChange={setCategoryId}
+          onChange={setCategoryId}
+          // Editing keeps the category fixed: the budget row is keyed on it, so
+          // changing it would silently retarget that budget's history.
+          onCreate={editing ? undefined : handleCreate}
           disabled={editing}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Choose a category" />
-          </SelectTrigger>
-          <SelectContent>
-            {available.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Choose a category"
+          searchPlaceholder="Search or type a new one…"
+          emptyText="No matching category."
+        />
       </div>
 
       <div className="space-y-1.5">

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { categoryKey, normalizeCategoryName } from "@/lib/category-name";
 import {
   checkCap,
   checkTransactionCap,
@@ -12,6 +13,7 @@ import {
   type TransactionFilters,
 } from "@/lib/queries/money";
 import type {
+  Category,
   AccountType,
   AdjustmentDirection,
   Transaction,
@@ -393,4 +395,80 @@ export async function setAccountArchived(
   if (error) return { ok: false, error: error.message };
   revalidateMoney();
   return { ok: true };
+}
+
+/**
+ * Creates an expense/income category inline, or returns the existing one that
+ * matches. Written for the New Budget form's combobox, where leaving the modal
+ * just to add a category is the friction being removed.
+ *
+ * Normalisation is the whole point here. "Food", "food" and "  FOOD  " are the
+ * same category to a person, so they collapse to one key before anything is
+ * decided: trimmed, inner whitespace squeezed, compared case-insensitively.
+ * A match RETURNS THE EXISTING ROW rather than erroring — from the caller's
+ * point of view "give me the Food category" succeeded either way, and an error
+ * would just make the UI ask the user to solve a problem it already solved.
+ *
+ * The display name keeps the user's own capitalisation on create; only the
+ * comparison is normalised. Migration 0023 enforces the same rule with a unique
+ * index on (user_id, kind, lower(btrim(name))), because this check-then-insert
+ * has a race window that only the database can close.
+ *
+ * `kind` is deliberately explicit rather than defaulted: budgets are expense-only,
+ * and silently minting an expense category from an income context — or vice
+ * versa — would corrupt every per-kind total that reads this table.
+ */
+export async function createCategory(
+  name: string,
+  kind: "expense" | "income",
+): Promise<{ ok: true; category: Category } | { ok: false; error: string }> {
+  const { supabase, user } = await auth();
+  if (!user) return { ok: false, error: "You're not signed in." };
+
+  // Same normalisation the combobox applies before it offers "Create …", so
+  // the UI never offers to create something this refuses to.
+  const clean = normalizeCategoryName(name);
+  if (!clean) return { ok: false, error: "Give the category a name." };
+
+  const { data: existing, error: readError } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("kind", kind)
+    .returns<Category[]>();
+  if (readError) {
+    return { ok: false, error: `Couldn't check categories: ${readError.message}` };
+  }
+
+  const key = categoryKey(clean);
+  const match = (existing ?? []).find((c) => categoryKey(c.name) === key);
+  if (match) return { ok: true, category: match };
+
+  const { data, error } = await supabase
+    .from("categories")
+    .insert({
+      user_id: user.id,
+      name: clean,
+      kind,
+      sort_order: (existing ?? []).length,
+    })
+    .select("*")
+    .single<Category>();
+
+  if (error) {
+    // 23505 = the 0023 unique index firing on a concurrent insert of the same
+    // name. Re-read rather than fail: the row the caller wanted now exists.
+    if (error.code === "23505") {
+      const { data: raced } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("kind", kind)
+        .returns<Category[]>();
+      const found = (raced ?? []).find((c) => categoryKey(c.name) === key);
+      if (found) return { ok: true, category: found };
+    }
+    return { ok: false, error: `Couldn't create the category: ${error.message}` };
+  }
+
+  revalidatePath("/money", "layout");
+  return { ok: true, category: data };
 }
