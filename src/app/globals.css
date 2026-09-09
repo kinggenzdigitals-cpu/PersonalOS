@@ -281,3 +281,28 @@ html[data-privacy="hidden"] .fht-amount::after {
     scroll-behavior: auto !important;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/*  Collapsible sidebar                                                */
+/*  One variable drives both the rail's width and the content offset, */
+/*  so the two can never disagree. The attribute is stamped by a       */
+/*  pre-paint script from localStorage, which is what stops a          */
+/*  collapsed rail from painting open and snapping shut on hydration.  */
+/*  (The reduced-motion block above zeroes these transitions.)         */
+/* ------------------------------------------------------------------ */
+:root {
+  --sidebar-w: 15rem;
+}
+html[data-sidebar="collapsed"] {
+  --sidebar-w: 4rem;
+}
+.app-sidebar {
+  width: var(--sidebar-w);
+  transition: width 200ms ease;
+}
+@media (min-width: 768px) {
+  .app-shell {
+    padding-left: var(--sidebar-w);
+    transition: padding-left 200ms ease;
+  }
+}

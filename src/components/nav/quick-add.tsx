@@ -105,7 +105,7 @@ const TITLES: Record<View, string> = {
 export function QuickAdd({
   variant = "fab",
 }: {
-  variant?: "fab" | "sidebar" | "bar";
+  variant?: "fab" | "sidebar" | "bar" | "rail";
 }) {
   const [open, setOpen] = React.useState(false);
   const [view, setView] = React.useState<View>("menu");
@@ -177,6 +177,16 @@ export function QuickAdd({
             className="grid size-14 place-items-center rounded-full bg-brand text-brand-foreground shadow-lifted transition-transform hover:bg-brand-hover active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <PlusIcon className="size-6" />
+          </button>
+        ) : variant === "rail" ? (
+          // Collapsed-sidebar form: the same dialog behind an icon-only
+          // square that fits the 64px rail with the rail's own padding.
+          <button
+            type="button"
+            aria-label="Quick add"
+            className="mx-auto grid size-10 place-items-center rounded-xl bg-brand text-brand-foreground shadow-soft transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <PlusIcon className="size-5" />
           </button>
         ) : variant === "bar" ? (
           <button

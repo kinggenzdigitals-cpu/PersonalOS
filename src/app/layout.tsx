@@ -85,26 +85,22 @@ export const viewport: Viewport = {
 };
 
 /**
- * The product ships in one theme: dark. Two things have to be true for that,
- * and only one of them is obvious.
+ * Dark is the DEFAULT, and light is a real choice again — a sun/moon toggle
+ * sits beside the brand. Two things this setup has to get right:
  *
- * 1. `forcedTheme` (next-themes) makes the *class* dark no matter what. Its
- *    pre-paint script short-circuits on a forced theme before it ever reads
- *    localStorage, so a "light" value stored by the old toggle cannot win.
- *    Deleting the toggle without this would have been worse than useless: the
- *    provider used to default to "light", so every user without a stored
- *    preference — i.e. every new user — would have been stranded in a light
- *    theme with nothing left to switch it back.
+ * 1. The <html> class is server-rendered as dark so the dark palette is live on
+ *    the first byte for the common case. A user who chose light gets that
+ *    class replaced by next-themes' pre-paint script a moment later; that
+ *    brief dark-to-light flip is the price of not flashing light at everyone
+ *    else, and the script runs before the parser reaches any content.
  *
- * 2. `forcedTheme` alone still leaks. next-themes computes
- *    `resolvedTheme` from the *stored* value and ignores the forced one, so a
- *    user carrying "light" in storage would hand `resolvedTheme === "light"`
- *    to <Toaster/>, which forwards it to sonner. Sonner colours toast
- *    description text off that flag (`#3f3f3f` in light, near-white in dark),
- *    and our toasts sit on the dark `--popover`, so descriptions would render
- *    dark-grey on dark-navy — invisible. Moving to a fresh storage key retires
- *    every stale value at once, and `defaultTheme="dark"` means the key that
- *    replaces it reads back "dark".
+ * 2. The storage key stays `fht-color-mode`, not "theme". The old toggle had
+ *    written "light" under "theme" for some users; a fresh key means the only
+ *    values ever stored under it come from THIS toggle, and `defaultTheme`
+ *    fills in "dark" for everyone who has never pressed it. (`resolvedTheme`
+ *    is computed from the stored value, and <Toaster/> colours sonner's
+ *    description text from it, so a stale "light" here once rendered toast
+ *    text dark-grey on a dark popover.)
  */
 const COLOR_MODE = "dark";
 /** Deliberately not "theme": the old key still holds users' stale "light". */
@@ -152,18 +148,19 @@ export default function RootLayout({
             // provider moved to COLOR_MODE_STORAGE_KEY, and leaving a stale
             // "light" behind invites a future reader to think it still counts.
             // It runs AFTER the masking assignment so it can never pre-empt it.
-            __html: `(function(){try{document.documentElement.dataset.privacy=localStorage.getItem('fht-privacy')==='1'?'hidden':'';localStorage.removeItem('theme');}catch(e){}})();`,
+            // The sidebar-collapsed stamp rides along for the same reason a
+            // pre-paint script exists at all: without it a collapsed rail
+            // paints at full width and snaps shut after hydration.
+            __html: `(function(){try{document.documentElement.dataset.privacy=localStorage.getItem('fht-privacy')==='1'?'hidden':'';if(localStorage.getItem('fht-sidebar')==='1')document.documentElement.dataset.sidebar='collapsed';localStorage.removeItem('theme');}catch(e){}})();`,
           }}
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
-        {/* Still mounted, not removed: ui/sonner.tsx calls useTheme(), which
-            falls back to an empty context with no provider — leaving sonner on
-            its "light" default and the unreadable descriptions described
-            above. See COLOR_MODE for why it is forced, not merely defaulted. */}
+        {/* ui/sonner.tsx reads useTheme() to colour toasts, so the provider has
+            to wrap the toaster as well as the app. See COLOR_MODE above for
+            why dark is the default rather than the system preference. */}
         <ThemeProvider
           attribute="class"
-          forcedTheme={COLOR_MODE}
           defaultTheme={COLOR_MODE}
           storageKey={COLOR_MODE_STORAGE_KEY}
           enableSystem={false}

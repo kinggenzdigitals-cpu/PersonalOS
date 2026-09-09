@@ -44,7 +44,7 @@ export default async function AppLayout({
       <ReferenceProvider accounts={accounts} categories={categories}>
         <UpgradeProvider>
         <ActiveUseTimer eligible={upgradeEligible} />
-        <div className="min-h-dvh md:pl-60">
+        <div className="app-shell min-h-dvh">
           {/* Skip link — WCAG 2.4.1 (Bypass Blocks). The sidebar puts a dozen
               nav links ahead of the content, so without this a keyboard or
               screen-reader user tabs through all of them on EVERY page. Hidden

@@ -56,13 +56,10 @@ export function ThemeSettings({
   return (
     <Card className="shadow-card">
       <CardContent className="space-y-5 pt-6">
-        {/* Privacy, where the light/dark switch used to be. The app ships in
-            one theme now, so the old ThemeToggle became a control that could
-            not change anything — next-themes' forcedTheme makes setTheme() a
-            no-op on the applied class — and leaving the row empty would have
-            been odd. The same toggle also sits in the top bar on every screen
-            size; this copy is the discoverable one, and the
-            only place the setting is spelled out in words. */}
+        {/* Privacy sits first. The light/dark switch that used to occupy this
+            row now lives beside the brand (in the sidebar at md+, in the top
+            bar on phones), so this card keeps the one control that is
+            icon-only everywhere else and spells it out in words. */}
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-medium">Hide amounts</p>

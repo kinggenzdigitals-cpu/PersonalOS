@@ -14,11 +14,15 @@ import {
   MessageSquareIcon,
   ShieldCheckIcon,
   MenuIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuickAdd } from "@/components/nav/quick-add";
 import { PrivacyToggle } from "@/components/nav/privacy-toggle";
+import { ThemeToggle } from "@/components/nav/theme-toggle";
+import { useSidebarCollapsed, toggleCollapsed } from "@/lib/sidebar-store";
 import { UserMenu } from "@/components/nav/user-menu";
 import {
   Sheet,
@@ -59,13 +63,24 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function Brand() {
+function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/home" className="flex items-center gap-2">
+    <Link
+      href="/home"
+      className="flex items-center gap-2"
+      title={compact ? "Finance & Habit Tracker" : undefined}
+    >
       <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand text-brand-foreground shadow-soft">
         <span className="font-display text-lg leading-none">F</span>
       </span>
-      <span className="font-display text-base leading-tight tracking-tight">
+      {/* sr-only rather than removed, so the link keeps its name when the
+          rail is collapsed. */}
+      <span
+        className={cn(
+          "font-display text-base leading-tight tracking-tight",
+          compact && "sr-only",
+        )}
+      >
         Finance &amp; Habit Tracker
       </span>
     </Link>
@@ -77,30 +92,42 @@ function NavLink({
   active,
   moneyBadge,
   onNavigate,
+  compact = false,
 }: {
   item: NavItem;
   active: boolean;
   moneyBadge: number;
   onNavigate?: () => void;
+  compact?: boolean;
 }) {
   const Icon = item.icon;
+  const badge = item.href === "/money" && moneyBadge > 0;
   return (
     <Link
       href={item.href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
+      // A hover tooltip is the only sighted label in the collapsed rail; the
+      // sr-only span below is what assistive tech reads.
+      title={compact ? item.label : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+        "relative flex items-center gap-3 rounded-xl py-2.5 text-sm font-medium transition-colors",
+        compact ? "justify-center px-0" : "px-3",
         active
           ? "bg-secondary text-brand"
           : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
       )}
     >
-      <Icon className="size-[18px]" aria-hidden />
-      {item.label}
-      {item.href === "/money" && moneyBadge > 0 && (
+      <Icon className="size-[18px] shrink-0" aria-hidden />
+      <span className={cn(compact && "sr-only")}>{item.label}</span>
+      {badge && (
         <span
-          className="ml-auto grid min-w-5 place-items-center rounded-full bg-error px-1.5 text-[10px] font-semibold leading-5 text-white"
+          className={cn(
+            "grid place-items-center rounded-full bg-error text-[10px] font-semibold text-white",
+            compact
+              ? "absolute right-1 top-1 min-w-4 px-1 leading-4"
+              : "ml-auto min-w-5 px-1.5 leading-5",
+          )}
           aria-label={`${moneyBadge} bills due`}
         >
           {moneyBadge}
@@ -116,11 +143,13 @@ function SidebarBody({
   moneyBadge,
   onNavigate,
   isAdmin,
+  compact = false,
 }: {
   pathname: string;
   moneyBadge: number;
   onNavigate?: () => void;
   isAdmin?: boolean;
+  compact?: boolean;
 }) {
   // The server-side entitlement is the only authority. ORing the raw profile
   // role kept the Admin link visible for a request after a demotion, and
@@ -128,13 +157,11 @@ function SidebarBody({
   const admin = isAdmin;
   const secondary = admin ? [...SECONDARY, ADMIN_ITEM] : SECONDARY;
 
-  // The nav lists are the whole body now. The theme toggle is gone (one theme)
-  // and the privacy + account controls moved OUT of this shared body to the
-  // two places that own chrome: the mobile top bar and the desktop sidebar
-  // footer. They cannot live here — the mobile "More" drawer renders this body
-  // too, and would then show a second copy of controls already in the top bar.
-  // No `flex-1` and no trailing divider: both only existed to pin the old
-  // footers down, and left a stray border and dead space once they were gone.
+  // Nav lists only. The privacy, theme and account controls live in the chrome
+  // that owns them — the sidebar header and the top bar — never here, because
+  // the mobile "More" drawer renders this body too and would show a second
+  // copy of controls already in the top bar. `compact` is the collapsed-rail
+  // form: icons only, with every label kept for assistive tech.
   return (
     <nav aria-label="Primary" className="space-y-4">
       <ul className="space-y-1">
@@ -145,6 +172,7 @@ function SidebarBody({
               active={isActive(pathname, item.href)}
               moneyBadge={moneyBadge}
               onNavigate={onNavigate}
+              compact={compact}
             />
           </li>
         ))}
@@ -157,6 +185,7 @@ function SidebarBody({
             active={isActive(pathname, item.href)}
             moneyBadge={moneyBadge}
             onNavigate={onNavigate}
+            compact={compact}
           />
         ))}
       </div>
@@ -173,31 +202,74 @@ export function DesktopSidebar({
   isAdmin?: boolean;
 }) {
   const pathname = usePathname();
+  const collapsed = useSidebarCollapsed();
   return (
-    // overflow-y-auto so a long nav list (admins get an extra item) scrolls
-    // inside the sidebar instead of overflowing a short viewport.
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col overflow-y-auto border-r border-border bg-card px-4 py-6 md:flex">
-      <div className="mb-6 px-1">
-        <Brand />
+    // Width comes from --sidebar-w (globals.css) so the rail and the content
+    // offset can never disagree; overflow-y-auto lets a long nav list scroll
+    // inside the rail, and overflow-x-hidden clips labels mid-transition.
+    <aside
+      className={cn(
+        "app-sidebar fixed inset-y-0 left-0 z-40 hidden flex-col overflow-x-hidden overflow-y-auto border-r border-border bg-card py-6 md:flex",
+        collapsed ? "px-2" : "px-4",
+      )}
+    >
+      {/* Header. Expanded: brand at the left, hide-amounts + light/dark at the
+          right, in the space that used to sit empty. Collapsed: the mark alone,
+          with the two controls stacked beneath it. */}
+      <div
+        className={cn(
+          "mb-6 flex",
+          collapsed
+            ? "flex-col items-center gap-2"
+            : "items-center justify-between gap-2 px-1",
+        )}
+      >
+        <Brand compact={collapsed} />
+        <div className={cn("flex shrink-0", collapsed ? "flex-col" : "items-center")}>
+          <PrivacyToggle />
+          <ThemeToggle />
+        </div>
       </div>
       <div className="mb-4">
-        <QuickAdd variant="sidebar" />
+        <QuickAdd variant={collapsed ? "rail" : "sidebar"} />
       </div>
-      <SidebarBody pathname={pathname} moneyBadge={moneyBadge} isAdmin={isAdmin} />
+      <SidebarBody
+        pathname={pathname}
+        moneyBadge={moneyBadge}
+        isAdmin={isAdmin}
+        compact={collapsed}
+      />
+      {/* Collapse control, pinned to the bottom so it never competes with the
+          header for the 240px. The visible text IS the accessible name (it
+          swaps, and goes sr-only when narrow) and aria-expanded carries the
+          state — no aria-label that could flip out of step with the truth. */}
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        aria-expanded={!collapsed}
+        className={cn(
+          "mt-auto flex items-center gap-3 rounded-xl py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          collapsed ? "justify-center px-0" : "px-3",
+        )}
+      >
+        {collapsed ? (
+          <ChevronRightIcon className="size-[18px] shrink-0" aria-hidden />
+        ) : (
+          <ChevronLeftIcon className="size-[18px] shrink-0" aria-hidden />
+        )}
+        <span className={cn(collapsed && "sr-only")}>
+          {collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        </span>
+      </button>
     </aside>
   );
 }
 
 /**
- * Top bar, on every screen size: the privacy toggle and the account menu,
- * right-aligned. On phones it also carries the brand, since there is no
- * sidebar; at md+ the sidebar already shows it, so the left side is left
- * empty and the controls simply sit top-right.
- *
- * These two controls used to live in the desktop sidebar's footer instead,
- * bottom-left, which is where nobody looks for "hide my balances" or
- * "sign out". Putting them in one persistent bar at every width also lets
- * the sidebar end on its last nav item, as originally intended.
+ * Top bar, on every screen size. On phones it carries the brand plus its two
+ * companions — hide-amounts and light/dark — and the account menu; at md+ the
+ * sidebar header carries the brand and those two controls, so only the account
+ * menu remains here, top-right.
  *
  * `email` is threaded down from the server layout because the profile row
  * has no email column, so the user menu cannot look it up itself.
@@ -219,7 +291,9 @@ export function TopBar({ email }: { email: string | null }) {
           <Brand />
         </span>
       </div>
-      <PrivacyToggle />
+      {/* md:hidden: at md+ these two live beside the brand in the sidebar. */}
+      <PrivacyToggle className="md:hidden" />
+      <ThemeToggle className="md:hidden" />
       <UserMenu email={email} />
     </header>
   );
