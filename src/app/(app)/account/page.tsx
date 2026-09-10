@@ -32,7 +32,8 @@ function accessLabel(
   plan: string,
 ): string {
   if (role === "super_admin") return "Super Admin";
-  if (accessType === "lifetime_pro") return "Lifetime Pro";
+  if (accessType === "lifetime_pro")
+    return plan === "premium" ? "Lifetime Premium" : "Lifetime Pro";
   if (accessType === "complimentary_pro") return "Complimentary Pro";
   if (plan === "premium") return "Premium";
   return plan === "pro" ? "Pro" : "Free";

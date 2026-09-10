@@ -64,6 +64,9 @@ export async function POST(request: NextRequest) {
 
   let plan: "pro" | "premium" = "pro";
   let interval: Interval = "monthly";
+  // A lifetime invoice: sub_<uuid>_<plan>_lifetime_<ts>. Handled separately
+  // below — it grants a permanent entitlement with no period to extend.
+  const isLifetime = parts.length >= 5 && parts[3] === "lifetime";
   if (parts.length >= 5) {
     plan = parts[2] === "premium" ? "premium" : "pro";
     interval = (parts[3] as Interval) in MONTHS ? (parts[3] as Interval) : "monthly";
@@ -149,23 +152,40 @@ export async function POST(request: NextRequest) {
       : null;
     const base =
       currentEnd && currentEnd.getTime() > now.getTime() ? currentEnd : now;
-    const periodEnd = addMonths(base, months);
 
     // supabase-js does NOT throw on query errors — the result must be checked,
     // or a failed activation would be acknowledged as success and the user
-    // would have paid for nothing.
-    const { error: subError } = await admin.from("subscriptions").upsert(
-      {
-        user_id: userId,
-        plan,
-        status: "active",
-        interval,
-        access_type: "paid",
-        xendit_customer_id: body.id ?? null,
-        current_period_end: periodEnd.toISOString(),
-      },
-      { onConflict: "user_id" },
-    );
+    // would have paid for nothing. Two separate upserts rather than one shared
+    // object: access_type differs by a string-literal type between the
+    // branches, so each literal must be checked against the Insert shape on its
+    // own (a union of the two is not assignable to upsert's parameter).
+    const { error: subError } = isLifetime
+      ? await admin.from("subscriptions").upsert(
+          {
+            user_id: userId,
+            plan,
+            status: "active",
+            interval: "lifetime",
+            // Permanent: null period → entitlement reads a lifetime grant as forever.
+            access_type: "lifetime_pro",
+            xendit_customer_id: body.id ?? null,
+            current_period_end: null,
+          },
+          { onConflict: "user_id" },
+        )
+      : await admin.from("subscriptions").upsert(
+          {
+            user_id: userId,
+            plan,
+            status: "active",
+            interval,
+            access_type: "paid",
+            xendit_customer_id: body.id ?? null,
+            // Extend from whatever time is left, never from now.
+            current_period_end: addMonths(base, months).toISOString(),
+          },
+          { onConflict: "user_id" },
+        );
 
     if (subError) {
       console.error("[xendit] subscription activation failed", subError.code);
