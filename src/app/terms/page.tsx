@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Terms of Service" };
 
 export default function TermsPage() {
   return (
-    <LegalShell title="Terms of Service" updated="July 2026">
+    <LegalShell title="Terms of Service" updated="September 2026">
       <section>
         <p>
           Welcome to Finance & Habit Tracker. By creating an account or using the service, you
@@ -43,10 +43,35 @@ export default function TermsPage() {
       <section>
         <h2>4. Plans &amp; billing</h2>
         <p>
-          Finance & Habit Tracker offers a Free plan and a paid Pro subscription. Paid plans
-          renew automatically until cancelled. You can cancel anytime and keep
-          Pro until the end of the current billing period. Prices may change with
-          advance notice.
+          Finance &amp; Habit Tracker offers a Free plan, paid Pro and Premium
+          subscriptions, and a one-time Premium Lifetime option. Prices may
+          change with advance notice; a change never affects a period you have
+          already paid for.
+        </p>
+        <p>
+          <strong>Subscriptions are prepaid</strong> for the billing period you
+          choose. No card is stored and nothing renews automatically — your
+          access continues until the end of the period you paid for and then
+          returns to Free unless you choose to renew. You can turn off future
+          renewal at any time from your account and keep the access you have
+          already paid for until it ends.
+        </p>
+        <p>
+          <strong>Premium Lifetime</strong> is a single payment for Premium-tier
+          access for the operational lifetime of the Finance &amp; Habit Tracker
+          product, subject to these Terms. It is not a subscription and is never
+          billed again. &ldquo;Lifetime&rdquo; means the lifetime of the
+          product, not your personal lifetime, and does not include separately
+          sold future products or third-party services that may carry their own
+          costs. Lifetime is charged in US dollars; the exact amount and
+          currency are shown before you pay.
+        </p>
+        <p>
+          <strong>Refunds.</strong> Nothing in these Terms limits the refund or
+          other remedies you are entitled to under Philippine consumer law,
+          including the Consumer Act (Republic Act No. 7394) and the Internet
+          Transactions Act (Republic Act No. 11967). To request a refund or
+          raise a billing concern, contact us at the address below.
         </p>
       </section>
 
@@ -74,6 +99,12 @@ export default function TermsPage() {
           We may update these terms; we&apos;ll note the date above. Questions?
           Reach us at{" "}
           <a href="mailto:kingfmgonzales@gmail.com">kingfmgonzales@gmail.com</a>.
+        </p>
+        <p>
+          These Terms are governed by the laws of the Republic of the
+          Philippines, and any dispute is subject to the appropriate courts
+          there. If any part of these Terms is found unenforceable, the rest
+          continues to apply.
         </p>
       </section>
     </LegalShell>
