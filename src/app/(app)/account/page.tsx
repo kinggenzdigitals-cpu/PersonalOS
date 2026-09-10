@@ -14,6 +14,7 @@ import {
   RepeatIcon,
   CalendarIcon,
   CalendarClockIcon,
+  InfinityIcon,
   type LucideIcon,
 } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
@@ -130,6 +131,13 @@ export default async function AccountPage() {
                 icon={CalendarClockIcon}
                 label="Access until"
                 value={new Date(sub.access_expires_at).toLocaleDateString()}
+              />
+            )}
+            {ent.accessType === "lifetime_pro" && (
+              <Row
+                icon={InfinityIcon}
+                label="Billing"
+                value="Lifetime — no recurring payment"
               />
             )}
           </div>

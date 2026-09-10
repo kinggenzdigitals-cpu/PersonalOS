@@ -58,7 +58,7 @@ export default async function SettingsPage({
         <h1 className="font-display text-2xl tracking-tight">Settings</h1>
       </header>
 
-      {sp.upgraded === "1" && (
+      {sp.upgraded && (
         <div className="rounded-2xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-foreground">
           <p className="font-medium">Payment received — thank you! 🎉</p>
           <p className="text-muted-foreground">

@@ -12,15 +12,18 @@ import { FeatureComparison } from "@/components/subscription/feature-comparison"
 import { UsageMeters } from "@/components/subscription/usage-meters";
 import { PlanCards } from "@/components/subscription/plan-cards";
 import { PromoOffer } from "@/components/subscription/promo-offer";
+import { LifetimeUpsell } from "@/components/subscription/lifetime-upsell";
+import { resolveLifetimeOffer } from "@/lib/offer";
 
 export const metadata: Metadata = { title: "Subscription" };
 
 export default async function SubscriptionPage() {
   const profile = await requireOnboardedProfile();
-  const [ent, usage, offer] = await Promise.all([
+  const [ent, usage, offer, ltOffer] = await Promise.all([
     getEntitlement(),
     getUsage(profile.timezone),
     getActiveOffer(),
+    resolveLifetimeOffer(),
   ]);
   const planName = PLANS[ent.plan].name;
   const complimentary =
@@ -28,6 +31,12 @@ export default async function SubscriptionPage() {
     ent.accessType === "lifetime_pro" ||
     ent.accessType === "complimentary_pro";
   const promoEligible = !complimentary && ent.plan !== "premium";
+  // A premium subscriber CAN convert to Lifetime (to stop paying); only an
+  // existing Lifetime holder or a super admin has nothing to buy.
+  const lifetimeEligible =
+    ltOffer.available &&
+    ent.accessType !== "lifetime_pro" &&
+    !ent.isSuperAdmin;
 
   return (
     <div className="space-y-6">
@@ -59,6 +68,13 @@ export default async function SubscriptionPage() {
       <PromoOffer
         expiresAt={offer?.expiresAt ?? null}
         eligible={promoEligible}
+      />
+
+      <LifetimeUpsell
+        eligible={lifetimeEligible}
+        remaining={ltOffer.remaining}
+        priceUSD={ltOffer.priceUSD}
+        regularUSD={ltOffer.regularUSD}
       />
 
       <PlanCards
