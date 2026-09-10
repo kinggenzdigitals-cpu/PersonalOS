@@ -15,6 +15,7 @@ import { DownloadDataButton } from "@/components/settings/download-data-button";
 import { PlanCard } from "@/components/settings/plan-card";
 import { ThemeSettings } from "@/components/settings/theme-settings";
 import { DangerZone } from "@/components/settings/danger-zone";
+import { ActivationPoller } from "@/components/subscription/activation-poller";
 import { SettingsForm } from "./settings-form";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -58,16 +59,16 @@ export default async function SettingsPage({
         <h1 className="font-display text-2xl tracking-tight">Settings</h1>
       </header>
 
-      {sp.upgraded && (
+      {sp.upgraded && plan !== "free" && (
         <div className="rounded-2xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-foreground">
           <p className="font-medium">Payment received — thank you! 🎉</p>
           <p className="text-muted-foreground">
-            {plan === "free"
-              ? "Your upgrade will activate in a moment. Refresh this page shortly."
-              : `You're on ${PLANS[plan].name} now. Enjoy everything Finance & Habit Tracker has to offer.`}
+            You&apos;re on {PLANS[plan].name} now. Enjoy everything Finance
+            &amp; Habit Tracker has to offer.
           </p>
         </div>
       )}
+      <ActivationPoller pending={Boolean(sp.upgraded) && plan === "free"} />
       {sp.checkout === "failed" && (
         <div className="rounded-2xl border border-border bg-secondary px-4 py-3 text-sm text-muted-foreground">
           Checkout was cancelled. No charge was made — you can try again anytime.
