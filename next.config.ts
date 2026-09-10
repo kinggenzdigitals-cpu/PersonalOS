@@ -23,7 +23,7 @@ const securityHeaders = [
   // The app asks for none of these; deny them rather than rely on defaults.
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), payment=(), usb()",
+    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   },
 ];
 
