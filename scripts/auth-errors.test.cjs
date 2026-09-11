@@ -74,10 +74,9 @@ test("an empty or unreadable error is transient rather than parroted", () => {
 // ---- sign-in ---------------------------------------------------------------
 
 test("bad credentials", () => {
-  assert.match(
-    friendlyAuthError("Invalid login credentials"),
-    /doesn't match our records/,
-  );
+  const out = friendlyAuthError("Invalid login credentials");
+  assert.match(out, /doesn't match/);
+  assert.match(out, /Continue with Google/);
 });
 
 test("unconfirmed email", () => {
@@ -134,7 +133,7 @@ test("an unrecognised but readable error is passed through", () => {
 
 test("matching is case-insensitive", () => {
   assert.match(friendlyAuthError("ERROR SENDING RECOVERY EMAIL"), /mail service/);
-  assert.match(friendlyAuthError("invalid LOGIN credentials"), /doesn't match/);
+  assert.match(friendlyAuthError("invalid LOGIN credentials"), /Continue with Google/);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

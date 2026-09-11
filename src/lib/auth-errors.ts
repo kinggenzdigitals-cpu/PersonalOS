@@ -24,7 +24,7 @@ export function friendlyAuthError(message: string | undefined | null): string {
     return "We couldn't send that email — the mail service rejected it. This is on our side, not yours. Please contact support.";
   }
   if (m.includes("invalid login credentials")) {
-    return "That email or password doesn't match our records.";
+    return "That email or password doesn't match. If you signed up with Google, choose Continue with Google.";
   }
   if (m.includes("email not confirmed")) {
     return "Please confirm your email first — check your inbox for the link.";

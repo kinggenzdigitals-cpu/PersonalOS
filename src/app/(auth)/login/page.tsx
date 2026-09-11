@@ -1,5 +1,5 @@
-import { Suspense } from "react";
 import Link from "next/link";
+import { CheckCircle2Icon } from "lucide-react";
 import type { Metadata } from "next";
 import { Card, CardContent } from "@/components/ui/card";
 import { AuthForm } from "@/components/auth/auth-form";
@@ -10,9 +10,10 @@ export const metadata: Metadata = { title: "Sign in" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; signedOut?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, signedOut } = await searchParams;
+  const wasSignedOut = signedOut === "1";
 
   return (
     <div className="space-y-6">
@@ -23,16 +24,25 @@ export default async function LoginPage({
         </p>
       </div>
 
+      {wasSignedOut && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-xl border border-success/30 bg-success/10 px-3 py-2.5 text-sm text-foreground"
+        >
+          <CheckCircle2Icon
+            className="mt-0.5 size-4 shrink-0 text-success"
+            aria-hidden
+          />
+          <p>
+            You’re signed out. To return, use the same sign-in method you used
+            before.
+          </p>
+        </div>
+      )}
+
       <Card className="shadow-card">
         <CardContent className="space-y-4 pt-6">
-          {/* Streams in behind the form: asking Supabase whether Google is on
-              must never stand between the user and the email fields. The
-              fallback is empty rather than a skeleton because the button is
-              usually absent, and a placeholder for something that normally
-              never arrives is worse than nothing. */}
-          <Suspense fallback={null}>
-            <GoogleSignIn next={next} />
-          </Suspense>
+          <GoogleSignIn next={next} returning />
 
           <AuthForm mode="login" next={next} />
         </CardContent>

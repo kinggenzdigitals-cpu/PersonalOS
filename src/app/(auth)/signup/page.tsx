@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,14 +26,7 @@ export default async function SignupPage({
 
       <Card className="shadow-card">
         <CardContent className="space-y-4 pt-6">
-          {/* Streams in behind the form: asking Supabase whether Google is on
-              must never stand between a new user and the email fields. The
-              fallback is empty rather than a skeleton because the button is
-              usually absent, and a placeholder for something that normally
-              never arrives is worse than nothing. */}
-          <Suspense fallback={null}>
-            <GoogleSignIn next={next} />
-          </Suspense>
+          <GoogleSignIn next={next} />
 
           <AuthForm mode="signup" next={next} />
 
