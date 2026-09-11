@@ -61,7 +61,7 @@ export function LifetimeUpsell({
         <Button
           onClick={buy}
           disabled={busy}
-          className="bg-accent-brand text-[#12280a] hover:opacity-90"
+          className="bg-accent-brand text-[color:var(--brand-foreground)] hover:opacity-90"
         >
           {busy ? (
             <Loader2Icon className="size-4 animate-spin" aria-hidden />

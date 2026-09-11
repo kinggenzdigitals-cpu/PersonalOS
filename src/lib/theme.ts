@@ -23,10 +23,10 @@ export type ThemeConfig = {
 };
 
 export const DEFAULT_COLORS: Record<ThemeRole, string> = {
-  primary: "#012269",
-  secondary: "#017dfe",
-  accent: "#94d227",
-  tab: "#017dfe",
+  primary: "#168cff",
+  secondary: "#38b6ff",
+  accent: "#63e875",
+  tab: "#38b6ff",
 };
 
 export const DEFAULT_THEME: ThemeConfig = {
@@ -39,8 +39,8 @@ export type ThemePreset = { name: string; colors: Record<ThemeRole, string> };
 
 export const PRESETS: ThemePreset[] = [
   {
-    name: "Ocean (brand)",
-    colors: { primary: "#012269", secondary: "#017dfe", accent: "#94d227", tab: "#017dfe" },
+    name: "Money (brand)",
+    colors: { primary: "#168cff", secondary: "#38b6ff", accent: "#63e875", tab: "#38b6ff" },
   },
   {
     name: "Sunset",

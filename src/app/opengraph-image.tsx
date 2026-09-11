@@ -14,7 +14,7 @@ export default function OpengraphImage() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          background: "#FFFFFF",
+          background: "#031124",
           padding: "72px",
         }}
       >
@@ -25,7 +25,7 @@ export default function OpengraphImage() {
               width: "80px",
               height: "80px",
               borderRadius: "22px",
-              background: "#012269",
+              background: "#168cff",
               alignItems: "center",
               justifyContent: "center",
               color: "#ffffff",
@@ -40,7 +40,7 @@ export default function OpengraphImage() {
               marginLeft: "20px",
               fontSize: "40px",
               fontWeight: 600,
-              color: "#0c1a33",
+              color: "#f3f7ff",
             }}
           >
             Finance & Habit Tracker
@@ -54,7 +54,7 @@ export default function OpengraphImage() {
               width: "80px",
               height: "8px",
               borderRadius: "99px",
-              background: "#017DFE",
+              background: "#38b6ff",
               marginBottom: "28px",
             }}
           />
@@ -62,7 +62,7 @@ export default function OpengraphImage() {
             style={{
               fontSize: "82px",
               fontWeight: 700,
-              color: "#012269",
+              color: "#168cff",
               lineHeight: 1.05,
               maxWidth: "980px",
             }}
@@ -71,7 +71,14 @@ export default function OpengraphImage() {
           </div>
         </div>
 
-        <div style={{ display: "flex", fontSize: "32px", color: "#017DFE", fontWeight: 500 }}>
+        <div
+          style={{
+            display: "flex",
+            fontSize: "32px",
+            color: "#63e875",
+            fontWeight: 500,
+          }}
+        >
           Money · Habits · Mood · Tasks · Focus
         </div>
       </div>

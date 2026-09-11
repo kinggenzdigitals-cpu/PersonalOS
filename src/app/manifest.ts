@@ -9,7 +9,7 @@ import type { MetadataRoute } from "next";
  * dark app — the one light flash the forced theme cannot reach from inside the
  * page. Keep in step with `.dark { --background }`.
  */
-const DARK_SURFACE = "#0b1220";
+const DARK_SURFACE = "#031124";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {

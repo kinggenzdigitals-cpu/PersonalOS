@@ -116,11 +116,17 @@ function NavLink({
         "relative flex items-center gap-3 rounded-xl py-2.5 text-sm font-medium transition-colors",
         compact ? "justify-center px-0" : "px-3",
         active
-          ? "bg-secondary text-brand"
-          : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+          ? "border border-tab-active/20 bg-tab-active/12 text-tab-active"
+          : "text-foreground/85 hover:bg-tab-active/12 hover:text-foreground",
       )}
     >
-      <Icon className="size-[18px] shrink-0" aria-hidden />
+      <Icon
+        className={cn(
+          "size-[18px] shrink-0",
+          active ? "text-tab-active" : "text-foreground/85",
+        )}
+        aria-hidden
+      />
       <span className={cn(compact && "sr-only")}>{item.label}</span>
       {badge && (
         <span
@@ -250,7 +256,7 @@ export function DesktopSidebar({
         onClick={toggleCollapsed}
         aria-expanded={!collapsed}
         className={cn(
-          "mt-auto flex items-center gap-3 rounded-xl py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "mt-auto flex items-center gap-3 rounded-xl py-2.5 text-sm font-medium text-foreground/85 transition-colors hover:bg-tab-active/12 hover:text-tab-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           collapsed ? "justify-center px-0" : "px-3",
         )}
       >
@@ -329,8 +335,10 @@ export function MobileBottomNav({
             prefetch={false}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
-              active ? "text-brand" : "text-muted-foreground",
+              "relative flex flex-1 flex-col items-center gap-0.5 rounded-t-lg px-2 py-2 text-[10px] font-medium transition-colors",
+              active
+                ? "bg-tab-active/12 text-tab-active"
+                : "text-foreground/80 hover:bg-tab-active/10 hover:text-foreground",
             )}
           >
             <Icon className="size-5" aria-hidden />
@@ -348,8 +356,10 @@ export function MobileBottomNav({
             type="button"
             aria-label="More"
             className={cn(
-              "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
-              moreActive ? "text-brand" : "text-muted-foreground",
+              "flex flex-1 flex-col items-center gap-0.5 rounded-t-lg px-2 py-2 text-[10px] font-medium transition-colors",
+              moreActive
+                ? "bg-tab-active/12 text-tab-active"
+                : "text-foreground/80 hover:bg-tab-active/10 hover:text-foreground",
             )}
           >
             <MenuIcon className="size-5" aria-hidden />

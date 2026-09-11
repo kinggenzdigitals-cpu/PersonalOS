@@ -80,141 +80,129 @@
 }
 
 /* ------------------------------------------------------------------ */
-/*  Finance & Habit Tracker — light (default brand)                    */
-/*  Ocean Blue #012269 · Azure #017DFE · Yellow-green #94D227 · White  */
+/*  Finance & Habit Tracker — Money visual system (global)             */
 /* ------------------------------------------------------------------ */
 :root {
   --radius: 0.875rem; /* 14px */
 
-  --background: #ffffff;
-  --foreground: #0c1a33;
+  --background: #031124;
+  --foreground: #f3f7ff;
 
-  --card: #ffffff;
-  --card-foreground: #0c1a33;
-  --popover: #ffffff;
-  --popover-foreground: #0c1a33;
+  --card: #071a31;
+  --card-foreground: #f3f7ff;
+  --popover: #071a31;
+  --popover-foreground: #f3f7ff;
 
-  /* primary = Ocean Blue */
-  --primary: #012269;
+  --primary: #087cff;
   --primary-foreground: #ffffff;
 
-  --secondary: #eef2f8;
-  --secondary-foreground: #17223b;
+  --secondary: #0d2948;
+  --secondary-foreground: #edf5ff;
 
-  --muted: #eef2f8;
-  --muted-foreground: #5a647a;
+  --muted: #0d2948;
+  --muted-foreground: #9db4d2;
 
-  /* shadcn "accent" = subtle hover tint (a light azure wash) */
-  --accent: #e7f1ff;
-  --accent-foreground: #012269;
+  --accent: #10345b;
+  --accent-foreground: #ffffff;
 
-  --destructive: #dc2626;
+  --destructive: #ff6775;
 
-  --border: #e3e8ef;
-  --input: #e3e8ef;
-  --ring: #017dfe;
+  --border: rgba(100, 174, 255, 0.22);
+  --input: rgba(125, 187, 255, 0.26);
+  --ring: #22a2ff;
 
-  /* brand extensions */
-  --brand: #012269;        /* Ocean Blue — primary brand */
-  /* Text/icon colour for filled --brand surfaces. Light theme's brand is a
-     dark navy, so white sits on it at 14.6:1. */
-  --brand-foreground: #ffffff;
-  --brand-hover: #01184e;
-  --brand-2: #017dfe;      /* Azure — links, hovers, secondary */
-  --brand-2-hover: #0166d1;
-  --accent-brand: #94d227; /* Yellow-green — progress, completed, accents */
-  --tab-active: #017dfe;   /* selected/active tab (Azure by default) */
-  --tab-active-foreground: #ffffff;
-  --sage: #5a8f16;
-  --sage-soft: #eef7dd;
-  --success: #4e8a0f;
-  --warning: #d97706;
-  --error: #dc2626;
-  --money-up: #4e8a0f;
-  --money-down: #dc2626;
+  --brand: #168cff;
+  --brand-foreground: #04122e;
+  --brand-hover: #39a5ff;
+  --brand-2: #38b6ff;
+  --brand-2-hover: #72ceff;
+  --accent-brand: #63e875;
+  --tab-active: #38b6ff;
+  --tab-active-foreground: #04122e;
+  --sage: #63e875;
+  --sage-soft: #103924;
+  --success: #7bc73f;
+  --warning: #ffc24a;
+  --error: #ff6775;
+  --money-up: #54e76f;
+  --money-down: #ff6775;
 
-  /* charts — brand sequence */
-  --chart-1: #017dfe;
-  --chart-2: #94d227;
-  --chart-3: #012269;
-  --chart-4: #7c8aa5;
-  --chart-5: #f59e0b;
+  --chart-1: #38b6ff;
+  --chart-2: #54e76f;
+  --chart-3: #168cff;
+  --chart-4: #9db4d2;
+  --chart-5: #ffc24a;
 
-  --sidebar: #ffffff;
-  --sidebar-foreground: #0c1a33;
-  --sidebar-primary: #012269;
+  --sidebar: #04162b;
+  --sidebar-foreground: #e6f0ff;
+  --sidebar-primary: #087cff;
   --sidebar-primary-foreground: #04122e;
-  --sidebar-accent: #eef2f8;
-  --sidebar-accent-foreground: #012269;
-  --sidebar-border: #e3e8ef;
-  --sidebar-ring: #017dfe;
+  --sidebar-accent: #0b2b4c;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(100, 174, 255, 0.18);
+  --sidebar-ring: #22a2ff;
 }
 
 /* ------------------------------------------------------------------ */
-/*  Finance & Habit Tracker — dark (deep navy, low-glare)              */
+/*  Explicit dark mode values (kept in sync with the global base)       */
 /* ------------------------------------------------------------------ */
 .dark {
-  --background: #0b1220;
-  --foreground: #e8edf5;
+  --background: #031124;
+  --foreground: #f3f7ff;
 
-  --card: #121a2b;
-  --card-foreground: #e8edf5;
-  --popover: #121a2b;
-  --popover-foreground: #e8edf5;
+  --card: #071a31;
+  --card-foreground: #f3f7ff;
+  --popover: #071a31;
+  --popover-foreground: #f3f7ff;
 
-  --primary: #2f7dff;
+  --primary: #087cff;
   --primary-foreground: #ffffff;
 
-  --secondary: #1c2740;
-  --secondary-foreground: #e8edf5;
+  --secondary: #0d2948;
+  --secondary-foreground: #edf5ff;
 
-  --muted: #1c2740;
-  --muted-foreground: #9aa6bd;
+  --muted: #0d2948;
+  --muted-foreground: #9db4d2;
 
-  --accent: #16233d;
-  --accent-foreground: #e8edf5;
+  --accent: #10345b;
+  --accent-foreground: #ffffff;
 
-  --destructive: #ef4444;
+  --destructive: #ff6775;
 
-  --border: rgba(232, 237, 245, 0.12);
-  --input: rgba(232, 237, 245, 0.16);
-  --ring: #4aa3ff;
+  --border: rgba(100, 174, 255, 0.22);
+  --input: rgba(125, 187, 255, 0.26);
+  --ring: #22a2ff;
 
-  --brand: #5a9dff;        /* Ocean Blue lifts to a readable blue in dark */
-  /* Dark theme lifts --brand to a light blue so it stays readable AS TEXT on
-     the dark ground — but that makes it a light BACKGROUND, and white on it
-     measured 2.73:1 (hover #7cb2ff was worse, 2.17:1) against a 4.5:1 floor.
-     Dark ink restores it to 6.81:1 / 8.55:1. Same pattern the sidebar already
-     uses (--sidebar-primary-foreground below). */
+  --brand: #168cff;
   --brand-foreground: #04122e;
-  --brand-hover: #7cb2ff;
-  --brand-2: #38b6ff;      /* Azure */
-  --brand-2-hover: #62c6ff;
-  --accent-brand: #a6e02f; /* Yellow-green */
+  --brand-hover: #39a5ff;
+  --brand-2: #38b6ff;
+  --brand-2-hover: #72ceff;
+  --accent-brand: #63e875;
   --tab-active: #38b6ff;
   --tab-active-foreground: #04122e;
-  --sage: #a6d95f;
-  --sage-soft: #23331a;
+  --sage: #63e875;
+  --sage-soft: #103924;
   --success: #7bc73f;
-  --warning: #e9a13c;
-  --error: #ef6b5c;
-  --money-up: #7bc73f;
-  --money-down: #ef8a72;
+  --warning: #ffc24a;
+  --error: #ff6775;
+  --money-up: #54e76f;
+  --money-down: #ff6775;
 
   --chart-1: #38b6ff;
-  --chart-2: #a6e02f;
-  --chart-3: #6c9bff;
-  --chart-4: #9aa6bd;
-  --chart-5: #f59e0b;
+  --chart-2: #54e76f;
+  --chart-3: #168cff;
+  --chart-4: #9db4d2;
+  --chart-5: #ffc24a;
 
-  --sidebar: #121a2b;
-  --sidebar-foreground: #e8edf5;
-  --sidebar-primary: #5a9dff;
+  --sidebar: #04162b;
+  --sidebar-foreground: #e6f0ff;
+  --sidebar-primary: #087cff;
   --sidebar-primary-foreground: #04122e;
-  --sidebar-accent: #1c2740;
-  --sidebar-accent-foreground: #e8edf5;
-  --sidebar-border: rgba(232, 237, 245, 0.12);
-  --sidebar-ring: #4aa3ff;
+  --sidebar-accent: #0b2b4c;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(100, 174, 255, 0.18);
+  --sidebar-ring: #22a2ff;
 }
 
 /* ------------------------------------------------------------------ */
@@ -235,7 +223,7 @@
 
   /* display type for page titles + big figures */
   .font-display {
-    font-family: var(--font-display), Georgia, serif;
+    font-family: var(--font-display), "Segoe UI", Arial, sans-serif;
   }
 
   /* all money + stat figures use tabular numerals */
@@ -246,7 +234,7 @@
   }
 
   h1, h2, h3 {
-    font-family: var(--font-display), Georgia, serif;
+    font-family: var(--font-display), "Segoe UI", Arial, sans-serif;
     letter-spacing: -0.01em;
   }
 }
@@ -305,51 +293,6 @@ html[data-sidebar="collapsed"] {
     padding-left: var(--sidebar-w);
     transition: padding-left 200ms ease;
   }
-}
-
-/* ------------------------------------------------------------------ */
-/*  Money workspace — scoped executive dashboard treatment            */
-/* ------------------------------------------------------------------ */
-body:has(.money-shell) {
-  --background: #031124;
-  --foreground: #f3f7ff;
-  --card: #071a31;
-  --card-foreground: #f3f7ff;
-  --popover: #071a31;
-  --popover-foreground: #f3f7ff;
-  --primary: #087cff;
-  --primary-foreground: #ffffff;
-  --secondary: #0d2948;
-  --secondary-foreground: #edf5ff;
-  --muted: #0d2948;
-  --muted-foreground: #9db4d2;
-  --accent: #10345b;
-  --accent-foreground: #ffffff;
-  --border: rgba(100, 174, 255, 0.22);
-  --input: rgba(125, 187, 255, 0.26);
-  --ring: #22a2ff;
-  --brand: #168cff;
-  --brand-foreground: #04122e;
-  --brand-hover: #39a5ff;
-  --brand-2: #38b6ff;
-  --brand-2-hover: #72ceff;
-  --success: #54e76f;
-  --money-up: #54e76f;
-  --money-down: #ff6775;
-  --warning: #ffc24a;
-  --error: #ff6775;
-  --sage: #63e875;
-  --sage-soft: #103924;
-  --sidebar: #04162b;
-  --sidebar-foreground: #e6f0ff;
-  --sidebar-primary: #087cff;
-  --sidebar-primary-foreground: #04122e;
-  --sidebar-accent: #0b2b4c;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgba(100, 174, 255, 0.18);
-  background:
-    radial-gradient(circle at 78% 0%, rgba(0, 119, 255, 0.14), transparent 32rem),
-    linear-gradient(145deg, #020d1d 0%, #03162d 55%, #020c1a 100%);
 }
 
 #main-content:has(> .money-shell) {

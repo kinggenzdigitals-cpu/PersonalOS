@@ -11,10 +11,11 @@ const PALETTE = [
   "var(--chart-4)",
   "var(--chart-5)",
   "var(--sage)",
-  "#B08A4F",
-  "#C77D8E",
-  "#5B9AA0",
-  "#9A7BB0",
+  "#7bc73f",
+  "#63e875",
+  "#38b6ff",
+  "#168cff",
+  "#9db4d2",
 ];
 
 export type CategorySlice = {

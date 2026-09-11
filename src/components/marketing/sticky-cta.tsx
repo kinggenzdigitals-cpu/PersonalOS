@@ -46,7 +46,7 @@ export function StickyCta({
           </Link>
           <Link
             href={lifetimeHref}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent-brand px-4 py-2.5 text-sm font-medium text-[#12280a] shadow-soft"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent-brand px-4 py-2.5 text-sm font-medium text-[color:var(--brand-foreground)] shadow-soft"
           >
             <SparklesIcon className="size-4" /> Lifetime ${lifetimePriceUSD}
           </Link>

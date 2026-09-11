@@ -20,14 +20,14 @@ import { toast } from "sonner";
 import { useUpgrade } from "@/components/providers/upgrade-provider";
 
 export const GOAL_COLORS = [
-  "#C4643B",
-  "#7C9082",
-  "#6B7F9E",
-  "#B08A4F",
-  "#C77D8E",
-  "#5B9AA0",
-  "#9A7BB0",
-  "#2F7D5C",
+  "#168cff",
+  "#38b6ff",
+  "#63e875",
+  "#54e76f",
+  "#7bc73f",
+  "#ffc24a",
+  "#9db4d2",
+  "#72ceff",
 ];
 
 export function GoalForm({

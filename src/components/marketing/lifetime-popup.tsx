@@ -155,7 +155,7 @@ export function LifetimePopup({
         <Link
           href={href}
           onClick={close}
-          className="mt-5 flex items-center justify-center gap-2 rounded-full bg-accent-brand px-5 py-2.5 text-sm font-medium text-[#12280a] shadow-soft transition-opacity hover:opacity-90"
+          className="mt-5 flex items-center justify-center gap-2 rounded-full bg-accent-brand px-5 py-2.5 text-sm font-medium text-[color:var(--brand-foreground)] shadow-soft transition-opacity hover:opacity-90"
         >
           <SparklesIcon className="size-4" /> Get Lifetime Access
         </Link>

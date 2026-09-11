@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Karla } from "next/font/google";
+import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/pwa/register-sw";
@@ -32,17 +32,17 @@ function supabaseRuntimeConfig() {
  */
 const THEME_INIT_SCRIPT = `(function(){try{var raw=localStorage.getItem('fht-theme');if(!raw)return;var c=JSON.parse(raw);if(!c||!c.enabled||!c.colors)return;var col=c.colors;function lum(h){h=(h||'').replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];var r=parseInt(h.slice(0,2),16)/255,g=parseInt(h.slice(2,4),16)/255,b=parseInt(h.slice(4,6),16)/255;function f(v){return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);}return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b);}function fg(h){return lum(h)>0.42?'#0c1a33':'#ffffff';}var p=col.primary,s=col.secondary,a=col.accent,t=col.tab;var v={'--primary':p,'--primary-foreground':fg(p),'--brand':p,'--brand-hover':p,'--sidebar-primary':p,'--sidebar-primary-foreground':fg(p),'--brand-foreground':fg(p),'--ring':s,'--sidebar-ring':s,'--brand-2':s,'--brand-2-hover':s,'--accent-brand':a,'--tab-active':t,'--tab-active-foreground':fg(t)};var r=document.documentElement;for(var k in v){r.style.setProperty(k,v[k]);}}catch(e){}})();`;
 
-const fraunces = Fraunces({
+const manrope = Manrope({
   variable: "--font-display",
   subsets: ["latin"],
   display: "swap",
-  axes: ["opsz"],
 });
 
-const karla = Karla({
+const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
   display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -91,7 +91,7 @@ export const viewport: Viewport = {
   // The dark `--background`, matching manifest.ts. Browser/OS chrome is painted
   // from this before the document exists, so leaving it on the light brand navy
   // left the surround mismatched against a permanently dark app.
-  themeColor: "#0b1220",
+  themeColor: "#031124",
   width: "device-width",
   initialScale: 1,
   // No maximumScale: locking pinch-zoom fails WCAG 1.4.4 (Resize Text), and on
@@ -139,8 +139,8 @@ export default function RootLayout({
       className={cn(
         "h-full antialiased",
         COLOR_MODE,
-        fraunces.variable,
-        karla.variable,
+        manrope.variable,
+        inter.variable,
       )}
       // Same reasoning for native UI (scrollbars, date pickers, autofill):
       // next-themes sets this too, just a beat later.

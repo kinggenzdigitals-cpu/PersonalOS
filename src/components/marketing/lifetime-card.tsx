@@ -32,7 +32,7 @@ export function LifetimeCard({
         className,
       )}
     >
-      <span className="absolute -top-3 left-6 inline-flex items-center gap-1 rounded-full bg-accent-brand px-3 py-0.5 text-xs font-medium text-[#12280a]">
+      <span className="absolute -top-3 left-6 inline-flex items-center gap-1 rounded-full bg-accent-brand px-3 py-0.5 text-xs font-medium text-[color:var(--brand-foreground)]">
         <SparklesIcon className="size-3.5" /> Founding offer
       </span>
 
@@ -86,7 +86,7 @@ export function LifetimeCard({
 
       <Link
         href={ctaHref}
-        className="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-accent-brand px-5 py-2.5 text-sm font-medium text-[#12280a] shadow-soft transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-accent-brand px-5 py-2.5 text-sm font-medium text-[color:var(--brand-foreground)] shadow-soft transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <SparklesIcon className="size-4" /> Get Lifetime Access
       </Link>
