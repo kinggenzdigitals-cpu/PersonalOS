@@ -1,6 +1,7 @@
 import { startOfDay } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_FOCUS_SETTINGS, normalizeFocusSettings, type FocusTimerSettings } from "@/lib/focus-settings";
 
 export type FocusSummary = {
   completedSessions: number;
@@ -81,4 +82,23 @@ export async function getFocusLinkOptions(): Promise<FocusLinkOptions> {
     tasks: (tasksRes.data as { id: string; title: string }[] | null) ?? [],
     habits: (habitsRes.data as { id: string; name: string }[] | null) ?? [],
   };
+}
+
+
+/** Synced timer settings. Falls back cleanly until migration 0026 is applied. */
+export async function getFocusSettings(): Promise<FocusTimerSettings> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return DEFAULT_FOCUS_SETTINGS;
+
+  const { data, error } = await supabase
+    .from("user_preferences")
+    .select("focus_settings")
+    .eq("user_id", user.id)
+    .maybeSingle<{ focus_settings: unknown }>();
+
+  if (error || !data) return DEFAULT_FOCUS_SETTINGS;
+  return normalizeFocusSettings(data.focus_settings);
 }

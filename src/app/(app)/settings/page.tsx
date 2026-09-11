@@ -14,6 +14,7 @@ import { ExportButton } from "@/components/money/export-button";
 import { DownloadDataButton } from "@/components/settings/download-data-button";
 import { PlanCard } from "@/components/settings/plan-card";
 import { ThemeSettings } from "@/components/settings/theme-settings";
+import { AppLockSettings } from "@/components/security/app-lock-settings";
 import { DangerZone } from "@/components/settings/danger-zone";
 import { ActivationPoller } from "@/components/subscription/activation-poller";
 import { SettingsForm } from "./settings-form";
@@ -90,6 +91,8 @@ export default async function SettingsPage({
 
       <ThemeSettings canCustomize={PLANS[plan].limits.customThemes > 0} />
 
+      <AppLockSettings />
+
       <Card className="shadow-card">
         <CardContent className="space-y-3 pt-6">
           <div>
@@ -108,7 +111,7 @@ export default async function SettingsPage({
 
       <form action="/auth/signout" method="post">
         <Button variant="outline" type="submit" className="w-full">
-          Sign out
+          Log out
         </Button>
       </form>
 

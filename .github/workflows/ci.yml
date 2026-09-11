@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+      SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
+      XENDIT_SECRET_KEY: test-xendit-secret
+      XENDIT_WEBHOOK_TOKEN: test-webhook-token
+      ALLOW_PLACEHOLDER_ENV: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run launch:preflight
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build

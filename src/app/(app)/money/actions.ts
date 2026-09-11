@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { categoryKey, normalizeCategoryName } from "@/lib/category-name";
+import { merchantKey } from "@/lib/transaction-parser";
 import {
   checkCap,
   checkTransactionCap,
@@ -181,14 +182,21 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
 
 export type DuplicateMatch = Pick<
   Transaction,
-  "id" | "amount" | "occurred_at" | "merchant" | "category_id" | "account_id"
+  | "id"
+  | "amount"
+  | "occurred_at"
+  | "merchant"
+  | "category_id"
+  | "account_id"
+  | "import_fingerprint"
 >;
 
 /**
- * Possible duplicates of a transaction about to be saved: same type, account
- * and amount, within ±1 day, and (when a merchant is given) a merchant that
- * overlaps. Never deletes anything — the caller shows a warning and lets the
- * user continue or cancel. Owner-scoped by RLS.
+ * Possible duplicates of a transaction about to be saved: same type and
+ * amount, within a small date window, with exact-account matches preferred and
+ * merchant overlap used to catch manual entries that duplicate imported rows.
+ * Never deletes anything — the caller shows a warning and lets the user
+ * continue or cancel. Owner-scoped by RLS.
  */
 export async function findPossibleDuplicates(input: {
   type: "income" | "expense";
@@ -203,14 +211,15 @@ export async function findPossibleDuplicates(input: {
 
   const at = new Date(input.occurredAt);
   if (Number.isNaN(at.getTime())) return [];
-  const from = new Date(at.getTime() - 36 * 60 * 60 * 1000).toISOString();
-  const to = new Date(at.getTime() + 36 * 60 * 60 * 1000).toISOString();
+  const from = new Date(at.getTime() - 60 * 60 * 60 * 1000).toISOString();
+  const to = new Date(at.getTime() + 60 * 60 * 60 * 1000).toISOString();
 
   let query = supabase
     .from("transactions")
-    .select("id, amount, occurred_at, merchant, category_id, account_id")
+    .select(
+      "id, amount, occurred_at, merchant, category_id, account_id, import_fingerprint",
+    )
     .eq("type", input.type)
-    .eq("account_id", input.accountId)
     .eq("amount", input.amount)
     .gte("occurred_at", from)
     .lte("occurred_at", to)
@@ -220,15 +229,36 @@ export async function findPossibleDuplicates(input: {
 
   const { data } = await query.returns<DuplicateMatch[]>();
   const rows = data ?? [];
-  const needle = input.merchant?.trim().toLowerCase();
-  if (!needle) return rows.slice(0, 3);
+  const needle = input.merchant ? merchantKey(input.merchant) : "";
+  if (!needle) {
+    return rows.filter((r) => r.account_id === input.accountId).slice(0, 3);
+  }
 
-  // Prefer merchant overlap; a same-amount row with no merchant still counts.
   return rows
-    .filter((r) => {
-      const m = r.merchant?.toLowerCase();
-      return !m || m.includes(needle) || needle.includes(m);
+    .map((r) => {
+      const key = r.merchant ? merchantKey(r.merchant) : "";
+      const merchantOverlap = Boolean(
+        key && (key.includes(needle) || needle.includes(key)),
+      );
+      const sameAccount = r.account_id === input.accountId;
+      const imported = Boolean(r.import_fingerprint);
+      return { row: r, merchantOverlap, sameAccount, imported };
     })
+    .filter((r) => {
+      return r.sameAccount || r.merchantOverlap;
+    })
+    .sort((a, b) => {
+      const aScore =
+        (a.sameAccount ? 4 : 0) +
+        (a.merchantOverlap ? 3 : 0) +
+        (a.imported ? 1 : 0);
+      const bScore =
+        (b.sameAccount ? 4 : 0) +
+        (b.merchantOverlap ? 3 : 0) +
+        (b.imported ? 1 : 0);
+      return bScore - aScore;
+    })
+    .map((match) => match.row)
     .slice(0, 3);
 }
 

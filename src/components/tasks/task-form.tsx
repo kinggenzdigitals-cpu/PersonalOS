@@ -42,6 +42,8 @@ export function TaskForm({
   const [title, setTitle] = React.useState(initial?.title ?? "");
   const [due, setDue] = React.useState<string | null>(initial?.due_date ?? today);
   const [notes, setNotes] = React.useState(initial?.notes ?? "");
+  const [recurrence, setRecurrence] = React.useState(initial?.recurrence_rule ?? "");
+  const [tags, setTags] = React.useState((initial?.tags ?? []).join(", "));
   const [makePriority, setMakePriority] = React.useState(defaultPriority);
   const [saving, setSaving] = React.useState(false);
 
@@ -56,9 +58,23 @@ export function TaskForm({
   async function save() {
     if (!title.trim()) return toast.error("Give the task a title.");
     setSaving(true);
+    const tagList = tags.split(",").map((tag) => tag.trim()).filter(Boolean);
     const result = editing
-      ? await updateTask(initial!.id, { title, dueDate: due, notes })
-      : await createTask({ title, dueDate: due, notes, makePriority });
+      ? await updateTask(initial!.id, {
+          title,
+          dueDate: due,
+          notes,
+          recurrenceRule: recurrence || null,
+          tags: tagList,
+        })
+      : await createTask({
+          title,
+          dueDate: due,
+          notes,
+          makePriority,
+          recurrenceRule: recurrence || null,
+          tags: tagList,
+        });
 
     if (!result.ok) {
       toast.error(result.error);
@@ -140,6 +156,33 @@ export function TaskForm({
           <Switch checked={makePriority} onCheckedChange={setMakePriority} />
         </label>
       )}
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="task-recurrence">Repeat</Label>
+          <select
+            id="task-recurrence"
+            value={recurrence}
+            onChange={(event) => setRecurrence(event.target.value)}
+            className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm"
+          >
+            <option value="">Does not repeat</option>
+            <option value="daily">Daily</option>
+            <option value="weekdays">Weekdays</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="task-tags">Tags</Label>
+          <Input
+            id="task-tags"
+            value={tags}
+            onChange={(event) => setTags(event.target.value)}
+            placeholder="work, errands"
+          />
+        </div>
+      </div>
 
       <div className="space-y-1.5">
         <Label htmlFor="task-notes">Notes</Label>

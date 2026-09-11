@@ -143,7 +143,7 @@
   --sidebar: #ffffff;
   --sidebar-foreground: #0c1a33;
   --sidebar-primary: #012269;
-  --sidebar-primary-foreground: #ffffff;
+  --sidebar-primary-foreground: #04122e;
   --sidebar-accent: #eef2f8;
   --sidebar-accent-foreground: #012269;
   --sidebar-border: #e3e8ef;
@@ -329,7 +329,7 @@ body:has(.money-shell) {
   --input: rgba(125, 187, 255, 0.26);
   --ring: #22a2ff;
   --brand: #168cff;
-  --brand-foreground: #ffffff;
+  --brand-foreground: #04122e;
   --brand-hover: #39a5ff;
   --brand-2: #38b6ff;
   --brand-2-hover: #72ceff;
@@ -343,7 +343,7 @@ body:has(.money-shell) {
   --sidebar: #04162b;
   --sidebar-foreground: #e6f0ff;
   --sidebar-primary: #087cff;
-  --sidebar-primary-foreground: #ffffff;
+  --sidebar-primary-foreground: #04122e;
   --sidebar-accent: #0b2b4c;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgba(100, 174, 255, 0.18);

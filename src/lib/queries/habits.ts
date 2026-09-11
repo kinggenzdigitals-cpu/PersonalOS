@@ -260,3 +260,44 @@ export async function getHabitStats(timezone: string): Promise<HabitStats> {
     bestArea,
   };
 }
+
+
+export type HabitReminderItem = {
+  id: string;
+  name: string;
+  reminderTime: string;
+  scheduleDays: number[];
+};
+
+export async function getHabitReminders(): Promise<HabitReminderItem[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("habits")
+    .select("id, name, reminder_time, schedule_days")
+    .eq("user_id", user.id)
+    .eq("active", true)
+    .not("reminder_time", "is", null)
+    .returns<
+      {
+        id: string;
+        name: string;
+        reminder_time: string | null;
+        schedule_days: number[];
+      }[]
+    >();
+
+  if (error) return [];
+  return (data ?? [])
+    .filter((habit) => habit.reminder_time)
+    .map((habit) => ({
+      id: habit.id,
+      name: habit.name,
+      reminderTime: habit.reminder_time!,
+      scheduleDays: habit.schedule_days ?? [],
+    }));
+}

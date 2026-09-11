@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { SparklesIcon, CheckIcon, Loader2Icon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { FormSheet } from "@/components/money/form-sheet";
 import { cn } from "@/lib/utils";
 import {
@@ -14,7 +15,7 @@ import {
   type PlanId,
   type BillingPeriod,
 } from "@/lib/plans";
-import { startCheckout } from "@/app/(app)/settings/billing-actions";
+import { redeemPromoCode, startCheckout } from "@/app/(app)/settings/billing-actions";
 import {
   cancelSubscription,
   resumeSubscription,
@@ -45,6 +46,8 @@ export function PlanCard({
   );
   const [period, setPeriod] = React.useState<BillingPeriod>("annual");
   const [busy, setBusy] = React.useState(false);
+  const [promoCode, setPromoCode] = React.useState("");
+  const [promoBusy, setPromoBusy] = React.useState(false);
   const [lifecycleBusy, setLifecycleBusy] = React.useState(false);
 
   /** Returns whether the change actually went through. */
@@ -77,6 +80,20 @@ export function PlanCard({
     if (!res.ok) {
       toast.error(res.error);
       setBusy(false);
+      return;
+    }
+    window.location.assign(res.url);
+  }
+
+  async function applyPromo() {
+    setPromoBusy(true);
+    const res = await redeemPromoCode(promoCode);
+    setPromoBusy(false);
+    if (!res.ok) return toast.error(res.error);
+    if (res.free) {
+      toast.success(res.message);
+      setPromoCode("");
+      router.refresh();
       return;
     }
     window.location.assign(res.url);
@@ -152,6 +169,25 @@ export function PlanCard({
               </li>
             ))}
         </ul>
+
+        <div className="rounded-xl border border-dashed border-border p-3">
+          <p className="text-xs font-medium text-muted-foreground">Promo code</p>
+          <div className="mt-2 flex gap-2">
+            <Input
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+              placeholder="Enter code"
+              className="font-mono text-sm"
+            />
+            <Button type="button" variant="outline" disabled={promoBusy} onClick={applyPromo}>
+              {promoBusy && <Loader2Icon className="size-4 animate-spin" aria-hidden />}
+              Apply
+            </Button>
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Free promos activate now. Paid promo codes open a one-time checkout and do not auto-renew.
+          </p>
+        </div>
 
         <p className="text-center text-xs text-muted-foreground">
           Pay with GCash, Maya, card, or bank transfer via Xendit.

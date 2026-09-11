@@ -17,15 +17,15 @@ export default async function BillsPage() {
     <div className="space-y-4">
       <MoneySectionHeading
         icon={CalendarClockIcon}
-        title="Bills"
-        description="Keep recurring payments visible before they become overdue."
+        title="Recurring"
+        description="Keep repeating income and bills visible before they become due."
         action={<AddBillButton />}
       />
       {bills.length === 0 ? (
         <EmptyState
           icon={ReceiptTextIcon}
-          title="No bills yet"
-          description="Add recurring bills to see what's due and mark them paid in one tap."
+          title="No recurring items yet"
+          description="Add recurring income or bills to see what's due and record each cycle in one tap."
           className="py-10"
           action={<AddBillButton />}
         />

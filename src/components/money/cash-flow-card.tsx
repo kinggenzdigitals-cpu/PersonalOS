@@ -19,6 +19,7 @@ export function CashFlowCard({ forecast }: { forecast: CashFlowForecast }) {
     spendable,
     upcomingBills,
     upcomingBillsTotal,
+    upcomingIncomeTotal,
     paceProjectedSpend,
     projectedRemainingSpend,
     projectedEndBalance,
@@ -44,6 +45,11 @@ export function CashFlowCard({ forecast }: { forecast: CashFlowForecast }) {
         <Row label="Spendable now">
           <Money value={spendable} currency={currency} />
         </Row>
+        {upcomingIncomeTotal > 0 && (
+          <Row label="Income still due this month" muted>
+            +<Money value={upcomingIncomeTotal} currency={currency} />
+          </Row>
+        )}
         <Row label="Bills still due this month" muted>
           −<Money value={upcomingBillsTotal} currency={currency} />
         </Row>
@@ -86,6 +92,7 @@ export function CashFlowCard({ forecast }: { forecast: CashFlowForecast }) {
                 )}
               </span>
               <span className="tnum shrink-0 text-muted-foreground">
+                {b.kind === "income" ? "+" : "-"}
                 <Money value={b.amount} currency={currency} />
               </span>
             </li>
@@ -101,7 +108,7 @@ export function CashFlowCard({ forecast }: { forecast: CashFlowForecast }) {
       <p className="mt-3 text-[11px] text-muted-foreground">
         {negative
           ? "Projected to run short — consider trimming discretionary spend or moving funds."
-          : "Doesn't include income you expect to receive; treat this as a floor."}
+          : "Includes recurring income and bills due this month."}
       </p>
     </div>
   );

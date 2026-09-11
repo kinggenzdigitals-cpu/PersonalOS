@@ -26,6 +26,7 @@ export function BillCard({ item }: { item: BillWithStatus }) {
   const currency = useCurrency();
   const { bill, status, daysUntilDue, lastPaidDate } = item;
   const meta = STATUS_META[status];
+  const income = bill.kind === "income";
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
@@ -49,7 +50,8 @@ export function BillCard({ item }: { item: BillWithStatus }) {
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {dueLabel(daysUntilDue)} · {bill.frequency}
+                {income ? "Income" : "Expense"} · {dueLabel(daysUntilDue)} ·{" "}
+                {bill.frequency}
                 {lastPaidDate ? ` · last paid ${lastPaidDate}` : ""}
               </p>
             </button>
@@ -64,13 +66,14 @@ export function BillCard({ item }: { item: BillWithStatus }) {
       </div>
 
       <FormSheet
-        title={`Pay ${bill.name}`}
+        title={`${income ? "Receive" : "Pay"} ${bill.name}`}
         trigger={
           <button
             type="button"
             className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-brand/10 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <CheckIcon className="size-4" /> Mark as paid
+            <CheckIcon className="size-4" />{" "}
+            {income ? "Mark as received" : "Mark as paid"}
           </button>
         }
       >

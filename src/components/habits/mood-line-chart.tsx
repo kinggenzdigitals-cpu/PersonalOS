@@ -34,8 +34,16 @@ export function MoodLineChart({ data }: { data: MoodPoint[] }) {
     }),
   }));
 
+  const accessibleSummary = chartData
+    .map((d) => `${d.label}: mood ${d.mood}, energy ${d.energy ?? "not set"}, stress ${d.stress ?? "not set"}`)
+    .join("; ");
+
   return (
-    <div className="h-48 w-full">
+    <div
+      className="h-48 w-full"
+      role="img"
+      aria-label={`Mood, energy, and stress trend. ${accessibleSummary}`}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -91,6 +99,16 @@ export function MoodLineChart({ data }: { data: MoodPoint[] }) {
           />
         </LineChart>
       </ResponsiveContainer>
+      <dl className="sr-only">
+        {chartData.map((d) => (
+          <div key={d.date}>
+            <dt>{d.label}</dt>
+            <dd>Mood: {d.mood}</dd>
+            <dd>Energy: {d.energy ?? "not set"}</dd>
+            <dd>Stress: {d.stress ?? "not set"}</dd>
+          </div>
+        ))}
+      </dl>
       <div className="mt-1 flex justify-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <span className="size-2 rounded-full bg-brand" /> Mood

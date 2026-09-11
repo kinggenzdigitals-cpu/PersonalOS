@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
 import { requireOnboardedProfile } from "@/lib/auth";
-import { getFocusLinkOptions, getTodayFocusSummary } from "@/lib/queries/focus";
+import {
+  getFocusLinkOptions,
+  getFocusSettings,
+  getTodayFocusSummary,
+} from "@/lib/queries/focus";
 import { FocusTimer } from "@/components/focus/focus-timer";
 
 export const metadata: Metadata = { title: "Focus Timer" };
 
 export default async function FocusPage() {
   const profile = await requireOnboardedProfile();
-  const [options, summary] = await Promise.all([
+  const [options, summary, settings] = await Promise.all([
     getFocusLinkOptions(),
     getTodayFocusSummary(profile.timezone),
+    getFocusSettings(),
   ]);
 
   return (
@@ -20,7 +25,7 @@ export default async function FocusPage() {
           Pomodoro sessions to help you stay on track.
         </p>
       </header>
-      <FocusTimer options={options} summary={summary} />
+      <FocusTimer options={options} summary={summary} settings={settings} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { requireOnboardedAccount } from "@/lib/auth";
 import { getEntitlement } from "@/lib/entitlement";
 import { getAccounts, getCategories } from "@/lib/queries/money";
 import { getDueBillCount } from "@/lib/queries/planning";
+import { getHabitReminders } from "@/lib/queries/habits";
 import { ProfileProvider } from "@/components/providers/profile-provider";
 import { ReferenceProvider } from "@/components/providers/reference-provider";
 import { UpgradeProvider } from "@/components/providers/upgrade-provider";
@@ -12,6 +13,8 @@ import {
   MobileBottomNav,
 } from "@/components/nav/main-nav";
 import { QuickAdd } from "@/components/nav/quick-add";
+import { HabitReminderRunner } from "@/components/habits/habit-reminder-runner";
+import { AppLockGate } from "@/components/security/app-lock-gate";
 
 export default async function AppLayout({
   children,
@@ -24,11 +27,12 @@ export default async function AppLayout({
   // below reads its user through the same memoized lookup, so the whole layout
   // still makes one supabase.auth.getUser() round-trip.
   const { profile, email } = await requireOnboardedAccount();
-  const [accounts, categories, dueBills, ent] = await Promise.all([
+  const [accounts, categories, dueBills, ent, habitReminders] = await Promise.all([
     getAccounts(false),
     getCategories(),
     getDueBillCount(profile.timezone),
     getEntitlement(),
+    getHabitReminders(),
   ]);
   const admin = ent.isSuperAdmin;
   // Free & paid users below Premium (not comp/lifetime/super-admin) may see the
@@ -65,6 +69,8 @@ export default async function AppLayout({
             {children}
           </main>
           <MobileBottomNav moneyBadge={dueBills} isAdmin={admin} />
+          <HabitReminderRunner reminders={habitReminders} />
+          <AppLockGate />
           {/* Floating Quick Add — mobile only, above the bottom nav */}
           <div
             className="fixed right-4 z-40 md:hidden"

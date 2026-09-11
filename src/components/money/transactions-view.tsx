@@ -1,14 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowRightLeftIcon,
+  BookmarkIcon,
+  ClipboardIcon,
   ListFilterIcon,
   SlidersHorizontalIcon,
   Trash2Icon,
   Loader2Icon,
+  SearchIcon,
+  XIcon,
 } from "lucide-react";
+import { fromZonedTime } from "date-fns-tz";
 import {
   Select,
   SelectContent,
@@ -17,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -49,14 +55,33 @@ const TYPES: { value: string; label: string }[] = [
   { value: "adjustment", label: "Adjustment" },
 ];
 
+const SAVED_FILTERS_KEY = "lifeos:transactionFilters";
+
+type TransactionViewFilters = {
+  type: string;
+  accountId: string;
+  categoryId: string;
+  search: string;
+  fromDate: string;
+  toDate: string;
+};
+
+type SavedFilter = TransactionViewFilters & {
+  id: string;
+  label: string;
+};
+
 export function TransactionsView({
   initial,
   timezone,
+  initialFilters,
 }: {
   initial: Transaction[];
   timezone: string;
+  initialFilters?: TransactionViewFilters;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { accounts, categories } = useReference();
   const hidden = usePrivacyHidden();
   const profile = useProfile();
@@ -71,9 +96,19 @@ export function TransactionsView({
     [categories],
   );
 
-  const [type, setType] = React.useState<string>("all");
-  const [accountId, setAccountId] = React.useState<string>("all");
-  const [categoryId, setCategoryId] = React.useState<string>("all");
+  const [type, setType] = React.useState<string>(initialFilters?.type ?? "all");
+  const [accountId, setAccountId] = React.useState<string>(
+    initialFilters?.accountId ?? "all",
+  );
+  const [categoryId, setCategoryId] = React.useState<string>(
+    initialFilters?.categoryId ?? "all",
+  );
+  const [search, setSearch] = React.useState(initialFilters?.search ?? "");
+  const [fromDate, setFromDate] = React.useState(
+    initialFilters?.fromDate ?? "",
+  );
+  const [toDate, setToDate] = React.useState(initialFilters?.toDate ?? "");
+  const [savedFilters, setSavedFilters] = React.useState<SavedFilter[]>([]);
 
   const [items, setItems] = React.useState<Transaction[]>(initial);
   const [offset, setOffset] = React.useState(initial.length);
@@ -86,11 +121,123 @@ export function TransactionsView({
       type: type === "all" ? undefined : (type as TransactionType),
       accountId: accountId === "all" ? undefined : accountId,
       categoryId: categoryId === "all" ? undefined : categoryId,
+      search: search.trim() || undefined,
+      from: fromDate
+        ? fromZonedTime(`${fromDate}T00:00:00`, timezone).toISOString()
+        : undefined,
+      to: toDate
+        ? fromZonedTime(`${toDate}T23:59:59.999`, timezone).toISOString()
+        : undefined,
     }),
-    [type, accountId, categoryId],
+    [type, accountId, categoryId, search, fromDate, timezone, toDate],
   );
 
-  const anyFilter = type !== "all" || accountId !== "all" || categoryId !== "all";
+  const anyFilter =
+    type !== "all" ||
+    accountId !== "all" ||
+    categoryId !== "all" ||
+    Boolean(search.trim()) ||
+    Boolean(fromDate) ||
+    Boolean(toDate);
+
+  React.useEffect(() => {
+    const handle = window.setTimeout(() => {
+      try {
+        const raw = window.localStorage.getItem(SAVED_FILTERS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(parsed)) setSavedFilters(parsed.slice(0, 8));
+      } catch {
+        setSavedFilters([]);
+      }
+    }, 0);
+    return () => window.clearTimeout(handle);
+  }, []);
+
+  React.useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      const setOrDelete = (key: string, value: string) => {
+        if (value) params.set(key, value);
+        else params.delete(key);
+      };
+      setOrDelete("type", type === "all" ? "" : type);
+      setOrDelete("account", accountId === "all" ? "" : accountId);
+      setOrDelete("category", categoryId === "all" ? "" : categoryId);
+      setOrDelete("q", search.trim());
+      setOrDelete("from", fromDate);
+      setOrDelete("to", toDate);
+      const next = params.toString() ? `${pathname}?${params}` : pathname;
+      const current = `${window.location.pathname}${window.location.search}`;
+      if (next !== current) router.replace(next, { scroll: false });
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [accountId, categoryId, fromDate, pathname, router, search, toDate, type]);
+
+  function clearFilters() {
+    setType("all");
+    setAccountId("all");
+    setCategoryId("all");
+    setSearch("");
+    setFromDate("");
+    setToDate("");
+  }
+
+  function filterLabel(values: TransactionViewFilters) {
+    const parts = [
+      values.search ? `"${values.search}"` : "",
+      TYPES.find((t) => t.value === values.type)?.label ?? "",
+      values.accountId !== "all" ? accountName.get(values.accountId) : "",
+      values.categoryId !== "all" ? categoryName.get(values.categoryId) : "",
+      values.fromDate || values.toDate
+        ? `${values.fromDate || "Any"} to ${values.toDate || "Any"}`
+        : "",
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(" · ") : "All transactions";
+  }
+
+  function saveCurrentFilter() {
+    if (!anyFilter) return;
+    const current: TransactionViewFilters = {
+      type,
+      accountId,
+      categoryId,
+      search: search.trim(),
+      fromDate,
+      toDate,
+    };
+    const saved: SavedFilter = {
+      ...current,
+      id: globalThis.crypto?.randomUUID?.() ?? String(Date.now()),
+      label: filterLabel(current),
+    };
+    const next = [
+      saved,
+      ...savedFilters.filter((f) => f.label !== saved.label),
+    ].slice(0, 8);
+    setSavedFilters(next);
+    window.localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(next));
+    toast.success("Filter saved");
+  }
+
+  function applySavedFilter(id: string) {
+    const saved = savedFilters.find((f) => f.id === id);
+    if (!saved) return;
+    setType(saved.type);
+    setAccountId(saved.accountId);
+    setCategoryId(saved.categoryId);
+    setSearch(saved.search);
+    setFromDate(saved.fromDate);
+    setToDate(saved.toDate);
+  }
+
+  async function copyFilterLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success("Filter link copied");
+    } catch {
+      toast.error("Couldn't copy the link.");
+    }
+  }
 
   /**
    * Adopt a fresh server page whenever one arrives.
@@ -232,7 +379,8 @@ export function TransactionsView({
   return (
     <section className="money-panel overflow-hidden rounded-2xl border border-border bg-card shadow-card">
       {/* Filters */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-5">
+      <div className="space-y-3 border-b border-border px-4 py-4 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="grid size-8 place-items-center rounded-lg bg-brand/15 text-brand-2">
             <ListFilterIcon className="size-4" aria-hidden />
@@ -301,19 +449,98 @@ export function TransactionsView({
             </SelectContent>
           </Select>
 
+          {savedFilters.length > 0 && (
+            <Select onValueChange={applySavedFilter}>
+              <SelectTrigger
+                className="h-8 w-auto gap-1 text-xs"
+                aria-label="Saved filters"
+              >
+                <SelectValue placeholder="Saved" />
+              </SelectTrigger>
+              <SelectContent>
+                {savedFilters.map((filter) => (
+                  <SelectItem key={filter.id} value={filter.id}>
+                    {filter.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
           {anyFilter && (
             <button
               type="button"
-              onClick={() => {
-                setType("all");
-                setAccountId("all");
-                setCategoryId("all");
-              }}
+              onClick={clearFilters}
               className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
             >
               Clear
             </button>
           )}
+        </div>
+        </div>
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+          <div className="relative min-w-0 flex-1">
+            <SearchIcon
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search merchant, payee, or notes"
+              className="h-9 pl-9 text-sm"
+              autoComplete="off"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              aria-label="From date"
+              className="h-9 w-[150px] text-xs"
+            />
+            <Input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              aria-label="To date"
+              className="h-9 w-[150px] text-xs"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={copyFilterLink}
+              title="Copy shareable filter link"
+            >
+              <ClipboardIcon className="size-4" aria-hidden />
+              Copy link
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={saveCurrentFilter}
+              disabled={!anyFilter}
+              title="Save this filter"
+            >
+              <BookmarkIcon className="size-4" aria-hidden />
+              Save
+            </Button>
+            {anyFilter && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                title="Clear all filters"
+              >
+                <XIcon className="size-4" aria-hidden />
+                Reset
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -325,7 +552,7 @@ export function TransactionsView({
           title={anyFilter ? "No matching transactions" : "No transactions yet"}
           description={
             anyFilter
-              ? "Try clearing your filters."
+              ? "Try another search, date range, or saved filter."
               : accounts.length === 0
                 ? "Add an account on the Overview tab first, then log your first expense or income."
                 : "Add your first expense or income with the + button."

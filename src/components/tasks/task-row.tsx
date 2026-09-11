@@ -104,6 +104,10 @@ export function TaskRow({ task }: { task: Task }) {
                   {due.text}
                 </span>
               )}
+              {task.recurrence_rule && <span>Repeats {task.recurrence_rule}</span>}
+              {task.tags.slice(0, 3).map((tag) => (
+                <span key={tag}>#{tag}</span>
+              ))}
             </span>
           </button>
         }

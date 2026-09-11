@@ -15,6 +15,7 @@ import {
   CalendarIcon,
   CalendarClockIcon,
   InfinityIcon,
+  MonitorSmartphoneIcon,
   type LucideIcon,
 } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
@@ -24,6 +25,9 @@ import { PLANS } from "@/lib/plans";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { ReactNode } from "react";
+import { listCurrentUserDevices, MAX_ACTIVE_DEVICES } from "@/lib/devices";
+import { DeviceList } from "@/components/account/device-list";
+import { SignInMethodsCard } from "@/components/account/sign-in-methods-card";
 
 export const metadata: Metadata = { title: "Account & Subscription" };
 
@@ -35,7 +39,8 @@ function accessLabel(
   if (role === "super_admin") return "Super Admin";
   if (accessType === "lifetime_pro")
     return plan === "premium" ? "Lifetime Premium" : "Lifetime Pro";
-  if (accessType === "complimentary_pro") return "Complimentary Pro";
+  if (accessType === "complimentary_pro") return plan === "premium" ? "Complimentary Premium" : "Complimentary Pro";
+  if (accessType === "promo") return plan === "premium" ? "Promo Premium" : "Promo Pro";
   if (plan === "premium") return "Premium";
   return plan === "pro" ? "Pro" : "Free";
 }
@@ -43,7 +48,7 @@ function accessLabel(
 export default async function AccountPage() {
   const profile = await requireOnboardedProfile();
   const ent = await getEntitlement();
-  const sub = await getSubscription();
+  const [sub, devices] = await Promise.all([getSubscription(), listCurrentUserDevices()]);
 
   const label = accessLabel(ent.role, ent.accessType, ent.plan);
   const hasPaidAccess = ent.plan !== "free";
@@ -87,7 +92,7 @@ export default async function AccountPage() {
               <p className="text-sm font-medium">Current plan</p>
               <p className="text-xs text-muted-foreground">
                 {complimentary
-                  ? "You have full Pro access — no payment or renewal needed."
+                  ? "You have access — no payment or renewal needed."
                   : hasPaidAccess
                     ? `You're on ${PLANS[ent.plan].name}. Thanks for supporting us!`
                     : "You're on the Free plan."}
@@ -126,7 +131,7 @@ export default async function AccountPage() {
                 value={new Date(renewal).toLocaleDateString()}
               />
             )}
-            {ent.accessType === "complimentary_pro" && sub?.access_expires_at && (
+            {(ent.accessType === "complimentary_pro" || ent.accessType === "promo") && sub?.access_expires_at && (
               <Row
                 icon={CalendarClockIcon}
                 label="Access until"
@@ -141,6 +146,23 @@ export default async function AccountPage() {
               />
             )}
           </div>
+        </CardContent>
+      </Card>
+
+
+      <SignInMethodsCard />
+
+      <Card className="shadow-card">
+        <CardContent className="space-y-3 pt-6">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <MonitorSmartphoneIcon className="size-4" /> Registered devices
+            </p>
+            <p className="text-xs text-muted-foreground">
+              You can keep up to {MAX_ACTIVE_DEVICES} active devices signed in at once. Remove an old laptop, desktop, or phone before signing in somewhere new.
+            </p>
+          </div>
+          <DeviceList devices={devices} />
         </CardContent>
       </Card>
 
@@ -178,7 +200,7 @@ export default async function AccountPage() {
       <div className="grid gap-2 sm:grid-cols-2">
         <Button variant="outline" asChild>
           <Link href="/change-password">
-            <KeyRoundIcon className="size-4" /> Change password
+            <KeyRoundIcon className="size-4" /> Set or change password
           </Link>
         </Button>
         <Button asChild>

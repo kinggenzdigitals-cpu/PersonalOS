@@ -7,7 +7,7 @@ import { checkCap } from "@/lib/plan-guard";
 import { getProfile } from "@/lib/auth";
 import { localDateKey } from "@/lib/date";
 import { isSchemaMissing, migrationRequired } from "@/lib/supabase/errors";
-import type { BillFrequency } from "@/lib/supabase/types";
+import type { BillFrequency, CategoryKind } from "@/lib/supabase/types";
 
 export type ActionResult =
   | { ok: true; id?: string }
@@ -165,6 +165,7 @@ export async function setMonthlyBudget(input: {
 // ---- Bills ---------------------------------------------------------------
 
 export type BillInput = {
+  kind: CategoryKind;
   name: string;
   amount: number;
   categoryId: string | null;
@@ -183,8 +184,12 @@ export async function upsertBill(
   if (!input.name.trim()) return { ok: false, error: "Name the bill." };
   if (!(input.amount > 0)) return { ok: false, error: "Enter an amount." };
   if (!input.nextDueDate) return { ok: false, error: "Pick a due date." };
+  if (input.kind !== "income" && input.kind !== "expense") {
+    return { ok: false, error: "Choose income or expense." };
+  }
 
   const row = {
+    kind: input.kind,
     name: input.name.trim(),
     amount: input.amount,
     category_id: input.categoryId,
@@ -273,12 +278,14 @@ export async function markBillPaid(input: {
     return { ok: false, error: billErr?.message ?? "Bill not found." };
   }
 
-  // 1. Create the expense transaction (linked to the bill).
+  const kind = bill.kind === "income" ? "income" : "expense";
+
+  // 1. Create the linked transaction.
   const { data: tx, error: txErr } = await supabase
     .from("transactions")
     .insert({
       user_id: user.id,
-      type: "expense",
+      type: kind,
       amount: input.amount,
       category_id: bill.category_id,
       account_id: input.accountId,
@@ -292,7 +299,7 @@ export async function markBillPaid(input: {
 
   // 2. Record the payment. This is the idempotency key — a unique index on
   //    (user_id, bill_id, paid_for_date) rejects a double-submit. If it fails
-  //    we must remove the expense created above, or it would linger as an
+  //    we must remove the transaction created above, or it would linger as an
   //    orphan that still moves the account balance.
   const { error: payErr } = await supabase.from("bill_payments").insert({
     user_id: user.id,

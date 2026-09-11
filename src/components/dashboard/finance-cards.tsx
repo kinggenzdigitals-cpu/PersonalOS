@@ -199,7 +199,7 @@ export function CashAvailableCard({
   );
 }
 
-/** Bills still due this month. */
+/** Recurring income and bills still due this month. */
 export function UpcomingBillsCard({
   bills,
   currency,
@@ -207,12 +207,17 @@ export function UpcomingBillsCard({
   bills: UpcomingBill[];
   currency: string;
 }) {
-  const total = bills.reduce((s, b) => s + b.amount, 0);
+  const incomeTotal = bills
+    .filter((b) => b.kind === "income")
+    .reduce((s, b) => s + b.amount, 0);
+  const expenseTotal = bills
+    .filter((b) => b.kind === "expense")
+    .reduce((s, b) => s + b.amount, 0);
 
   return (
     <CardShell
       href="/money/bills"
-      title="Upcoming bills"
+      title="Upcoming recurring"
       icon={<ReceiptTextIcon className="size-4" aria-hidden />}
     >
       {bills.length === 0 ? (
@@ -221,9 +226,24 @@ export function UpcomingBillsCard({
         </p>
       ) : (
         <>
-          <p className="fht-amount mt-3 text-2xl font-semibold">
-            <Money value={total} currency={currency} />
-          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Income
+              </p>
+              <p className="fht-amount font-semibold text-success">
+                +<Money value={incomeTotal} currency={currency} />
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Bills
+              </p>
+              <p className="fht-amount font-semibold">
+                <Money value={expenseTotal} currency={currency} />
+              </p>
+            </div>
+          </div>
           <ul className="mt-3 space-y-1.5">
             {bills.slice(0, 5).map((b) => (
               <li
@@ -242,6 +262,7 @@ export function UpcomingBillsCard({
                   <span className="text-muted-foreground">{b.name}</span>
                 </span>
                 <span className="tnum shrink-0 text-muted-foreground">
+                  {b.kind === "income" ? "+" : "-"}
                   <Money value={b.amount} currency={currency} />
                 </span>
               </li>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CheckCircle2Icon } from "lucide-react";
 import type { Metadata } from "next";
 import { Card, CardContent } from "@/components/ui/card";
+import { InstallAppButton } from "@/components/pwa/install-app-button";
 import { AuthForm } from "@/components/auth/auth-form";
 import { GoogleSignIn } from "@/components/auth/google-sign-in";
 
@@ -57,6 +58,8 @@ export default async function LoginPage({
           Create an account
         </Link>
       </p>
+
+      <InstallAppButton />
     </div>
   );
 }

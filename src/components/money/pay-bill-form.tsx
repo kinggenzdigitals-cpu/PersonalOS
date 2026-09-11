@@ -30,6 +30,7 @@ export function PayBillForm({
   const router = useRouter();
   const { accounts } = useReference();
   const currency = useCurrency();
+  const income = bill.kind === "income";
 
   const [amount, setAmount] = React.useState(String(bill.amount));
   const [accountId, setAccountId] = React.useState(
@@ -56,14 +57,14 @@ export function PayBillForm({
     }
     onDone();
     router.refresh();
-    toast.success(`${bill.name} marked paid`);
+    toast.success(`${bill.name} marked ${income ? "received" : "paid"}`);
   }
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        This records an expense from the account below and moves the due date to
-        the next cycle.
+        This records {income ? "income into" : "an expense from"} the account
+        below and moves the due date to the next cycle.
       </p>
 
       <div className="space-y-1.5">
@@ -83,7 +84,7 @@ export function PayBillForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Pay from</Label>
+        <Label>{income ? "Receive into" : "Pay from"}</Label>
         <Select value={accountId} onValueChange={setAccountId}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Account" />
@@ -100,7 +101,7 @@ export function PayBillForm({
 
       <Button className="w-full" onClick={pay} disabled={saving}>
         {saving && <Loader2Icon className="size-4 animate-spin" aria-hidden />}
-        Confirm payment
+        {income ? "Confirm received" : "Confirm payment"}
       </Button>
     </div>
   );

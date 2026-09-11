@@ -7,11 +7,10 @@ import {
   revokeBootstrapSuperAdmin,
 } from "@/lib/admin/bootstrap";
 import type { PlanId } from "@/lib/plans";
-import type {
-  AccessType,
-  AccountStatus,
+import type {  AccountStatus,
   RoleSource,
   Subscription,
+  SubscriptionAccessType,
   UserRole,
 } from "@/lib/supabase/types";
 
@@ -39,7 +38,7 @@ export type Entitlement = {
   role: UserRole;
   plan: PlanId;
   accountStatus: AccountStatus;
-  accessType: AccessType | null;
+  accessType: SubscriptionAccessType | null;
   isSuperAdmin: boolean;
   /** null when the account isn't an admin at all. */
   adminTier: AdminTier | null;
@@ -117,7 +116,8 @@ const ANON: Entitlement = {
  * server-side:
  *   super_admin       → unlimited Pro, never billed, never expires
  *   lifetime_pro      → Pro without billing
- *   complimentary_pro → Pro until access_expires_at (or forever if null)
+ *   complimentary_pro → Pro/Premium until access_expires_at (or forever if null)
+ *   promo             → Pro/Premium until access_expires_at
  *   paid_subscriber   → Pro while the paid period is active
  *   free / expired    → Free
  * Suspended or revoked accounts get Free regardless.
@@ -280,6 +280,8 @@ export async function getEntitlement(): Promise<Entitlement> {
       plan = paidTier;
     } else if (accessType === "complimentary_pro") {
       plan = notExpired(sub.access_expires_at) ? paidTier : "free";
+    } else if (accessType === "promo") {
+      plan = periodLive(sub.access_expires_at) ? paidTier : "free";
     } else if (
       (sub.plan === "pro" || sub.plan === "premium") &&
       sub.status === "active"
@@ -293,8 +295,8 @@ export async function getEntitlement(): Promise<Entitlement> {
     email: user.email ?? null,
     role,
     plan,
-    accountStatus,
     accessType,
+    accountStatus,
     isSuperAdmin: false,
     adminTier: null,
   };

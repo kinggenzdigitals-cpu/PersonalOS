@@ -3,6 +3,8 @@ import { Fraunces, Karla } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/pwa/register-sw";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ThemeCustomizerProvider } from "@/components/providers/theme-customizer";
 import { getSiteURL } from "@/lib/site";
@@ -52,14 +54,28 @@ export const metadata: Metadata = {
   description:
     "Track your money, habits, mood, tasks, and focus sessions — all in one calm place.",
   applicationName: "Finance & Habit Tracker",
+  keywords: [
+    "finance tracker",
+    "habit tracker",
+    "budget app",
+    "cash flow",
+    "focus timer",
+  ],
+  category: "finance",
+  creator: "Kinggenzdigitals-OS",
+  publisher: "Kinggenzdigitals-OS",
   icons: {
     icon: "/icon-192.png",
     apple: "/apple-icon.png",
   },
   openGraph: {
     siteName: "Finance & Habit Tracker",
+    title: "Finance & Habit Tracker",
+    description:
+      "Track your money, habits, mood, tasks, and focus sessions in one calm workspace.",
     type: "website",
     locale: "en_US",
+    url: getSiteURL(),
   },
   twitter: {
     card: "summary_large_image",
@@ -172,6 +188,10 @@ export default function RootLayout({
           </ThemeCustomizerProvider>
         </ThemeProvider>
         <RegisterSW />
+        <Analytics />
+        {process.env.NEXT_PUBLIC_ENABLE_SPEED_INSIGHTS === "true" && (
+          <SpeedInsights />
+        )}
       </body>
     </html>
   );

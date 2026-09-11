@@ -62,6 +62,13 @@ export function HabitForm({
       setSaving(false);
       return;
     }
+    if (reminder && typeof Notification !== "undefined" && Notification.permission === "default") {
+      try {
+        await Notification.requestPermission();
+      } catch {
+        /* notification permission unavailable */
+      }
+    }
     onDone();
     router.refresh();
     toast.success(editing ? "Habit updated" : "Habit added");
@@ -148,7 +155,7 @@ export function HabitForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="habit-reminder">Reminder (optional, in-app)</Label>
+        <Label htmlFor="habit-reminder">Reminder (optional, browser notification)</Label>
         <Input
           id="habit-reminder"
           type="time"

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireSuperAdmin } from "@/lib/entitlement";
-import { listAdminUsers, summarize } from "@/lib/admin/users";
+import { listAdminPromoCodes, listAdminUsers, summarize } from "@/lib/admin/users";
 import { listAuditLog } from "@/lib/admin/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
@@ -23,13 +23,14 @@ export default async function AdminPage() {
         feedback: Feedback[];
         invitations: Invitation[];
         auditLog: Awaited<ReturnType<typeof listAuditLog>>;
+        promoCodes: Awaited<ReturnType<typeof listAdminPromoCodes>>;
       }
     | null = null;
 
   try {
     const users = await listAdminUsers();
     const admin = createAdminClient();
-    const [feedbackRes, invitesRes, auditLog] = await Promise.all([
+    const [feedbackRes, invitesRes, auditLog, promoCodes] = await Promise.all([
       admin
         .from("feedback")
         .select("*")
@@ -50,6 +51,7 @@ export default async function AdminPage() {
             .map((u) => [u.userId, u.email]),
         ),
       ),
+      listAdminPromoCodes(),
     ]);
     if (feedbackRes.error || invitesRes.error) {
       throw new Error("Unable to load admin dashboard data.");
@@ -59,6 +61,7 @@ export default async function AdminPage() {
       feedback: (feedbackRes.data as Feedback[] | null) ?? [],
       invitations: (invitesRes.data as Invitation[] | null) ?? [],
       auditLog,
+      promoCodes,
     };
   } catch {
     data = null;
@@ -71,7 +74,7 @@ export default async function AdminPage() {
           Subscribers &amp; Users
         </h1>
         <p className="text-sm text-muted-foreground">
-          Manage accounts, complimentary access, and feedback.
+          Manage users, subscription access, promo codes, invitations, and feedback.
         </p>
         {!canManageAccounts && (
           <p className="rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-sm text-foreground">
@@ -89,6 +92,7 @@ export default async function AdminPage() {
           feedback={data.feedback}
           invitations={data.invitations}
           auditLog={data.auditLog}
+          promoCodes={data.promoCodes}
           canManageAccounts={canManageAccounts}
         />
       ) : (

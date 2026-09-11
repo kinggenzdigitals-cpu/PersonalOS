@@ -16,7 +16,19 @@ import type {
   FeedbackStatus,
 } from "@/lib/supabase/types";
 
+type PaidPlan = "pro" | "premium";
+
 type Admin = ReturnType<typeof createAdminClient>;
+
+function addMonthsIso(baseIso: string | null, months: number) {
+  const base = baseIso && new Date(baseIso).getTime() > Date.now() ? new Date(baseIso) : new Date();
+  base.setMonth(base.getMonth() + months);
+  return base.toISOString();
+}
+
+function normalizeCode(code: string) {
+  return code.trim().toUpperCase().replace(/\s+/g, "");
+}
 
 async function audit(
   admin: Admin,
@@ -120,6 +132,7 @@ export async function setAccess(
   userId: string,
   accessType: AccessType | null,
   expiresAt: string | null,
+  plan: PaidPlan = "pro",
 ): Promise<AdminResult> {
   const me = await requireSuperAdmin();
   const limited = guardPrivilegedActor(me);
@@ -163,10 +176,19 @@ export async function setAccess(
     const { error } = await admin.from("subscriptions").upsert(
       {
         user_id: userId,
-        plan: "pro",
+        plan,
         status: "active",
+        interval: accessType === "lifetime_pro" ? "lifetime" : "admin_grant",
+        billing_period: accessType === "lifetime_pro" ? "lifetime" : "admin_grant",
+        current_period_start: new Date().toISOString(),
+        current_period_end: accessType === "lifetime_pro" ? null : expiresAt,
         access_type: accessType,
         access_expires_at: accessType === "lifetime_pro" ? null : expiresAt,
+        amount_paid: 0,
+        promo_code_id: null,
+        promo_code: null,
+        cancel_at_period_end: true,
+        canceled_at: null,
         granted_by: me.userId,
       },
       { onConflict: "user_id" },
@@ -177,6 +199,7 @@ export async function setAccess(
   await audit(admin, me.userId!, userId, "set_access", {
     accessType,
     expiresAt,
+    plan,
   });
   revalidatePath("/admin");
   return { ok: true, message: "Access updated." };
@@ -223,6 +246,7 @@ export async function createComplimentaryAccount(input: {
   fullName: string;
   username: string;
   accessType: Exclude<AccessType, "paid">;
+  plan?: PaidPlan;
   expiresAt: string | null;
 }): Promise<AdminResult> {
   const me = await requireSuperAdmin();
@@ -280,11 +304,18 @@ export async function createComplimentaryAccount(input: {
   await admin.from("subscriptions").upsert(
     {
       user_id: uid,
-      plan: "pro",
+      plan: input.plan ?? "pro",
       status: "active",
+      interval: input.accessType === "lifetime_pro" ? "lifetime" : "admin_grant",
+      billing_period: input.accessType === "lifetime_pro" ? "lifetime" : "admin_grant",
+      current_period_start: new Date().toISOString(),
+      current_period_end: input.accessType === "lifetime_pro" ? null : input.expiresAt,
       access_type: input.accessType,
       access_expires_at:
         input.accessType === "lifetime_pro" ? null : input.expiresAt,
+      amount_paid: 0,
+      cancel_at_period_end: true,
+      canceled_at: null,
       granted_by: me.userId,
     },
     { onConflict: "user_id" },
@@ -294,9 +325,218 @@ export async function createComplimentaryAccount(input: {
     email,
     username,
     accessType: input.accessType,
+    plan: input.plan ?? "pro",
   });
   revalidatePath("/admin");
   return { ok: true, message: `Account created. Temporary password: ${temp}` };
+}
+
+
+export async function grantTimedAccess(input: {
+  userId: string;
+  plan: PaidPlan;
+  months: number;
+  accessType?: "complimentary_pro" | "paid";
+  amountPaid?: number | null;
+}): Promise<AdminResult> {
+  const me = await requireSuperAdmin();
+  const limited = guardPrivilegedActor(me);
+  if (limited) return { ok: false, error: limited };
+  const admin = createAdminClient();
+
+  const blocked = await guardPrivilegedTarget(admin, input.userId);
+  if (blocked) return { ok: false, error: blocked };
+
+  const months = Math.max(1, Math.min(60, Math.trunc(input.months)));
+  const now = new Date().toISOString();
+  const expiresAt = addMonthsIso(now, months);
+  const accessType = input.accessType ?? "complimentary_pro";
+
+  const { error } = await admin.from("subscriptions").upsert(
+    {
+      user_id: input.userId,
+      plan: input.plan,
+      status: "active",
+      interval: `${accessType === "paid" ? "manual" : "admin_grant"}_${months}m`,
+      billing_period: `${accessType === "paid" ? "manual" : "admin_grant"}_${months}m`,
+      current_period_start: now,
+      current_period_end: expiresAt,
+      access_type: accessType,
+      access_expires_at: accessType === "paid" ? null : expiresAt,
+      amount_paid: input.amountPaid ?? 0,
+      promo_code_id: null,
+      promo_code: null,
+      cancel_at_period_end: true,
+      canceled_at: null,
+      granted_by: me.userId,
+    },
+    { onConflict: "user_id" },
+  );
+  if (error) return { ok: false, error: error.message };
+
+  await audit(admin, me.userId!, input.userId, "grant_timed_access", {
+    plan: input.plan,
+    months,
+    accessType,
+  });
+  revalidatePath("/admin");
+  return { ok: true, message: `${input.plan} access granted for ${months} month${months === 1 ? "" : "s"}.` };
+}
+
+export async function extendUserAccess(
+  userId: string,
+  months: number,
+): Promise<AdminResult> {
+  const me = await requireSuperAdmin();
+  const limited = guardPrivilegedActor(me);
+  if (limited) return { ok: false, error: limited };
+  const admin = createAdminClient();
+
+  const blocked = await guardPrivilegedTarget(admin, userId);
+  if (blocked) return { ok: false, error: blocked };
+
+  const { data: existing } = await admin
+    .from("subscriptions")
+    .select("plan, access_type, access_expires_at, current_period_end")
+    .eq("user_id", userId)
+    .maybeSingle<{
+      plan: string | null;
+      access_type: AccessType | "promo" | null;
+      access_expires_at: string | null;
+      current_period_end: string | null;
+    }>();
+
+  const plan: PaidPlan = existing?.plan === "premium" ? "premium" : "pro";
+  const accessType: AccessType = existing?.access_type === "paid" ? "paid" : "complimentary_pro";
+  const base = existing?.access_expires_at ?? existing?.current_period_end ?? null;
+  const add = Math.max(1, Math.min(60, Math.trunc(months)));
+  const expiresAt = addMonthsIso(base, add);
+
+  const { error } = await admin.from("subscriptions").upsert(
+    {
+      user_id: userId,
+      plan,
+      status: "active",
+      interval: `extended_${add}m`,
+      billing_period: `extended_${add}m`,
+      current_period_start: new Date().toISOString(),
+      current_period_end: expiresAt,
+      access_type: accessType,
+      access_expires_at: accessType === "paid" ? null : expiresAt,
+      cancel_at_period_end: true,
+      canceled_at: null,
+      granted_by: me.userId,
+    },
+    { onConflict: "user_id" },
+  );
+  if (error) return { ok: false, error: error.message };
+
+  await audit(admin, me.userId!, userId, "extend_access", { months: add, plan });
+  revalidatePath("/admin");
+  return { ok: true, message: `Access extended by ${add} month${add === 1 ? "" : "s"}.` };
+}
+
+export async function cancelUserSubscription(userId: string): Promise<AdminResult> {
+  const me = await requireSuperAdmin();
+  const limited = guardPrivilegedActor(me);
+  if (limited) return { ok: false, error: limited };
+  const admin = createAdminClient();
+
+  const blocked = await guardPrivilegedTarget(admin, userId);
+  if (blocked) return { ok: false, error: blocked };
+
+  const { error } = await admin
+    .from("subscriptions")
+    .upsert(
+      {
+        user_id: userId,
+        plan: "free",
+        status: "canceled",
+        interval: null,
+        billing_period: null,
+        current_period_start: null,
+        current_period_end: null,
+        access_type: null,
+        access_expires_at: null,
+        amount_paid: null,
+        promo_code_id: null,
+        promo_code: null,
+        cancel_at_period_end: true,
+        canceled_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+  if (error) return { ok: false, error: error.message };
+
+  await audit(admin, me.userId!, userId, "cancel_subscription");
+  revalidatePath("/admin");
+  return { ok: true, message: "Subscription canceled and account moved to Free." };
+}
+
+export async function createPromoCode(input: {
+  code: string;
+  plan: PaidPlan;
+  durationMonths: number;
+  maxRedemptions: number | null;
+  expiresAt: string | null;
+  active: boolean;
+  specialPrice: number | null;
+}): Promise<AdminResult> {
+  const me = await requireSuperAdmin();
+  const limited = guardPrivilegedActor(me);
+  if (limited) return { ok: false, error: limited };
+  const admin = createAdminClient();
+
+  const code = normalizeCode(input.code);
+  if (!/^[A-Z0-9_-]{3,32}$/.test(code)) {
+    return { ok: false, error: "Promo code must be 3-32 characters: letters, numbers, underscore, or dash." };
+  }
+
+  const durationMonths = Math.max(1, Math.min(60, Math.trunc(input.durationMonths)));
+  const maxRedemptions = input.maxRedemptions == null ? null : Math.max(1, Math.trunc(input.maxRedemptions));
+  const specialPrice = Math.max(0, Number(input.specialPrice ?? 0));
+
+  const { error } = await admin.from("promo_codes").insert({
+    code,
+    plan: input.plan,
+    duration_months: durationMonths,
+    max_redemptions: maxRedemptions,
+    expires_at: input.expiresAt,
+    active: input.active,
+    special_price: specialPrice,
+    created_by: me.userId,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  await audit(admin, me.userId!, null, "promo_created", {
+    code,
+    plan: input.plan,
+    durationMonths,
+    maxRedemptions,
+    specialPrice,
+  });
+  revalidatePath("/admin");
+  return { ok: true, message: `Promo code ${code} created.` };
+}
+
+export async function setPromoCodeActive(
+  id: string,
+  active: boolean,
+): Promise<AdminResult> {
+  const me = await requireSuperAdmin();
+  const limited = guardPrivilegedActor(me);
+  if (limited) return { ok: false, error: limited };
+  const admin = createAdminClient();
+
+  const { error } = await admin
+    .from("promo_codes")
+    .update({ active })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  await audit(admin, me.userId!, null, active ? "promo_activated" : "promo_deactivated", { id });
+  revalidatePath("/admin");
+  return { ok: true, message: active ? "Promo activated." : "Promo paused." };
 }
 
 /** Triage a feedback item (status / internal note / user response). */

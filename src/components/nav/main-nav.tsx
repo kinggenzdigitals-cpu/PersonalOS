@@ -67,6 +67,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link
       href="/home"
+      prefetch={false}
       className="flex items-center gap-2"
       title={compact ? "Finance & Habit Tracker" : undefined}
     >
@@ -105,6 +106,7 @@ function NavLink({
   return (
     <Link
       href={item.href}
+      prefetch={false}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       // A hover tooltip is the only sighted label in the collapsed rail; the
@@ -324,6 +326,7 @@ export function MobileBottomNav({
           <Link
             key={tab.href}
             href={tab.href}
+            prefetch={false}
             aria-current={active ? "page" : undefined}
             className={cn(
               "relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors",

@@ -70,6 +70,7 @@ export type UserRole = "user" | "super_admin";
  */
 export type RoleSource = "bootstrap" | "manual";
 export type AccessType = "paid" | "complimentary_pro" | "lifetime_pro";
+export type SubscriptionAccessType = AccessType | "promo";
 export type AccountStatus = "active" | "suspended" | "revoked";
 
 export type Profile = {
@@ -189,6 +190,7 @@ export type TransactionFavorite = Owned & {
 } & Timestamps;
 
 export type Bill = Owned & {
+  kind: CategoryKind;
   name: string;
   amount: number;
   category_id: string | null;
@@ -211,6 +213,10 @@ export type Habit = Owned & {
   life_area: LifeArea;
   schedule_days: number[];
   reminder_time: string | null;
+  target_count_per_day: number;
+  target_count_per_week: number | null;
+  paused_from: string | null;
+  paused_until: string | null;
   active: boolean;
   sort_order: number;
   icon: string | null;
@@ -221,6 +227,7 @@ export type HabitLog = Owned & {
   habit_id: string;
   log_date: string;
   status: HabitStatus;
+  completion_count: number;
 } & Timestamps;
 
 export type MoodEntry = Owned & {
@@ -235,6 +242,12 @@ export type MoodEntry = Owned & {
   journal: string | null;
 } & Timestamps;
 
+export type TaskProject = Owned & {
+  name: string;
+  color: string | null;
+  archived: boolean;
+} & Timestamps;
+
 export type Task = Owned & {
   title: string;
   due_date: string | null;
@@ -244,6 +257,18 @@ export type Task = Owned & {
   completed_at: string | null;
   sort_order: number;
   notes: string | null;
+  project_id: string | null;
+  parent_task_id: string | null;
+  recurrence_rule: string | null;
+  recurrence_anchor: string | null;
+  tags: string[];
+  assigned_to_email: string | null;
+  dependency_task_ids: string[];
+} & Timestamps;
+
+export type TaskComment = Owned & {
+  task_id: string;
+  body: string;
 } & Timestamps;
 
 export type CalendarEvent = Owned & {
@@ -254,6 +279,10 @@ export type CalendarEvent = Owned & {
   all_day: boolean;
   notes: string | null;
   location: string | null;
+  source_provider: string | null;
+  external_id: string | null;
+  sync_status: string | null;
+  last_synced_at: string | null;
 } & Timestamps;
 
 export type LedgerEntry = Owned & {
@@ -300,8 +329,13 @@ export type Subscription = Owned & {
   interval: string | null;
   xendit_customer_id: string | null;
   xendit_plan_id: string | null;
+  current_period_start: string | null;
   current_period_end: string | null;
-  access_type: AccessType | null;
+  billing_period: string | null;
+  amount_paid: number | null;
+  promo_code_id: string | null;
+  promo_code: string | null;
+  access_type: SubscriptionAccessType | null;
   access_expires_at: string | null;
   granted_by: string | null;
   /** "Don't renew" — access continues until current_period_end, then lapses. */
@@ -341,6 +375,36 @@ export type BillingEvent = {
   amount: number | null;
   processed_at: string;
 };
+
+export type PromoCode = {
+  id: string;
+  code: string;
+  plan: "pro" | "premium";
+  duration_months: number;
+  max_redemptions: number | null;
+  expires_at: string | null;
+  active: boolean;
+  special_price: number | null;
+  created_by: string | null;
+} & Timestamps;
+
+export type PromoRedemption = Owned & {
+  promo_code_id: string;
+  status: "pending" | "active" | "expired" | "canceled";
+  amount_paid: number | null;
+  invoice_external_id: string | null;
+  redeemed_at: string | null;
+  access_starts_at: string | null;
+  access_expires_at: string | null;
+} & Timestamps;
+
+export type AccountDevice = Owned & {
+  device_token_hash: string;
+  name: string;
+  user_agent: string | null;
+  last_seen_at: string;
+  revoked_at: string | null;
+} & Timestamps;
 
 export type PromoStatus = "active" | "expired" | "redeemed";
 
@@ -384,6 +448,12 @@ export type AdminAuditLog = {
 };
 
 export type FocusSessionType = "focus" | "short_break" | "long_break";
+
+export type UserPreference = {
+  user_id: string;
+  focus_settings: Record<string, unknown>;
+  app_lock_enabled: boolean;
+} & Timestamps;
 
 export type FocusSession = Owned & {
   session_type: FocusSessionType;
@@ -465,7 +535,21 @@ export type Database = {
         InsertOf<MoodEntry>,
         UpdateOf<MoodEntry>
       >;
+      task_projects: TableShape<
+        TaskProject,
+        { user_id: string; name: string } & Partial<
+          Omit<TaskProject, "user_id" | "name">
+        >,
+        UpdateOf<TaskProject>
+      >;
       tasks: TableShape<Task, InsertOf<Task>, UpdateOf<Task>>;
+      task_comments: TableShape<
+        TaskComment,
+        { user_id: string; task_id: string; body: string } & Partial<
+          Omit<TaskComment, "user_id" | "task_id" | "body">
+        >,
+        UpdateOf<TaskComment>
+      >;
       calendar_events: TableShape<
         CalendarEvent,
         InsertOf<CalendarEvent>,
@@ -491,6 +575,32 @@ export type Database = {
         Subscription,
         InsertOf<Subscription>,
         UpdateOf<Subscription>
+      >;
+      promo_codes: TableShape<
+        PromoCode,
+        { code: string; plan: "pro" | "premium"; duration_months: number } & Partial<
+          Omit<PromoCode, "code" | "plan" | "duration_months">
+        >,
+        Partial<PromoCode>
+      >;
+      promo_redemptions: TableShape<
+        PromoRedemption,
+        { user_id: string; promo_code_id: string } & Partial<
+          Omit<PromoRedemption, "user_id" | "promo_code_id">
+        >,
+        Partial<PromoRedemption>
+      >;
+      account_devices: TableShape<
+        AccountDevice,
+        { user_id: string; device_token_hash: string; name: string } & Partial<
+          Omit<AccountDevice, "user_id" | "device_token_hash" | "name">
+        >,
+        Partial<AccountDevice>
+      >;
+      user_preferences: TableShape<
+        UserPreference,
+        { user_id: string } & Partial<Omit<UserPreference, "user_id">>,
+        Partial<UserPreference>
       >;
       focus_sessions: TableShape<
         FocusSession,
@@ -553,7 +663,7 @@ export type Database = {
       subscription_status: SubscriptionStatus;
       focus_session_type: FocusSessionType;
       user_role: UserRole;
-      access_type: AccessType;
+      access_type: SubscriptionAccessType;
       account_status: AccountStatus;
       feedback_category: FeedbackCategory;
       feedback_status: FeedbackStatus;

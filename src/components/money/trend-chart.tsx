@@ -36,8 +36,16 @@ export function TrendChart({
     );
   }
 
+  const accessibleSummary = chartData
+    .map((d) => `${d.label}: income ${formatMoney(d.income, currency)}, expense ${formatMoney(d.expense, currency)}`)
+    .join("; ");
+
   return (
-    <div className="h-40 w-full">
+    <div
+      className="h-40 w-full"
+      role="img"
+      aria-label={`Income and expense trend. ${hidden ? "Amounts are hidden by privacy mode." : accessibleSummary}`}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData} barGap={2} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
           <XAxis
@@ -64,6 +72,15 @@ export function TrendChart({
           <Bar dataKey="expense" fill="var(--money-down)" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
+      <dl className="sr-only">
+        {chartData.map((d) => (
+          <div key={d.month}>
+            <dt>{d.label}</dt>
+            <dd>Income: {hidden ? "hidden" : formatMoney(d.income, currency)}</dd>
+            <dd>Expense: {hidden ? "hidden" : formatMoney(d.expense, currency)}</dd>
+          </div>
+        ))}
+      </dl>
       <div className="mt-1 flex justify-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <span className="size-2 rounded-full bg-money-up" /> Income

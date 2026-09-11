@@ -24,13 +24,16 @@ export function friendlyAuthError(message: string | undefined | null): string {
     return "We couldn't send that email — the mail service rejected it. This is on our side, not yours. Please contact support.";
   }
   if (m.includes("invalid login credentials")) {
-    return "That email or password doesn't match. If you signed up with Google, choose Continue with Google.";
+    return "That email or password doesn't match. If you signed up with Google and have not created a Finance Tracker password yet, choose Continue with Google, then Set or change password.";
   }
   if (m.includes("email not confirmed")) {
     return "Please confirm your email first — check your inbox for the link.";
   }
+  if (m.includes("manual linking") || m.includes("linking") || m.includes("identity_already_exists") || m.includes("identity already exists")) {
+    return "That sign-in method could not be linked automatically. Confirm the Google email is verified and enable manual identity linking in Supabase Auth settings, then try again.";
+  }
   if (m.includes("already registered") || m.includes("already been registered")) {
-    return "An account with this email already exists. Try signing in instead.";
+    return "An account with this email already exists. Sign in with Google or email instead. If this was a Google account first, use Set or create password from that account.";
   }
   if (m.includes("rate limit") || m.includes("too many")) {
     return "Too many attempts. Please wait a moment and try again.";

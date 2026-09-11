@@ -13,11 +13,21 @@ export type TransactionFilters = {
   accountId?: string;
   categoryId?: string;
   type?: Transaction["type"];
+  search?: string;
   from?: string; // ISO
   to?: string; // ISO
   limit?: number;
   offset?: number;
 };
+
+function searchPattern(search: string): string | null {
+  const clean = search
+    .trim()
+    .replace(/[%_,()]/g, " ")
+    .replace(/\s+/g, " ")
+    .slice(0, 80);
+  return clean ? `%${clean}%` : null;
+}
 
 export async function getAccountsWithBalances(
   includeArchived = false,
@@ -68,6 +78,10 @@ export async function getTransactions(
   if (filters.type) query = query.eq("type", filters.type);
   if (filters.from) query = query.gte("occurred_at", filters.from);
   if (filters.to) query = query.lte("occurred_at", filters.to);
+  const pattern = filters.search ? searchPattern(filters.search) : null;
+  if (pattern) {
+    query = query.or(`merchant.ilike.${pattern},notes.ilike.${pattern}`);
+  }
 
   const limit = filters.limit ?? 50;
   const offset = filters.offset ?? 0;

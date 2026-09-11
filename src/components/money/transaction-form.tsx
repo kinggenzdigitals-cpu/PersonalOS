@@ -450,6 +450,7 @@ export function TransactionForm({
                 <Money value={Number(d.amount)} currency={currency} />
                 {d.merchant ? ` · ${d.merchant}` : ""} ·{" "}
                 {new Date(d.occurred_at).toLocaleDateString()}
+                {d.import_fingerprint ? " · imported" : ""}
               </li>
             ))}
           </ul>

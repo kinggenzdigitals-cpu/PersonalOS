@@ -10,17 +10,17 @@ export const PROMO = {
   offers: {
     pro: {
       name: "Pro Annual",
-      regular: 1099,
-      promo: 899,
+      regular: 899,
+      promo: 699,
       save: 200,
-      monthly: 74.92,
+      monthly: 58.25,
     },
     premium: {
       name: "Premium Annual",
-      regular: 1699,
-      promo: 1399,
+      regular: 1399,
+      promo: 1099,
       save: 300,
-      monthly: 116.58,
+      monthly: 91.58,
     },
   },
 } as const;

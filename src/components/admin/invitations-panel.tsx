@@ -17,7 +17,7 @@ import {
 } from "@/app/(app)/admin/invitation-actions";
 import type { Invitation, InvitationStatus } from "@/lib/supabase/types";
 
-type Duration = "1m" | "3m" | "6m" | "1y" | "none" | "custom";
+type Duration = "1m" | "3m" | "5m" | "6m" | "1y" | "none" | "custom";
 
 function durationToExpiry(d: Duration, customDate: string): string | null {
   const now = new Date();
@@ -26,6 +26,8 @@ function durationToExpiry(d: Duration, customDate: string): string | null {
       return addMonths(now, 1).toISOString();
     case "3m":
       return addMonths(now, 3).toISOString();
+    case "5m":
+      return addMonths(now, 5).toISOString();
     case "6m":
       return addMonths(now, 6).toISOString();
     case "1y":
@@ -64,7 +66,7 @@ export function InvitationsPanel({
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {canManage
-            ? "Invite a friend or family member to complimentary access."
+            ? "Grant temporary complimentary access by email. Existing users receive it immediately; new users activate it after signing in with that email."
             : "Invitations are managed by permanent administrators."}
         </p>
         {canManage && <InviteForm />}
@@ -231,6 +233,7 @@ function InviteForm() {
             >
               <option value="1m">1 Month</option>
               <option value="3m">3 Months</option>
+              <option value="5m">5 Months</option>
               <option value="6m">6 Months</option>
               <option value="1y">1 Year</option>
               <option value="none">No Expiration</option>

@@ -320,7 +320,7 @@ export default async function HomePage() {
           href="/money/bills"
           className="rounded-xl border border-border bg-card p-3 shadow-soft transition-colors hover:border-brand/40"
         >
-          <p className="text-xs text-muted-foreground">Next bill</p>
+          <p className="text-xs text-muted-foreground">Next recurring</p>
           <p className="tnum mt-1 font-display text-lg">
             {nextBill ? (
               <Money
@@ -329,7 +329,9 @@ export default async function HomePage() {
                 compact
               />
             ) : (
-              "—"
+              <span className="text-sm text-muted-foreground">
+                Nothing scheduled
+              </span>
             )}
           </p>
           {nextBill && (

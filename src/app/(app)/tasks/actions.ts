@@ -1,5 +1,6 @@
 "use server";
 
+import { addDays, addMonths, addWeeks, format } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { localDateKey } from "@/lib/date";
@@ -30,12 +31,40 @@ function revalidate() {
   revalidatePath("/", "layout");
 }
 
+function nextDueDate(rule: string | null, dueDate: string | null, timezone: string) {
+  if (!rule) return null;
+  const anchor = dueDate ?? localDateKey(timezone);
+  let next = new Date(`${anchor}T12:00:00`);
+  if (rule === "daily") next = addDays(next, 1);
+  else if (rule === "weekdays") {
+    do {
+      next = addDays(next, 1);
+    } while (next.getDay() === 0 || next.getDay() === 6);
+  } else if (rule === "weekly") next = addWeeks(next, 1);
+  else if (rule === "monthly") next = addMonths(next, 1);
+  else return null;
+  return format(next, "yyyy-MM-dd");
+}
+
 export type TaskInput = {
   title: string;
   dueDate: string | null;
   notes?: string | null;
   makePriority?: boolean;
+  recurrenceRule?: string | null;
+  tags?: string[];
 };
+
+function cleanTags(tags: string[] | undefined) {
+  return Array.from(
+    new Set(
+      (tags ?? [])
+        .map((tag) => tag.trim().toLowerCase())
+        .filter((tag) => tag.length > 0)
+        .slice(0, 10),
+    ),
+  );
+}
 
 export async function createTask(input: TaskInput): Promise<ActionResult> {
   const { supabase, user, timezone } = await ctx();
@@ -70,6 +99,9 @@ export async function createTask(input: TaskInput): Promise<ActionResult> {
       title: input.title.trim(),
       due_date: input.dueDate,
       notes: input.notes?.trim() || null,
+      recurrence_rule: input.recurrenceRule?.trim() || null,
+      recurrence_anchor: input.recurrenceRule ? input.dueDate ?? today : null,
+      tags: cleanTags(input.tags),
       status: "todo",
       is_priority: isPriority,
       priority_date: priorityDate,
@@ -84,7 +116,13 @@ export async function createTask(input: TaskInput): Promise<ActionResult> {
 
 export async function updateTask(
   id: string,
-  input: { title: string; dueDate: string | null; notes?: string | null },
+  input: {
+    title: string;
+    dueDate: string | null;
+    notes?: string | null;
+    recurrenceRule?: string | null;
+    tags?: string[];
+  },
 ): Promise<ActionResult> {
   const { supabase, user } = await ctx();
   if (!user) return { ok: false, error: "You're not signed in." };
@@ -96,6 +134,9 @@ export async function updateTask(
       title: input.title.trim(),
       due_date: input.dueDate,
       notes: input.notes?.trim() || null,
+      recurrence_rule: input.recurrenceRule?.trim() || null,
+      recurrence_anchor: input.recurrenceRule ? input.dueDate : null,
+      tags: cleanTags(input.tags),
     })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
@@ -116,8 +157,16 @@ export async function setTaskStatus(
   id: string,
   status: TaskStatus,
 ): Promise<ActionResult> {
-  const { supabase, user } = await ctx();
+  const { supabase, user, timezone } = await ctx();
   if (!user) return { ok: false, error: "You're not signed in." };
+
+  const { data: current } = await supabase
+    .from("tasks")
+    .select("title, due_date, notes, recurrence_rule, tags")
+    .eq("id", id)
+    .maybeSingle<
+      Pick<Task, "title" | "due_date" | "notes" | "recurrence_rule" | "tags">
+    >();
 
   const patch: Partial<Task> = {
     status,
@@ -130,6 +179,25 @@ export async function setTaskStatus(
 
   const { error } = await supabase.from("tasks").update(patch).eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  const nextDue =
+    status === "done"
+      ? nextDueDate(current?.recurrence_rule ?? null, current?.due_date ?? null, timezone)
+      : null;
+  if (current && nextDue) {
+    const { error: repeatError } = await supabase.from("tasks").insert({
+      user_id: user.id,
+      title: current.title,
+      due_date: nextDue,
+      notes: current.notes,
+      status: "todo",
+      recurrence_rule: current.recurrence_rule,
+      recurrence_anchor: nextDue,
+      tags: current.tags ?? [],
+    });
+    if (repeatError) return { ok: false, error: repeatError.message };
+  }
+
   revalidate();
   return { ok: true, id };
 }

@@ -586,6 +586,7 @@ export async function getMonthlyBudgetReport(
 
 export type UpcomingBill = {
   id: string;
+  kind: "income" | "expense";
   name: string;
   amount: number;
   dueDate: string; // YYYY-MM-DD
@@ -597,6 +598,7 @@ export type CashFlowForecast = {
   monthSpentSoFar: number;
   upcomingBills: UpcomingBill[]; // active bills due on/before month-end (incl. overdue)
   upcomingBillsTotal: number;
+  upcomingIncomeTotal: number;
   paceProjectedSpend: number; // remaining spend if the month's pace continues
   projectedRemainingSpend: number; // max(known bills, pace) — never double-counts
   projectedEndBalance: number; // spendable − projectedRemainingSpend
@@ -632,15 +634,25 @@ export async function getCashFlowForecast(
 
   const upcomingBills: UpcomingBill[] = bills
     .filter((b) => b.daysUntilDue <= daysLeft)
-    .map((b) => ({
-      id: b.bill.id,
-      name: b.bill.name,
-      amount: Number(b.bill.amount),
-      dueDate: b.bill.next_due_date,
-      daysUntil: b.daysUntilDue,
-    }))
+    .map((b) => {
+      const kind: UpcomingBill["kind"] =
+        b.bill.kind === "income" ? "income" : "expense";
+      return {
+        id: b.bill.id,
+        kind,
+        name: b.bill.name,
+        amount: Number(b.bill.amount),
+        dueDate: b.bill.next_due_date,
+        daysUntil: b.daysUntilDue,
+      };
+    })
     .sort((a, b) => a.daysUntil - b.daysUntil);
-  const upcomingBillsTotal = upcomingBills.reduce((s, b) => s + b.amount, 0);
+  const upcomingBillsTotal = upcomingBills
+    .filter((b) => b.kind === "expense")
+    .reduce((s, b) => s + b.amount, 0);
+  const upcomingIncomeTotal = upcomingBills
+    .filter((b) => b.kind === "income")
+    .reduce((s, b) => s + b.amount, 0);
 
   const paceProjectedSpend =
     dayOfMonth > 0 ? (monthSpentSoFar / dayOfMonth) * daysLeft : 0;
@@ -651,9 +663,10 @@ export async function getCashFlowForecast(
     monthSpentSoFar,
     upcomingBills,
     upcomingBillsTotal,
+    upcomingIncomeTotal,
     paceProjectedSpend,
     projectedRemainingSpend,
-    projectedEndBalance: spendable - projectedRemainingSpend,
+    projectedEndBalance: spendable + upcomingIncomeTotal - projectedRemainingSpend,
     dayOfMonth,
     daysInMonth,
     daysLeft,

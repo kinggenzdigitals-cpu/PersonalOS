@@ -34,7 +34,7 @@ export async function getSubscription(): Promise<Subscription | null> {
  */
 export async function canManageRenewal(): Promise<boolean> {
   const sub = await getSubscription();
-  if (!sub || sub.access_type !== "paid") return false;
+  if (!sub || sub.access_type !== "paid" || !sub.xendit_plan_id) return false;
   const end = sub.current_period_end;
   return !!end && new Date(end).getTime() > Date.now();
 }

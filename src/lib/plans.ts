@@ -41,16 +41,16 @@ export const PLAN_PRICES: Record<
   Record<BillingPeriod, PriceRow>
 > = {
   pro: {
-    monthly: { total: 129, monthlyEq: 129, discountPct: 0, save: 0 },
-    quarterly: { total: 349, monthlyEq: 116.33, discountPct: 10, save: 38 },
-    semiannual: { total: 649, monthlyEq: 108.17, discountPct: 16, save: 125 },
-    annual: { total: 1099, monthlyEq: 91.58, discountPct: 29, save: 449 },
+    monthly: { total: 91, monthlyEq: 91, discountPct: 0, save: 0 },
+    quarterly: { total: 249, monthlyEq: 83, discountPct: 9, save: 24 },
+    semiannual: { total: 499, monthlyEq: 83.17, discountPct: 9, save: 47 },
+    annual: { total: 899, monthlyEq: 74.92, discountPct: 18, save: 193 },
   },
   premium: {
-    monthly: { total: 199, monthlyEq: 199, discountPct: 0, save: 0 },
-    quarterly: { total: 549, monthlyEq: 183.0, discountPct: 8, save: 48 },
-    semiannual: { total: 999, monthlyEq: 166.5, discountPct: 16, save: 195 },
-    annual: { total: 1699, monthlyEq: 141.58, discountPct: 29, save: 689 },
+    monthly: { total: 141, monthlyEq: 141, discountPct: 0, save: 0 },
+    quarterly: { total: 389, monthlyEq: 129.67, discountPct: 8, save: 34 },
+    semiannual: { total: 749, monthlyEq: 124.83, discountPct: 11, save: 97 },
+    annual: { total: 1399, monthlyEq: 116.58, discountPct: 17, save: 293 },
   },
 };
 
@@ -117,8 +117,8 @@ export const PLANS: Record<PlanId, Plan> = {
     name: "Pro",
     tagline: "More room to run your whole financial life.",
     label: "Most Popular",
-    priceMonthly: 129,
-    priceYearly: 1099,
+    priceMonthly: 91,
+    priceYearly: 899,
     limits: {
       transactionsPerMonth: 500,
       accounts: 8,
@@ -143,8 +143,8 @@ export const PLANS: Record<PlanId, Plan> = {
     name: "Premium",
     tagline: "The highest limits, for power users.",
     label: "Highest Limits",
-    priceMonthly: 199,
-    priceYearly: 1699,
+    priceMonthly: 141,
+    priceYearly: 1399,
     limits: {
       transactionsPerMonth: 2000,
       accounts: 25,

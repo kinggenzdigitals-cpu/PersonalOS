@@ -21,7 +21,7 @@ const TABS = [
   { href: "/money/goals", label: "Goals", icon: TargetIcon },
   { href: "/money/owed", label: "Owed", icon: HandCoinsIcon },
   { href: "/money/budgets", label: "Budgets", icon: ChartPieIcon },
-  { href: "/money/bills", label: "Bills", icon: CalendarClockIcon },
+  { href: "/money/bills", label: "Recurring", icon: CalendarClockIcon },
   { href: "/money/import", label: "Import", icon: UploadIcon },
 ];
 

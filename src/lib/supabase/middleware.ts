@@ -14,6 +14,8 @@ const PUBLIC_PATHS = [
   "/terms",
   "/privacy",
   "/api/webhooks",
+  "/api/devices",
+  "/device-limit",
   "/invite",
 ];
 

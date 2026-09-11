@@ -46,8 +46,16 @@ export function CategoryDonut({
     fill: d.color ?? PALETTE[i % PALETTE.length],
   }));
 
+  const accessibleSummary = slices
+    .map((s) => `${s.name}: ${formatMoney(s.amount, currency)}`)
+    .join("; ");
+
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row">
+    <div
+      className="flex flex-col items-center gap-4 sm:flex-row"
+      role="img"
+      aria-label={`Spending by category. ${hidden ? "Amounts are hidden by privacy mode." : accessibleSummary}`}
+    >
       <div className="relative h-48 w-48 shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -87,6 +95,9 @@ export function CategoryDonut({
         </div>
       </div>
 
+      <p className="sr-only">
+        Total spent: {hidden ? "hidden" : formatMoney(total, currency)}.
+      </p>
       <ul className="w-full space-y-1.5">
         {slices.slice(0, 6).map((s) => (
           <li key={s.name} className="flex items-center gap-2 text-sm">

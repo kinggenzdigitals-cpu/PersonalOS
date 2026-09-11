@@ -17,6 +17,7 @@ import {
 import { useReference } from "@/components/providers/reference-provider";
 import { useCurrency } from "@/components/providers/profile-provider";
 import { currencySymbol } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { upsertBill, deleteBill } from "@/app/(app)/money/planning-actions";
 import type { Bill, BillFrequency } from "@/lib/supabase/types";
 import { toast } from "sonner";
@@ -38,10 +39,13 @@ export function BillForm({
   onDone: () => void;
 }) {
   const router = useRouter();
-  const { accounts, expenseCategories } = useReference();
+  const { accounts, expenseCategories, incomeCategories } = useReference();
   const currency = useCurrency();
   const editing = Boolean(initial);
 
+  const [kind, setKind] = React.useState<"income" | "expense">(
+    initial?.kind ?? "expense",
+  );
   const [name, setName] = React.useState(initial?.name ?? "");
   const [amount, setAmount] = React.useState(
     initial ? String(initial.amount) : "",
@@ -63,6 +67,7 @@ export function BillForm({
   );
   const [notes, setNotes] = React.useState(initial?.notes ?? "");
   const [saving, setSaving] = React.useState(false);
+  const categories = kind === "income" ? incomeCategories : expenseCategories;
 
   async function save() {
     if (!name.trim()) return toast.error("Name the bill.");
@@ -73,6 +78,7 @@ export function BillForm({
     setSaving(true);
     const result = await upsertBill({
       id: initial?.id,
+      kind,
       name,
       amount: value,
       categoryId: categoryId === NONE ? null : categoryId,
@@ -114,9 +120,30 @@ export function BillForm({
           id="bill-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Meralco"
+          placeholder={kind === "income" ? "e.g. Salary" : "e.g. Meralco"}
           autoFocus
         />
+      </div>
+
+      <div className="mx-auto grid w-full max-w-[240px] grid-cols-2 rounded-full bg-secondary p-1 text-sm">
+        {(["expense", "income"] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => {
+              setKind(option);
+              setCategoryId(NONE);
+            }}
+            className={cn(
+              "rounded-full py-1.5 font-medium capitalize transition-colors",
+              kind === option
+                ? "bg-card text-foreground shadow-soft"
+                : "text-muted-foreground",
+            )}
+          >
+            {option}
+          </button>
+        ))}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -189,7 +216,7 @@ export function BillForm({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={NONE}>No category</SelectItem>
-            {expenseCategories.map((c) => (
+            {categories.map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 {c.name}
               </SelectItem>

@@ -6,6 +6,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { enforceCurrentDevice } from "@/lib/devices";
 import type { Profile } from "@/lib/supabase/types";
 
 /**
@@ -91,6 +92,8 @@ export async function requireOnboardedAccount(): Promise<OnboardedAccount> {
   // Force a password change after an admin-issued temporary password.
   if (profile.must_change_password) redirect("/change-password");
   if (!profile.onboarded) redirect("/onboarding");
+
+  await enforceCurrentDevice(user.id);
 
   // The email rides out on the user this gate already fetched. Asking the
   // header for it separately would mean a second supabase.auth.getUser() on

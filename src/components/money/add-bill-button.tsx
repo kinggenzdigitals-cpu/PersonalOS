@@ -8,10 +8,10 @@ import { BillForm } from "@/components/money/bill-form";
 export function AddBillButton() {
   return (
     <FormSheet
-      title="New bill"
+      title="New recurring item"
       trigger={
         <Button variant="outline" className="w-full">
-          <PlusIcon className="size-4" /> Add bill
+          <PlusIcon className="size-4" /> Add recurring item
         </Button>
       }
     >

@@ -10,26 +10,23 @@ import {
   BellIcon,
   Volume2Icon,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { recordFocusSession } from "@/app/(app)/focus/actions";
+import {
+  recordFocusSession,
+  saveFocusSettings,
+} from "@/app/(app)/focus/actions";
 import type { FocusLinkOptions, FocusSummary } from "@/lib/queries/focus";
+import type { FocusTimerSettings } from "@/lib/focus-settings";
 import type { FocusSessionType } from "@/lib/supabase/types";
 
 const STORAGE_KEY = "fht-focus";
 
-type Settings = {
-  focus: number;
-  short: number;
-  long: number;
-  longEvery: number;
-  sound: boolean;
-  notify: boolean;
-};
-
+type Settings = FocusTimerSettings;
 type Status = "idle" | "running" | "paused";
 
 type State = {
@@ -42,15 +39,6 @@ type State = {
   focusCount: number;
   taskId: string | null;
   habitId: string | null;
-};
-
-const DEFAULT_SETTINGS: Settings = {
-  focus: 25,
-  short: 5,
-  long: 15,
-  longEvery: 4,
-  sound: true,
-  notify: false,
 };
 
 const PHASE_LABEL: Record<FocusSessionType, string> = {
@@ -67,13 +55,13 @@ function phaseMs(phase: FocusSessionType, s: Settings): number {
   return Math.max(1, phaseMinutes(phase, s)) * 60_000;
 }
 
-function initialState(): State {
+function initialState(settings: Settings): State {
   const base: State = {
-    settings: DEFAULT_SETTINGS,
+    settings,
     phase: "focus",
     status: "idle",
     endsAt: null,
-    remainingMs: DEFAULT_SETTINGS.focus * 60_000,
+    remainingMs: settings.focus * 60_000,
     startedAt: null,
     focusCount: 0,
     taskId: null,
@@ -84,14 +72,14 @@ function initialState(): State {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return base;
     const p = JSON.parse(raw) as Partial<State>;
-    const settings = { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) };
+    const storedSettings = { ...settings, ...(p.settings ?? {}) };
     const phase = p.phase ?? "focus";
     return {
-      settings,
+      settings: storedSettings,
       phase,
       status: p.status ?? "idle",
       endsAt: p.endsAt ?? null,
-      remainingMs: p.remainingMs ?? phaseMs(phase, settings),
+      remainingMs: p.remainingMs ?? phaseMs(phase, storedSettings),
       startedAt: p.startedAt ?? null,
       focusCount: p.focusCount ?? 0,
       taskId: p.taskId ?? null,
@@ -129,6 +117,7 @@ function beep() {
 export function FocusTimer(props: {
   options: FocusLinkOptions;
   summary: FocusSummary;
+  settings: FocusTimerSettings;
 }) {
   const subscribe = React.useCallback(() => () => {}, []);
   const mounted = React.useSyncExternalStore(
@@ -149,22 +138,24 @@ export function FocusTimer(props: {
 function FocusTimerInner({
   options,
   summary,
+  settings,
 }: {
   options: FocusLinkOptions;
   summary: FocusSummary;
+  settings: FocusTimerSettings;
 }) {
-  const [state, setState] = React.useState<State>(initialState);
+  const [state, setState] = React.useState<State>(() => initialState(settings));
   const [showSettings, setShowSettings] = React.useState(false);
   const [today, setToday] = React.useState(summary);
   const [now, setNow] = React.useState(0);
   const stateRef = React.useRef(state);
+  const syncedSettingsRef = React.useRef(JSON.stringify(settings));
+  const didMountRef = React.useRef(false);
 
-  // Keep the ref in sync for the interval to read (outside render).
   React.useEffect(() => {
     stateRef.current = state;
   });
 
-  // Persist on every change.
   React.useEffect(() => {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -172,6 +163,25 @@ function FocusTimerInner({
       /* ignore */
     }
   }, [state]);
+
+  React.useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    const payload = JSON.stringify(state.settings);
+    if (payload === syncedSettingsRef.current) return;
+    const id = window.setTimeout(() => {
+      void saveFocusSettings(state.settings).then((result) => {
+        if (result.ok) {
+          syncedSettingsRef.current = payload;
+        } else {
+          toast.error(result.error);
+        }
+      });
+    }, 600);
+    return () => window.clearTimeout(id);
+  }, [state.settings]);
 
   const finish = React.useCallback((completed: boolean) => {
     const s = stateRef.current;
@@ -181,6 +191,7 @@ function FocusTimerInner({
       : s.startedAt
         ? Math.max(0, Math.round((Date.now() - s.startedAt) / 1000))
         : 0;
+    const wasFocus = s.phase === "focus";
 
     void recordFocusSession({
       sessionType: s.phase,
@@ -190,16 +201,23 @@ function FocusTimerInner({
       actualSeconds,
       completed,
       startedAt: new Date(s.startedAt ?? Date.now()).toISOString(),
-    });
-
-    const wasFocus = s.phase === "focus";
-    if (completed && wasFocus) {
-      setToday((t) => ({
-        completedSessions: t.completedSessions + 1,
-        focusedMinutes: t.focusedMinutes + Math.round(actualSeconds / 60),
-        linkedSessions: t.linkedSessions + (s.taskId || s.habitId ? 1 : 0),
-      }));
-    }
+    })
+      .then((result) => {
+        if (!result.ok) {
+          toast.error(result.error);
+          return;
+        }
+        if (completed && wasFocus) {
+          setToday((t) => ({
+            completedSessions: t.completedSessions + 1,
+            focusedMinutes: t.focusedMinutes + Math.round(actualSeconds / 60),
+            linkedSessions: t.linkedSessions + (s.taskId || s.habitId ? 1 : 0),
+          }));
+        }
+      })
+      .catch(() => {
+        toast.error("Focus session was not saved. Please try again.");
+      });
 
     if (completed) {
       if (s.settings.sound) beep();
@@ -238,7 +256,6 @@ function FocusTimerInner({
     }));
   }, []);
 
-  // Timestamp-driven tick — accurate across tab changes + refresh.
   React.useEffect(() => {
     const id = window.setInterval(() => {
       const s = stateRef.current;
@@ -300,10 +317,10 @@ function FocusTimerInner({
 
   function updateSettings(patch: Partial<Settings>) {
     setState((s) => {
-      const settings = { ...s.settings, ...patch };
+      const updated = { ...s.settings, ...patch };
       const remainingMs =
-        s.status === "idle" ? phaseMs(s.phase, settings) : s.remainingMs;
-      return { ...s, settings, remainingMs };
+        s.status === "idle" ? phaseMs(s.phase, updated) : s.remainingMs;
+      return { ...s, settings: updated, remainingMs };
     });
   }
 
@@ -346,8 +363,13 @@ function FocusTimerInner({
             ))}
           </div>
 
-          <div className="relative grid size-56 place-items-center">
-            <svg viewBox="0 0 120 120" className="size-full -rotate-90">
+          <div
+            className="relative grid size-56 place-items-center"
+            role="timer"
+            aria-live="polite"
+            aria-label={`${PHASE_LABEL[state.phase]} timer, ${timeLabel} remaining`}
+          >
+            <svg viewBox="0 0 120 120" className="size-full -rotate-90" aria-hidden>
               <circle
                 cx="60"
                 cy="60"

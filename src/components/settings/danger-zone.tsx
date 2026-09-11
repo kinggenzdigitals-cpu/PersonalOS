@@ -159,9 +159,8 @@ export function DangerZone({ email }: { email: string | null }) {
                     return;
                   }
                   close();
-                  // Full reload, not router.push: every client cache and
-                  // provider still holds the deleted user's data in memory.
-                  window.location.href = "/login";
+                  router.replace("/login");
+                  router.refresh();
                 }}
               >
                 {busyAccount && (

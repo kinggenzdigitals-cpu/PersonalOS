@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { ListIcon, TriangleAlertIcon } from "lucide-react";
+import { fromZonedTime } from "date-fns-tz";
 import { requireOnboardedProfile } from "@/lib/auth";
 import { localDateKey } from "@/lib/date";
-import { getTransactions } from "@/lib/queries/money";
+import { getTransactions, type TransactionFilters } from "@/lib/queries/money";
 import { getMonthlyBudgetReport } from "@/lib/queries/planning";
 import { BudgetVsActual } from "@/components/money/budget-vs-actual";
 import { TransactionsView } from "@/components/money/transactions-view";
@@ -37,6 +38,53 @@ function resolveMonthKey(
   return localDateKey(timezone).slice(0, 7);
 }
 
+function firstParam(raw: string | string[] | undefined): string {
+  return (Array.isArray(raw) ? raw[0] : raw)?.trim() ?? "";
+}
+
+function dateParam(raw: string | string[] | undefined): string {
+  const value = firstParam(raw);
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
+}
+
+function validType(raw: string | string[] | undefined): TransactionFilters["type"] | undefined {
+  const value = firstParam(raw);
+  return value === "income" ||
+    value === "expense" ||
+    value === "transfer" ||
+    value === "adjustment"
+    ? value
+    : undefined;
+}
+
+function resolveTransactionFilters(
+  params: { [key: string]: string | string[] | undefined },
+  timezone: string,
+): TransactionFilters & {
+  search?: string;
+  fromDate?: string;
+  toDate?: string;
+} {
+  const fromDate = dateParam(params.from);
+  const toDate = dateParam(params.to);
+  const search = firstParam(params.q).slice(0, 80);
+
+  return {
+    type: validType(params.type),
+    accountId: firstParam(params.account) || undefined,
+    categoryId: firstParam(params.category) || undefined,
+    search: search || undefined,
+    from: fromDate
+      ? fromZonedTime(`${fromDate}T00:00:00`, timezone).toISOString()
+      : undefined,
+    to: toDate
+      ? fromZonedTime(`${toDate}T23:59:59.999`, timezone).toISOString()
+      : undefined,
+    fromDate: fromDate || undefined,
+    toDate: toDate || undefined,
+  };
+}
+
 export default async function TransactionsPage({
   searchParams,
 }: {
@@ -49,6 +97,7 @@ export default async function TransactionsPage({
     searchParams,
   ]);
   const monthKey = resolveMonthKey(params.month, profile.timezone);
+  const transactionFilters = resolveTransactionFilters(params, profile.timezone);
 
   /*
     Both reads are issued at once. Awaiting the report first would push the
@@ -74,7 +123,7 @@ export default async function TransactionsPage({
         return null;
       },
     ),
-    getTransactions({ limit: 50, offset: 0 }),
+    getTransactions({ ...transactionFilters, limit: 50, offset: 0 }),
   ]);
 
   return (
@@ -120,7 +169,18 @@ export default async function TransactionsPage({
         </section>
       )}
 
-      <TransactionsView initial={initial} timezone={profile.timezone} />
+      <TransactionsView
+        initial={initial}
+        timezone={profile.timezone}
+        initialFilters={{
+          type: transactionFilters.type ?? "all",
+          accountId: transactionFilters.accountId ?? "all",
+          categoryId: transactionFilters.categoryId ?? "all",
+          search: transactionFilters.search ?? "",
+          fromDate: transactionFilters.fromDate ?? "",
+          toDate: transactionFilters.toDate ?? "",
+        }}
+      />
     </div>
   );
 }
