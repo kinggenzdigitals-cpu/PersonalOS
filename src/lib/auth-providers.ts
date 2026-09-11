@@ -7,7 +7,8 @@
  * alternative — a NEXT_PUBLIC_* flag — is inlined at build time, so enabling
  * Google in the Supabase dashboard would change nothing until someone
  * remembered to also flip the env var and redeploy. That drift fails silently
- * and in the most confusing direction, so we pay a cached HTTP call instead.
+ * and in the most confusing direction, so we ask Supabase on each auth-page
+ * render instead.
  *
  * The parser lives in auth-provider-state.ts because this module cannot be
  * loaded outside Next (see the `server-only` import below).
@@ -23,29 +24,15 @@ import { parseProviderState, type ProviderState } from "@/lib/auth-provider-stat
 export type { ProviderState };
 
 /**
- * How long a provider list is reused before we ask Supabase again.
- *
- * Note this is a floor on how fast a dashboard flip shows up, not a ceiling:
- * these pages are dynamic (`searchParams`), so Next serves the stale entry to
- * the first visitor after expiry and revalidates in the background. The change
- * therefore lands on the *second* render past the TTL, which on a quiet login
- * page can be much later than five minutes. There is deliberately no cache tag
- * here — a `tags` option nothing ever calls `revalidateTag` for is inert, and
- * an inert lever reads like a lever that exists. Until something needs to force
- * the flip, a redeploy is the honest answer.
- */
-const SETTINGS_TTL_SECONDS = 300;
-
-/**
  * How long we wait on Supabase, in ms.
  *
- * The endpoint answers in ~150ms, so this is ~5x headroom and still an order of
- * magnitude below the platform function timeout. It only has to be generous
- * enough to survive a slow round trip: the lookup is rendered inside a Suspense
- * boundary (see components/auth/google-sign-in.tsx), so waiting here delays a
- * button that streams in, never the email form or the response headers.
+ * The lookup is rendered inside a Suspense boundary (see
+ * components/auth/google-sign-in.tsx), so waiting here delays only the social
+ * button, never the email form or response headers. Two seconds gives the live
+ * Supabase endpoint enough room during an ordinary slow round trip without
+ * leaving the streamed slot pending for long during an outage.
  */
-const SETTINGS_TIMEOUT_MS = 800;
+const SETTINGS_TIMEOUT_MS = 2_000;
 
 /**
  * How long an upstream failure is remembered before we try again.
@@ -85,10 +72,10 @@ export async function googleProviderState(): Promise<ProviderState> {
       // user-specific; `apikey` is also simply what Supabase expects.
       headers: { apikey: supabaseAnonKey() },
       signal: AbortSignal.timeout(SETTINGS_TIMEOUT_MS),
-      // The endpoint sends no cache headers of its own, so every uncached call
-      // is a real round trip. Caching it means roughly one call per 5 minutes
-      // rather than one per page view.
-      next: { revalidate: SETTINGS_TTL_SECONDS },
+      // Provider switches are operational settings. `no-store` makes a
+      // dashboard change visible on the next auth-page render; Next's Data
+      // Cache can otherwise retain the old value across Vercel deployments.
+      cache: "no-store",
     });
 
     // A non-200 body may still be JSON; parsing it would misreport the state.
