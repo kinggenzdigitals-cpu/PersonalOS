@@ -4,7 +4,6 @@ import { requireOnboardedProfile } from "@/lib/auth";
 import { localDateKey } from "@/lib/date";
 import { getTransactions } from "@/lib/queries/money";
 import { getMonthlyBudgetReport } from "@/lib/queries/planning";
-import { AddTransactionButton } from "@/components/money/add-transaction-button";
 import { BudgetVsActual } from "@/components/money/budget-vs-actual";
 import { TransactionsView } from "@/components/money/transactions-view";
 import { MoneySectionHeading } from "@/components/money/money-section-heading";
@@ -84,7 +83,6 @@ export default async function TransactionsPage({
         icon={ListIcon}
         title="Transactions"
         description="Everything you've recorded, grouped clearly by date."
-        action={<AddTransactionButton />}
       />
 
       {report ? (
