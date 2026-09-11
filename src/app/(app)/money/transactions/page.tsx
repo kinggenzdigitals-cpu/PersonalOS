@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { TriangleAlertIcon } from "lucide-react";
+import { ListIcon, TriangleAlertIcon } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
 import { localDateKey } from "@/lib/date";
 import { getTransactions } from "@/lib/queries/money";
@@ -7,6 +7,7 @@ import { getMonthlyBudgetReport } from "@/lib/queries/planning";
 import { AddTransactionButton } from "@/components/money/add-transaction-button";
 import { BudgetVsActual } from "@/components/money/budget-vs-actual";
 import { TransactionsView } from "@/components/money/transactions-view";
+import { MoneySectionHeading } from "@/components/money/money-section-heading";
 
 export const metadata: Metadata = { title: "Transactions" };
 
@@ -79,16 +80,12 @@ export default async function TransactionsPage({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-lg tracking-tight">Transactions</h2>
-          <p className="text-sm text-muted-foreground">
-            Everything you&rsquo;ve recorded, with the month measured against
-            your budgets.
-          </p>
-        </div>
-        <AddTransactionButton />
-      </div>
+      <MoneySectionHeading
+        icon={ListIcon}
+        title="Transactions"
+        description="Everything you've recorded, grouped clearly by date."
+        action={<AddTransactionButton />}
+      />
 
       {report ? (
         <BudgetVsActual

@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { GoalCard } from "@/components/money/goal-card";
 import { GoalCreateButton } from "@/components/money/goal-create-button";
 import { Money } from "@/components/ui/money";
+import { MoneySectionHeading } from "@/components/money/money-section-heading";
 
 export const metadata: Metadata = { title: "Savings Goals" };
 
@@ -20,6 +21,12 @@ export default async function GoalsPage() {
 
   return (
     <div className="space-y-5">
+      <MoneySectionHeading
+        icon={TargetIcon}
+        title="Savings goals"
+        description="Turn long-term targets into visible, steady progress."
+        action={<GoalCreateButton todayKey={todayKey} />}
+      />
       {goals.length === 0 ? (
         <EmptyState
           icon={TargetIcon}
@@ -56,7 +63,7 @@ export default async function GoalsPage() {
             </CardContent>
           </Card>
 
-          <div className="space-y-3">
+          <div className="grid gap-3 lg:grid-cols-2">
             {goals.map((goal) => (
               <GoalCard key={goal.id} goal={goal} todayKey={todayKey} />
             ))}

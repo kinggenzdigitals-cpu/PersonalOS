@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LandmarkIcon } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
 import { getNetWorth } from "@/lib/queries/networth";
 import { hasProFeature } from "@/lib/plan-guard";
@@ -8,6 +9,7 @@ import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 import { NetWorthSection } from "@/components/money/networth-section";
 import { ProGate } from "@/components/settings/pro-gate";
+import { MoneySectionHeading } from "@/components/money/money-section-heading";
 
 export const metadata: Metadata = { title: "Net Worth" };
 
@@ -37,6 +39,11 @@ export default async function NetWorthPage() {
 
   return (
     <div className="space-y-5">
+      <MoneySectionHeading
+        icon={LandmarkIcon}
+        title="Net worth"
+        description="Your complete financial position across cash, assets and liabilities."
+      />
       {/* Total net worth */}
       <Card className="shadow-card">
         <CardContent className="pt-6">

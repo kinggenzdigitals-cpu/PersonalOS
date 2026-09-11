@@ -306,3 +306,146 @@ html[data-sidebar="collapsed"] {
     transition: padding-left 200ms ease;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/*  Money workspace — scoped executive dashboard treatment            */
+/* ------------------------------------------------------------------ */
+body:has(.money-shell) {
+  --background: #031124;
+  --foreground: #f3f7ff;
+  --card: #071a31;
+  --card-foreground: #f3f7ff;
+  --popover: #071a31;
+  --popover-foreground: #f3f7ff;
+  --primary: #087cff;
+  --primary-foreground: #ffffff;
+  --secondary: #0d2948;
+  --secondary-foreground: #edf5ff;
+  --muted: #0d2948;
+  --muted-foreground: #9db4d2;
+  --accent: #10345b;
+  --accent-foreground: #ffffff;
+  --border: rgba(100, 174, 255, 0.22);
+  --input: rgba(125, 187, 255, 0.26);
+  --ring: #22a2ff;
+  --brand: #168cff;
+  --brand-foreground: #ffffff;
+  --brand-hover: #39a5ff;
+  --brand-2: #38b6ff;
+  --brand-2-hover: #72ceff;
+  --success: #54e76f;
+  --money-up: #54e76f;
+  --money-down: #ff6775;
+  --warning: #ffc24a;
+  --error: #ff6775;
+  --sage: #63e875;
+  --sage-soft: #103924;
+  --sidebar: #04162b;
+  --sidebar-foreground: #e6f0ff;
+  --sidebar-primary: #087cff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #0b2b4c;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(100, 174, 255, 0.18);
+  background:
+    radial-gradient(circle at 78% 0%, rgba(0, 119, 255, 0.14), transparent 32rem),
+    linear-gradient(145deg, #020d1d 0%, #03162d 55%, #020c1a 100%);
+}
+
+#main-content:has(> .money-shell) {
+  max-width: 96rem;
+  padding-top: 1.25rem;
+}
+
+.money-shell {
+  isolation: isolate;
+  color: var(--foreground);
+}
+
+.money-ambient {
+  position: absolute;
+  inset: -1.25rem -1rem auto;
+  z-index: -1;
+  height: 22rem;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(22, 140, 255, 0.17), transparent 19rem),
+    radial-gradient(circle at 82% 28%, rgba(67, 207, 255, 0.10), transparent 24rem);
+  filter: blur(8px);
+}
+
+.money-hero,
+.money-panel,
+.money-shell [data-slot="card"],
+.money-shell .rounded-xl.border.bg-card {
+  border-color: rgba(99, 174, 255, 0.24);
+  background-image: linear-gradient(145deg, rgba(10, 35, 64, 0.96), rgba(4, 21, 41, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 18px 48px rgba(0, 7, 18, 0.24);
+}
+
+.money-hero {
+  position: relative;
+  overflow: hidden;
+}
+
+.money-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -4rem -5rem 36%;
+  height: 10rem;
+  pointer-events: none;
+  background: radial-gradient(ellipse, rgba(20, 128, 255, 0.22), transparent 68%);
+}
+
+.money-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.money-hero-icon {
+  color: #7cffa0;
+  background: linear-gradient(145deg, #07843d, #034b2b);
+  box-shadow: 0 12px 32px rgba(0, 197, 86, 0.2);
+}
+
+.money-page > * {
+  animation: money-rise 360ms var(--ease-out-soft) both;
+}
+
+.money-shell input,
+.money-shell textarea,
+.money-shell [role="combobox"] {
+  background-color: rgba(5, 24, 46, 0.82);
+}
+
+.money-shell .shadow-soft,
+.money-shell .shadow-card {
+  box-shadow: 0 14px 38px rgba(0, 7, 18, 0.22);
+}
+
+.money-transaction-row:hover {
+  box-shadow: inset 3px 0 0 var(--brand-2);
+}
+
+@keyframes money-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 767px) {
+  #main-content:has(> .money-shell) {
+    padding-top: 0.75rem;
+  }
+
+  .money-hero {
+    border-radius: 1rem;
+  }
+
+  .money-hero > button {
+    width: 100%;
+  }
+
+  .money-section-heading {
+    align-items: flex-start;
+  }
+}

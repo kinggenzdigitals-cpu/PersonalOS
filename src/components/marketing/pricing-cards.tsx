@@ -12,10 +12,13 @@ import {
   type Plan,
   type BillingPeriod,
 } from "@/lib/plans";
-
-function peso(n: number) {
-  return `₱${n.toLocaleString("en-PH", { maximumFractionDigits: 2 })}`;
-}
+import {
+  formatPHP,
+  formatUSD,
+  PHP_PER_USD_REFERENCE_DATE,
+  PHP_PER_USD_REFERENCE_RATE,
+  phpToUsdEstimate,
+} from "@/lib/pricing-display";
 
 export function PricingCards() {
   const [period, setPeriod] = React.useState<BillingPeriod>("annual");
@@ -55,9 +58,12 @@ export function PricingCards() {
       </div>
 
       <p className="mx-auto mt-6 max-w-xl text-center text-xs text-muted-foreground">
-        All prices in PHP. Each period is prepaid — no card is stored and
-        nothing charges automatically. Access continues until the period ends,
-        then moves to Free unless you renew.
+        USD estimates use the BSP reference rate of ₱
+        {PHP_PER_USD_REFERENCE_RATE.toLocaleString("en-PH")} per US$1 on{" "}
+        {PHP_PER_USD_REFERENCE_DATE}. Subscriptions are charged in PHP. Each
+        period is prepaid — no card is stored and nothing charges automatically.
+        Access continues until the period ends, then moves to Free unless you
+        renew.
       </p>
     </div>
   );
@@ -97,7 +103,7 @@ function PlanCard({ plan, period }: { plan: Plan; period: BillingPeriod }) {
       <h3 className="font-display text-xl">{plan.name}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{plan.tagline}</p>
 
-      <div className="mt-5 min-h-[104px]">
+      <div className="mt-5 min-h-32">
         {free ? (
           <p className="font-display text-4xl">
             Free
@@ -109,18 +115,21 @@ function PlanCard({ plan, period }: { plan: Plan; period: BillingPeriod }) {
         ) : price ? (
           <div>
             <p className="font-display text-4xl">
-              {peso(price.monthlyEq)}
+              {formatUSD(phpToUsdEstimate(price.monthlyEq))}
               <span className="text-base font-normal text-muted-foreground">
                 {" "}
                 /mo
               </span>
             </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              ≈ {formatPHP(price.monthlyEq)} /mo
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {peso(price.total)} {billedLabel}
+              {formatPHP(price.total)} {billedLabel}
             </p>
             {price.save > 0 && (
               <p className="mt-1 text-xs font-medium text-success">
-                Save {peso(price.save)} · {price.discountPct}% off
+                Save {formatPHP(price.save)} · {price.discountPct}% off
               </p>
             )}
             <p className="mt-1 text-[11px] text-muted-foreground">

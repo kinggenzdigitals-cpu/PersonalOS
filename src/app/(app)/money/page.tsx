@@ -44,7 +44,7 @@ export default async function MoneyOverviewPage() {
   const net = overview.monthIncome - overview.monthExpense;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Net position */}
       <NetPositionCard
         cash={overview.total}
@@ -62,7 +62,7 @@ export default async function MoneyOverviewPage() {
           Cash Position
         </h2>
         {overview.accounts.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             {overview.accounts.map((a) => (
               <AccountCard key={a.id} balance={a} series={sparklines[a.id]} />
             ))}
@@ -124,43 +124,45 @@ export default async function MoneyOverviewPage() {
       </section>
 
       {/* This month */}
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle className="text-base">This month</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <Stat
-              label="Income"
-              value={<Money value={overview.monthIncome} currency={currency} />}
-              className="text-money-up"
-            />
-            <Stat
-              label="Expenses"
-              value={
-                <Money value={overview.monthExpense} currency={currency} />
-              }
-              className="text-money-down"
-            />
-            <Stat
-              label="Net"
-              value={<Money value={net} currency={currency} sign />}
-              className={net >= 0 ? "text-money-up" : "text-money-down"}
-            />
-          </div>
-          <TrendChart data={overview.trend} currency={currency} />
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="text-base">This month</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <Stat
+                label="Income"
+                value={<Money value={overview.monthIncome} currency={currency} />}
+                className="text-money-up"
+              />
+              <Stat
+                label="Expenses"
+                value={
+                  <Money value={overview.monthExpense} currency={currency} />
+                }
+                className="text-money-down"
+              />
+              <Stat
+                label="Net"
+                value={<Money value={net} currency={currency} sign />}
+                className={net >= 0 ? "text-money-up" : "text-money-down"}
+              />
+            </div>
+            <TrendChart data={overview.trend} currency={currency} />
+          </CardContent>
+        </Card>
 
-      {/* Spending by category */}
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle className="text-base">Spending by category</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CategoryDonut data={donutData} currency={currency} />
-        </CardContent>
-      </Card>
+        {/* Spending by category */}
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="text-base">Spending by category</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CategoryDonut data={donutData} currency={currency} />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

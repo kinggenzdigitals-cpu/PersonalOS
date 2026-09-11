@@ -10,6 +10,7 @@ import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 import { LedgerCard } from "@/components/money/ledger-card";
 import { AddLedgerButton } from "@/components/money/add-ledger-button";
+import { MoneySectionHeading } from "@/components/money/money-section-heading";
 
 export const metadata: Metadata = { title: "Receivables & Payables" };
 
@@ -26,6 +27,11 @@ export default async function OwedPage() {
 
   return (
     <div className="space-y-5">
+      <MoneySectionHeading
+        icon={HandCoinsIcon}
+        title="Receivables & payables"
+        description="See what is owed to you and what you still need to pay."
+      />
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3">
         <StatCard
@@ -57,7 +63,7 @@ export default async function OwedPage() {
       </div>
 
       {/* Receivables */}
-      <section className="space-y-2">
+      <section className="money-panel space-y-3 rounded-2xl border border-border bg-card p-4 shadow-soft">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg">Receivables</h2>
           <span className="text-xs text-muted-foreground">Owed to you</span>
@@ -82,7 +88,7 @@ export default async function OwedPage() {
       </section>
 
       {/* Payables */}
-      <section className="space-y-2">
+      <section className="money-panel space-y-3 rounded-2xl border border-border bg-card p-4 shadow-soft">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg">Payables</h2>
           <span className="text-xs text-muted-foreground">You owe</span>

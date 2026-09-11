@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRightLeftIcon,
+  ListFilterIcon,
   SlidersHorizontalIcon,
   Trash2Icon,
   Loader2Icon,
@@ -229,68 +230,96 @@ export function TransactionsView({
   }
 
   return (
-    <div className="space-y-4">
+    <section className="money-panel overflow-hidden rounded-2xl border border-border bg-card shadow-card">
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <SlidersHorizontalIcon className="size-4 text-muted-foreground" />
-        <Select value={type} onValueChange={setType}>
-          <SelectTrigger className="h-8 w-auto gap-1 text-xs" aria-label="Type">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {TYPES.map((t) => (
-              <SelectItem key={t.value} value={t.value}>
-                {t.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-5">
+        <div className="flex items-center gap-2">
+          <span className="grid size-8 place-items-center rounded-lg bg-brand/15 text-brand-2">
+            <ListFilterIcon className="size-4" aria-hidden />
+          </span>
+          <div>
+            <h3 className="font-display text-lg leading-tight">
+              Transactions by date
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Filter and open any entry to review it.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <SlidersHorizontalIcon
+            className="size-4 text-muted-foreground"
+            aria-hidden
+          />
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger
+              className="h-8 w-auto gap-1 text-xs"
+              aria-label="Type"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TYPES.map((t) => (
+                <SelectItem key={t.value} value={t.value}>
+                  {t.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select value={accountId} onValueChange={setAccountId}>
-          <SelectTrigger className="h-8 w-auto gap-1 text-xs" aria-label="Account">
-            <SelectValue placeholder="Account" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All accounts</SelectItem>
-            {accounts.map((a) => (
-              <SelectItem key={a.id} value={a.id}>
-                {a.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select value={accountId} onValueChange={setAccountId}>
+            <SelectTrigger
+              className="h-8 w-auto gap-1 text-xs"
+              aria-label="Account"
+            >
+              <SelectValue placeholder="Account" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All accounts</SelectItem>
+              {accounts.map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select value={categoryId} onValueChange={setCategoryId}>
-          <SelectTrigger className="h-8 w-auto gap-1 text-xs" aria-label="Category">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name} · {c.kind}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select value={categoryId} onValueChange={setCategoryId}>
+            <SelectTrigger
+              className="h-8 w-auto gap-1 text-xs"
+              aria-label="Category"
+            >
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name} · {c.kind}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        {anyFilter && (
-          <button
-            type="button"
-            onClick={() => {
-              setType("all");
-              setAccountId("all");
-              setCategoryId("all");
-            }}
-            className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Clear
-          </button>
-        )}
+          {anyFilter && (
+            <button
+              type="button"
+              onClick={() => {
+                setType("all");
+                setAccountId("all");
+                setCategoryId("all");
+              }}
+              className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* List */}
-      {items.length === 0 ? (
+      <div className="p-4 sm:p-5">
+        {items.length === 0 ? (
         <EmptyState
           icon={WalletIcon}
           title={anyFilter ? "No matching transactions" : "No transactions yet"}
@@ -307,7 +336,7 @@ export function TransactionsView({
         <div className="space-y-5">
           {groups.map((g) => (
             <div key={g.key} className="space-y-1.5">
-              <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+              <div className="flex items-center justify-between rounded-lg border border-border/70 bg-secondary/45 px-3 py-2 text-xs text-muted-foreground">
                 <span>{g.label}</span>
                 {g.net !== 0 && (
                   <span
@@ -322,7 +351,7 @@ export function TransactionsView({
                   </span>
                 )}
               </div>
-              <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+              <div className="overflow-hidden rounded-xl border border-border bg-card/70 shadow-soft">
                 {g.rows.map((t, i) => (
                   <Row
                     key={t.id}
@@ -352,7 +381,8 @@ export function TransactionsView({
             </Button>
           )}
         </div>
-      )}
+        )}
+      </div>
 
       {/* Detail / edit sheet */}
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
@@ -413,7 +443,7 @@ export function TransactionsView({
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </section>
   );
 }
 
@@ -482,11 +512,11 @@ function Row({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50",
+        "money-transaction-row flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-secondary/60 sm:px-4",
         divider && "border-t border-border",
       )}
     >
-      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-muted-foreground">
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand/15 text-brand-2 ring-1 ring-brand-2/15">
         {React.createElement(iconComp, {
           className: "size-4",
           "aria-hidden": true,

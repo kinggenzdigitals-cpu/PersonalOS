@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { InfinityIcon, SparklesIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatPHP, usdToPhpEstimate } from "@/lib/pricing-display";
 
 /**
  * The Founding Lifetime pricing card. Every figure comes from the live offer
@@ -52,6 +53,9 @@ export function LifetimeCard({
                 one-time
               </span>
             </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              ≈ {formatPHP(usdToPhpEstimate(priceUSD), 0)}
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">
               <span className="line-through">${regularUSD}</span> regular price
             </p>
@@ -69,6 +73,9 @@ export function LifetimeCard({
                 {" "}
                 one-time
               </span>
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              ≈ {formatPHP(usdToPhpEstimate(regularUSD), 0)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               The founding launch price has closed.

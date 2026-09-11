@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SparklesIcon } from "lucide-react";
+import { SparklesIcon, UploadIcon, WalletIcon } from "lucide-react";
 import { requireOnboardedProfile } from "@/lib/auth";
 import { getActivePlan } from "@/lib/queries/billing";
 import { getAccounts } from "@/lib/queries/money";
@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { CsvImport } from "@/components/money/csv-import";
 import { ReconcilePanel } from "@/components/money/reconcile-panel";
 import { getReconciliation } from "@/lib/queries/reconcile";
-import { WalletIcon } from "lucide-react";
+import { MoneySectionHeading } from "@/components/money/money-section-heading";
 
 export const metadata: Metadata = { title: "Import" };
 
@@ -60,6 +60,11 @@ export default async function ImportPage() {
 
   return (
     <div className="space-y-6">
+      <MoneySectionHeading
+        icon={UploadIcon}
+        title="Import & reconcile"
+        description="Bring in statements quickly, then review possible duplicates."
+      />
       <CsvImport />
 
       {(reconciliation.items.length > 0 ||
