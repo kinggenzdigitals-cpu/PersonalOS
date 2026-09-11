@@ -13,6 +13,8 @@ const PUBLIC_PATHS = [
   "/pricing",
   "/terms",
   "/privacy",
+  "/robots.txt",
+  "/sitemap.xml",
   "/api/webhooks",
   "/api/devices",
   "/device-limit",
