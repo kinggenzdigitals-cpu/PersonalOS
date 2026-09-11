@@ -39,6 +39,8 @@ export function MoneyTabs() {
             tab.href === "/money"
               ? pathname === "/money"
               : pathname.startsWith(tab.href);
+          const activeClass =
+            "bg-tab-active/12 text-tab-active shadow-[0_10px_28px_rgba(56,182,255,0.2)]";
           return (
             <Link
               key={tab.href}
@@ -47,11 +49,14 @@ export function MoneyTabs() {
               className={cn(
                 "inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-all",
                 active
-                  ? "bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(1,125,254,0.28)]"
-                  : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
+                  ? activeClass
+                  : "text-foreground/80 hover:bg-tab-active/10 hover:text-foreground",
               )}
             >
-              <Icon className="size-4" aria-hidden />
+              <Icon
+                className={cn("size-4", active ? "text-tab-active" : "text-tab-active/90")}
+                aria-hidden
+              />
               {tab.label}
             </Link>
           );

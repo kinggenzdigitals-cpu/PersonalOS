@@ -13,7 +13,7 @@ const TABS = [
 
 export function HabitsTabs() {
   const pathname = usePathname();
-  return (
+    return (
     <nav
       aria-label="Habits sections"
       className="inline-flex gap-1 rounded-full bg-secondary p-1"
@@ -31,8 +31,8 @@ export function HabitsTabs() {
             className={cn(
               "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
               active
-                ? "bg-tab-active text-tab-active-foreground shadow-soft"
-                : "text-muted-foreground hover:text-foreground",
+                ? "bg-tab-active/12 text-tab-active shadow-soft"
+                : "text-foreground/80 hover:bg-tab-active/10 hover:text-foreground",
             )}
           >
             {tab.label}
