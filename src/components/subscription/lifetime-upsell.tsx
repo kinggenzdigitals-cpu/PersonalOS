@@ -4,6 +4,7 @@ import * as React from "react";
 import { toast } from "sonner";
 import { InfinityIcon, SparklesIcon, Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatPHP } from "@/lib/pricing-display";
 import { startLifetimeCheckout } from "@/app/(app)/settings/billing-actions";
 
 /**
@@ -16,13 +17,13 @@ import { startLifetimeCheckout } from "@/app/(app)/settings/billing-actions";
 export function LifetimeUpsell({
   eligible,
   remaining,
-  priceUSD,
-  regularUSD,
+  pricePHP,
+  regularPHP,
 }: {
   eligible: boolean;
   remaining: number | null;
-  priceUSD: number;
-  regularUSD: number;
+  pricePHP: number;
+  regularPHP: number;
 }) {
   const [busy, setBusy] = React.useState(false);
 
@@ -48,13 +49,13 @@ export function LifetimeUpsell({
         <div>
           <p className="flex items-center gap-2 font-display text-lg">
             <InfinityIcon className="size-5 text-sage" aria-hidden /> Premium
-            Lifetime — ${priceUSD}{" "}
+            Lifetime — {formatPHP(pricePHP, 0)}{" "}
             <span className="text-sm font-normal text-muted-foreground line-through">
-              ${regularUSD}
+              {formatPHP(regularPHP, 0)}
             </span>
           </p>
           <p className="text-xs text-muted-foreground">
-            One payment, never billed again. Charged in USD.
+            One payment, never billed again. Charged in Philippine pesos.
             {remaining != null && ` ${remaining} of the first 100 spots left.`}
           </p>
         </div>

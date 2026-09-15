@@ -45,8 +45,8 @@ export async function resolveLifetimeOffer(): Promise<
     sold,
     endsAt: LIFETIME_OFFER.endsAt,
     nowMs: Date.now(),
-    launchPriceUSD: LIFETIME_OFFER.launchPriceUSD,
-    regularPriceUSD: LIFETIME_OFFER.regularPriceUSD,
+    launchPricePHP: LIFETIME_OFFER.launchPricePHP,
+    regularPricePHP: LIFETIME_OFFER.regularPricePHP,
   });
   return { ...state, sold };
 }

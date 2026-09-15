@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { SparklesIcon, XIcon } from "lucide-react";
+import { formatPHP } from "@/lib/pricing-display";
 
 const DISMISS_KEY = "fht-lifetime-popup";
 const DISMISS_DAYS = 7;
@@ -19,14 +20,14 @@ const DISMISS_DAYS = 7;
  */
 export function LifetimePopup({
   href,
-  priceUSD,
-  regularUSD,
+  pricePHP,
+  regularPHP,
   remaining,
   available,
 }: {
   href: string;
-  priceUSD: number;
-  regularUSD: number;
+  pricePHP: number;
+  regularPHP: number;
   remaining: number | null;
   available: boolean;
 }) {
@@ -145,10 +146,10 @@ export function LifetimePopup({
           id="lifetime-popup-title"
           className="mt-3 font-display text-2xl leading-tight"
         >
-          Premium Lifetime for ${priceUSD}
+          Premium Lifetime for {formatPHP(pricePHP, 0)}
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          One payment, never billed again — versus <span className="line-through">${regularUSD}</span> regular.
+          One payment, never billed again — versus <span className="line-through">{formatPHP(regularPHP, 0)}</span> regular.
           {remaining != null && ` Only ${remaining} of the first 100 spots left.`}
         </p>
 

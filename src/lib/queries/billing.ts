@@ -25,18 +25,16 @@ export async function getSubscription(): Promise<Subscription | null> {
 }
 
 /**
- * Whether the signed-in user has a real, still-running PAID period — the only
- * state in which cancelling or resuming renewal means anything. Complimentary
- * and lifetime grants don't renew, and super admins have no subscription row.
- *
- * Lives here rather than in a page body so the time comparison isn't performed
- * during render (react-hooks/purity).
+ * Whether cancelling or resuming renewal means anything for the signed-in
+ * user. Today it never does: every paid period is a one-off PayMongo checkout
+ * with no stored payment method, so nothing renews and there is nothing to
+ * switch off. (The previous gate required a Xendit recurring-plan id that the
+ * webhook never wrote, so it was already always false — this says so plainly
+ * instead of depending on a provider column.) Return true here only once a
+ * provider-side recurring plan actually exists.
  */
 export async function canManageRenewal(): Promise<boolean> {
-  const sub = await getSubscription();
-  if (!sub || sub.access_type !== "paid" || !sub.xendit_plan_id) return false;
-  const end = sub.current_period_end;
-  return !!end && new Date(end).getTime() > Date.now();
+  return false;
 }
 
 /**

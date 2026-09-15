@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { InfinityIcon, SparklesIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatPHP, usdToPhpEstimate } from "@/lib/pricing-display";
+import { formatPHP } from "@/lib/pricing-display";
 
 /**
  * The Founding Lifetime pricing card. Every figure comes from the live offer
@@ -12,16 +12,16 @@ import { formatPHP, usdToPhpEstimate } from "@/lib/pricing-display";
 export function LifetimeCard({
   available,
   remaining,
-  priceUSD,
-  regularUSD,
+  pricePHP,
+  regularPHP,
   ctaHref,
   className,
 }: {
   available: boolean;
   /** null when there is no count cap. */
   remaining: number | null;
-  priceUSD: number;
-  regularUSD: number;
+  pricePHP: number;
+  regularPHP: number;
   ctaHref: string;
   className?: string;
 }) {
@@ -47,17 +47,14 @@ export function LifetimeCard({
         {available ? (
           <>
             <p className="font-display text-4xl">
-              ${priceUSD}
+              {formatPHP(pricePHP, 0)}
               <span className="text-base font-normal text-muted-foreground">
                 {" "}
                 one-time
               </span>
             </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              ≈ {formatPHP(usdToPhpEstimate(priceUSD), 0)}
-            </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              <span className="line-through">${regularUSD}</span> regular price
+              <span className="line-through">{formatPHP(regularPHP, 0)}</span> regular price
             </p>
             {remaining != null && (
               <p className="mt-1 text-xs font-medium text-sage">
@@ -68,14 +65,11 @@ export function LifetimeCard({
         ) : (
           <>
             <p className="font-display text-4xl">
-              ${regularUSD}
+              {formatPHP(regularPHP, 0)}
               <span className="text-base font-normal text-muted-foreground">
                 {" "}
                 one-time
               </span>
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              ≈ {formatPHP(usdToPhpEstimate(regularUSD), 0)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               The founding launch price has closed.
@@ -101,7 +95,7 @@ export function LifetimeCard({
         <Link href="/terms" className="underline underline-offset-4">
           Terms
         </Link>
-        . Charged in USD.
+        . Charged in Philippine pesos.
       </p>
     </div>
   );

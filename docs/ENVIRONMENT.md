@@ -11,8 +11,8 @@ Required for production:
 | `NEXT_PUBLIC_SITE_URL` | Browser + server | Canonical site URL for OAuth redirects, sitemap, and checkout returns. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server only | Admin/webhook writes that must bypass RLS. Production preflight fails when this is missing. |
 | `SUPER_ADMIN_EMAILS` | Server only | Comma-separated confirmed emails that may become super admins. Leave empty unless needed. |
-| `XENDIT_SECRET_KEY` | Server only | Creates invoices/subscription payments. |
-| `XENDIT_WEBHOOK_TOKEN` | Server only | Verifies payment callbacks. |
+| `PAYMONGO_SECRET_KEY` | Server only | Creates PayMongo checkout sessions. Use `sk_test_` until the account is activated; preflight warns on a test key. |
+| `PAYMONGO_WEBHOOK_SECRET` | Server only | Verifies the `Paymongo-Signature` header on `/api/webhooks/paymongo`. |
 | `NEXT_PUBLIC_ENABLE_SPEED_INSIGHTS` | Browser | Set to `true` when the Vercel plan/project supports Speed Insights. |
 
 Run this before launch or deployment promotion:

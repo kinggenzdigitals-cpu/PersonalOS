@@ -9,9 +9,9 @@
  * the checkout action re-reads it SERVER-SIDE so a tampered client can never
  * change what is charged.
  *
- * Prices are USD (§13): this is a software product sold internationally. USD is
- * the base of record here; what a provider can actually CHARGE in is a merchant
- * setting the checkout adapter verifies, never something this config assumes.
+ * Prices are Philippine pesos. Checkout runs through PayMongo, whose Checkout
+ * Sessions settle in PHP only. The founding price is about 3.5x a Premium year
+ * (₱1,399), a common ratio for lifetime deals.
  *
  * Admin-editable persistence (an offers table) is a later phase; until then
  * this is the canonical default and the only place any Lifetime number lives.
@@ -23,9 +23,9 @@ export const LIFETIME_OFFER = {
   active: true,
   /** Lifetime grants Premium-tier access with no recurring charge. */
   plan: "premium" as const,
-  currency: "USD" as const,
-  launchPriceUSD: 99,
-  regularPriceUSD: 149,
+  currency: "PHP" as const,
+  launchPricePHP: 4999,
+  regularPricePHP: 6999,
   /**
    * Real scarcity: the first N buyers get the launch price. `null` disables the
    * count limit. The number that shows on the page is derived from ACTUAL paid
@@ -48,8 +48,8 @@ export type LifetimeOfferState = {
   /** Slots left at the launch price; null when there is no count limit. */
   remaining: number | null;
   /** What a buyer pays now: launch price while available, else regular. */
-  priceUSD: number;
-  regularUSD: number;
+  pricePHP: number;
+  regularPHP: number;
 };
 
 /**
@@ -63,8 +63,8 @@ export function lifetimeOfferState(input: {
   sold: number;
   endsAt: string | null;
   nowMs: number;
-  launchPriceUSD: number;
-  regularPriceUSD: number;
+  launchPricePHP: number;
+  regularPricePHP: number;
 }): LifetimeOfferState {
   const sold = Math.max(0, Math.floor(input.sold));
 
@@ -87,7 +87,7 @@ export function lifetimeOfferState(input: {
     soldOut,
     expired,
     remaining,
-    priceUSD: available ? input.launchPriceUSD : input.regularPriceUSD,
-    regularUSD: input.regularPriceUSD,
+    pricePHP: available ? input.launchPricePHP : input.regularPricePHP,
+    regularPHP: input.regularPricePHP,
   };
 }

@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { registerCurrentDevice } from "@/lib/devices";
+import { safeNextPath } from "@/lib/safe-next";
 
 export async function GET(request: NextRequest) {
-  const next = request.nextUrl.searchParams.get("next");
-  const nextPath = next && next.startsWith("/") && !next.startsWith("//") ? next : "/home";
+  const nextPath = safeNextPath(request.nextUrl.searchParams.get("next"));
   await registerCurrentDevice(nextPath);
   return NextResponse.redirect(new URL(nextPath, request.url));
 }

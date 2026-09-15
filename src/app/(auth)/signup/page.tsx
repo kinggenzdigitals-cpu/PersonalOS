@@ -35,7 +35,7 @@ export default async function SignupPage({
               agree to keep your data yours. We never share it." — which was
               false: running the service means sharing data with Supabase
               (database and auth, hosted in Singapore), Vercel (hosting) and,
-              if you subscribe, Xendit (payments). It also linked neither
+              if you subscribe, PayMongo (payments). It also linked neither
               document. Terms are AGREED to; the privacy policy is a NOTICE you
               are told about, not something to consent to — hence the different
               verbs. */}

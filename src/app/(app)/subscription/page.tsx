@@ -73,8 +73,8 @@ export default async function SubscriptionPage() {
       <LifetimeUpsell
         eligible={lifetimeEligible}
         remaining={ltOffer.remaining}
-        priceUSD={ltOffer.priceUSD}
-        regularUSD={ltOffer.regularUSD}
+        pricePHP={ltOffer.pricePHP}
+        regularPHP={ltOffer.regularPHP}
       />
 
       <PlanCards

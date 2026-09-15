@@ -190,7 +190,7 @@ export function PlanCard({
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          Pay with GCash, Maya, card, or bank transfer via Xendit.
+          Pay with GCash, Maya, GrabPay, ShopeePay, or card via PayMongo.
         </p>
 
         <Button className="w-full" onClick={checkout} disabled={busy}>

@@ -22,8 +22,8 @@ const required = [
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "NEXT_PUBLIC_SITE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
-  "XENDIT_SECRET_KEY",
-  "XENDIT_WEBHOOK_TOKEN",
+  "PAYMONGO_SECRET_KEY",
+  "PAYMONGO_WEBHOOK_SECRET",
 ];
 
 function looksLikePlaceholder(value) {
@@ -51,6 +51,10 @@ if (missing.length > 0) {
   console.error("Launch preflight failed. Configure these production variables:");
   for (const key of missing) console.error(`- ${key}`);
   process.exit(1);
+}
+
+if ((process.env.PAYMONGO_SECRET_KEY || "").startsWith("sk_test_")) {
+  console.warn("Warning: PAYMONGO_SECRET_KEY is a TEST key (sk_test_). Real payments need an sk_live_ key.");
 }
 
 console.log("Launch preflight passed: required production variables are present.");

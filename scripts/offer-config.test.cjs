@@ -24,18 +24,18 @@ const BASE = {
   sold: 0,
   endsAt: null,
   nowMs: 1_780_000_000_000, // ~2026-05, so 2020 is past and 2999 is future
-  launchPriceUSD: 99,
-  regularPriceUSD: 149,
+  launchPricePHP: 4999,
+  regularPricePHP: 6999,
 };
 const S = (over) => lifetimeOfferState({ ...BASE, ...over });
 
 // --- Availability ----------------------------------------------------------
 eq("fresh offer is available at launch price", S().available, true);
-eq("fresh offer price is the launch price", S().priceUSD, 99);
-eq("regular is always exposed", S().regularUSD, 149);
+eq("fresh offer price is the launch price", S().pricePHP, 4999);
+eq("regular is always exposed", S().regularPHP, 6999);
 
 eq("inactive offer is unavailable", S({ active: false }).available, false);
-eq("inactive offer charges regular", S({ active: false }).priceUSD, 149);
+eq("inactive offer charges regular", S({ active: false }).pricePHP, 6999);
 
 // --- Count-based scarcity --------------------------------------------------
 eq("partial sales leave remaining", S({ sold: 73 }).remaining, 27);
@@ -44,7 +44,7 @@ eq("exactly at cap is sold out", S({ sold: 100 }).soldOut, true);
 eq("sold out is not available", S({ sold: 100 }).available, false);
 eq("sold out remaining clamps to 0", S({ sold: 100 }).remaining, 0);
 eq("oversold clamps to 0, not negative", S({ sold: 130 }).remaining, 0);
-eq("sold out charges regular price", S({ sold: 100 }).priceUSD, 149);
+eq("sold out charges regular price", S({ sold: 100 }).pricePHP, 6999);
 eq("no cap means null remaining", S({ maxRedemptions: null }).remaining, null);
 eq("no cap is never sold out", S({ maxRedemptions: null, sold: 9999 }).soldOut, false);
 eq("negative sold treated as 0", S({ sold: -5 }).remaining, 100);

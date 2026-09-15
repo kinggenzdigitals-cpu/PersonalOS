@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test:csv": "tsc src/lib/csv.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/csv-parser.test.cjs",
     "test:reconcile": "tsc src/lib/reconcile.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/reconcile.test.cjs",
-    "test": "npm run test:csv && npm run test:reconcile && npm run test:budget && npm run test:auth && npm run test:budget-report && npm run test:providers && npm run test:plans && npm run test:initials && npm run test:category-name && npm run test:offer-config && npm run test:webhook && npm run test:rls && npm run test:auth-oauth",
+    "test": "npm run test:csv && npm run test:reconcile && npm run test:budget && npm run test:auth && npm run test:budget-report && npm run test:providers && npm run test:plans && npm run test:initials && npm run test:category-name && npm run test:offer-config && npm run test:webhook && npm run test:rls && npm run test:auth-oauth && npm run test:safe-next && npm run test:checkout-eligibility && npm run test:paymongo-signature && npm run test:billing-reference && npm run test:paymongo-event",
     "test:budget": "tsc src/lib/budget-advice.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/budget-advice.test.cjs",
     "test:budget-report": "tsc src/lib/budget-report.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/budget-report.test.cjs",
     "test:auth": "tsc src/lib/auth-errors.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/auth-errors.test.cjs",
@@ -20,12 +20,17 @@
     "test:category-name": "tsc src/lib/category-name.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/category-name.test.cjs",
     "test:offer-config": "tsc src/lib/offer-config.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/offer-config.test.cjs",
     "launch:preflight": "node scripts/launch-preflight.cjs",
-    "test:webhook": "node scripts/webhook-contract.test.cjs",
+    "test:webhook": "node scripts/paymongo-webhook-contract.test.cjs",
     "test:rls": "node scripts/rls-contract.test.cjs",
     "test:e2e": "playwright test",
     "test:a11y": "playwright test tests/e2e/accessibility.spec.ts",
     "auth:audit": "node scripts/auth-identity-audit.cjs",
-    "test:auth-oauth": "node scripts/auth-oauth-contract.test.cjs"
+    "test:auth-oauth": "node scripts/auth-oauth-contract.test.cjs",
+    "test:safe-next": "tsc src/lib/safe-next.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/safe-next.test.cjs",
+    "test:checkout-eligibility": "tsc src/lib/checkout-eligibility.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/checkout-eligibility.test.cjs",
+    "test:paymongo-signature": "tsc src/lib/paymongo-signature.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/paymongo-signature.test.cjs",
+    "test:billing-reference": "tsc src/lib/billing-reference.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/billing-reference.test.cjs",
+    "test:paymongo-event": "tsc src/lib/paymongo-event.ts --outDir .tmp-test --module commonjs --target es2020 --skipLibCheck && node scripts/paymongo-event.test.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

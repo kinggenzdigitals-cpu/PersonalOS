@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowRightIcon, SparklesIcon } from "lucide-react";
+import { formatPHP } from "@/lib/pricing-display";
 
 /**
  * Sticky mobile CTA (§17). Appears once the visitor has scrolled past the hero
@@ -13,12 +14,12 @@ import { ArrowRightIcon, SparklesIcon } from "lucide-react";
 export function StickyCta({
   freeHref,
   lifetimeHref,
-  lifetimePriceUSD,
+  lifetimePricePHP,
   offerAvailable,
 }: {
   freeHref: string;
   lifetimeHref: string;
-  lifetimePriceUSD: number;
+  lifetimePricePHP: number;
   offerAvailable: boolean;
 }) {
   const [shown, setShown] = React.useState(false);
@@ -48,7 +49,7 @@ export function StickyCta({
             href={lifetimeHref}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent-brand px-4 py-2.5 text-sm font-medium text-[color:var(--brand-foreground)] shadow-soft"
           >
-            <SparklesIcon className="size-4" /> Lifetime ${lifetimePriceUSD}
+            <SparklesIcon className="size-4" /> Lifetime {formatPHP(lifetimePricePHP, 0)}
           </Link>
         </div>
       ) : (

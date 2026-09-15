@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { safeNextPath } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
 import { recordLogin } from "@/app/auth/actions";
 
@@ -41,12 +42,8 @@ export async function GET(request: NextRequest) {
   const errorDescription = searchParams.get("error_description");
   const errorCode = searchParams.get("error_code");
 
-  // Only allow safe, internal relative destinations.
-  const rawNext = searchParams.get("next");
-  const next =
-    rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//")
-      ? rawNext
-      : "/home";
+  // Only allow safe, internal relative destinations (see lib/safe-next).
+  const next = safeNextPath(searchParams.get("next"));
 
   // A recovery link that fails should land back on "forgot password" with a
   // reason, not on a dead-end error page — the whole point is to get another

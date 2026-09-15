@@ -7,7 +7,7 @@ import { supabaseUrl } from "./env";
 
 /**
  * Service-role Supabase client. Server-only — bypasses RLS. Use ONLY in trusted
- * server contexts (e.g. the Xendit webhook) to write rows on the user's behalf.
+ * server contexts (e.g. the PayMongo webhook) to write rows on the user's behalf.
  * Never import this into client code.
  */
 export function createAdminClient() {

@@ -13,8 +13,8 @@ jobs:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
       NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
       SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
-      XENDIT_SECRET_KEY: test-xendit-secret
-      XENDIT_WEBHOOK_TOKEN: test-webhook-token
+      PAYMONGO_SECRET_KEY: test-paymongo-secret
+      PAYMONGO_WEBHOOK_SECRET: test-paymongo-webhook-secret
       ALLOW_PLACEHOLDER_ENV: "1"
     steps:
       - uses: actions/checkout@v4

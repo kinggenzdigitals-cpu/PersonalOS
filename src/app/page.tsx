@@ -14,6 +14,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { getSiteURL } from "@/lib/site";
 import { resolveLifetimeOffer } from "@/lib/offer";
+import { formatPHP } from "@/lib/pricing-display";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { PricingCards } from "@/components/marketing/pricing-cards";
@@ -85,11 +86,11 @@ export default async function LandingPage({
     operatingSystem: "Web, iOS, Android (PWA)",
     url: getSiteURL(),
     offers: [
-      { "@type": "Offer", price: "0", priceCurrency: "USD", name: "Free" },
+      { "@type": "Offer", price: "0", priceCurrency: "PHP", name: "Free" },
       {
         "@type": "Offer",
-        price: String(offer.priceUSD),
-        priceCurrency: "USD",
+        price: String(offer.pricePHP),
+        priceCurrency: "PHP",
         name: "Premium Lifetime",
       },
     ],
@@ -371,8 +372,8 @@ export default async function LandingPage({
             <LifetimeCard
               available={offer.available}
               remaining={offer.remaining}
-              priceUSD={offer.priceUSD}
-              regularUSD={offer.regularUSD}
+              pricePHP={offer.pricePHP}
+              regularPHP={offer.regularPHP}
               ctaHref={lifetimeHref}
             />
           </div>
@@ -438,8 +439,8 @@ export default async function LandingPage({
                   href={lifetimeHref}
                   className="inline-flex items-center gap-2 rounded-full border border-accent-brand px-7 py-3.5 text-base font-medium text-sage transition-colors hover:bg-accent-brand/10"
                 >
-                  <SparklesIcon className="size-4" /> Get Lifetime for $
-                  {offer.priceUSD}
+                  <SparklesIcon className="size-4" /> Get Lifetime for{" "}
+                  {formatPHP(offer.pricePHP, 0)}
                 </Link>
               )}
             </div>
@@ -452,15 +453,15 @@ export default async function LandingPage({
       {/* Conversion aids — only render for a genuinely live offer */}
       <LifetimePopup
         href={lifetimeHref}
-        priceUSD={offer.priceUSD}
-        regularUSD={offer.regularUSD}
+        pricePHP={offer.pricePHP}
+        regularPHP={offer.regularPHP}
         remaining={offer.remaining}
         available={offer.available}
       />
       <StickyCta
         freeHref={freeHref}
         lifetimeHref={lifetimeHref}
-        lifetimePriceUSD={offer.priceUSD}
+        lifetimePricePHP={offer.pricePHP}
         offerAvailable={offer.available}
       />
     </div>

@@ -11,6 +11,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { createClient } from "@/lib/supabase/client";
 import { getSiteURL } from "@/lib/site";
 import { friendlyAuthError } from "@/lib/auth-errors";
+import { safeNextPath } from "@/lib/safe-next";
 import { recordLogin } from "@/app/auth/actions";
 import { toast } from "sonner";
 
@@ -64,7 +65,7 @@ export function AuthForm({ mode, next }: { mode: Mode; next?: string }) {
           setLoading(false);
           return;
         }
-        router.replace(next ?? "/home");
+        router.replace(safeNextPath(next));
         router.refresh();
         return;
       }
@@ -79,7 +80,7 @@ export function AuthForm({ mode, next }: { mode: Mode; next?: string }) {
         return;
       }
       await recordLogin();
-      router.replace(next ?? "/home");
+      router.replace(safeNextPath(next));
       router.refresh();
     } catch {
       // Network / paused-project failure that threw instead of returning.

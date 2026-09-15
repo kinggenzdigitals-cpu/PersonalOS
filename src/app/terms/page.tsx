@@ -63,7 +63,7 @@ export default function TermsPage() {
           billed again. &ldquo;Lifetime&rdquo; means the lifetime of the
           product, not your personal lifetime, and does not include separately
           sold future products or third-party services that may carry their own
-          costs. Lifetime is charged in US dollars; the exact amount and
+          costs. Lifetime is charged in Philippine pesos; the exact amount and
           currency are shown before you pay.
         </p>
         <p>

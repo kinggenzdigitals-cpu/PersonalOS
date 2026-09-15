@@ -13,8 +13,8 @@ jobs:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      XENDIT_SECRET_KEY: ${{ secrets.XENDIT_SECRET_KEY }}
-      XENDIT_WEBHOOK_TOKEN: ${{ secrets.XENDIT_WEBHOOK_TOKEN }}
+      PAYMONGO_SECRET_KEY: ${{ secrets.PAYMONGO_SECRET_KEY }}
+      PAYMONGO_WEBHOOK_SECRET: ${{ secrets.PAYMONGO_WEBHOOK_SECRET }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

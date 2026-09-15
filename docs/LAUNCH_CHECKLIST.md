@@ -19,9 +19,10 @@
 
 ## Billing
 
-- Confirm Xendit API credentials and webhook token are set in production.
-- Confirm Xendit sends callbacks to `/api/xendit/webhook` on the final domain.
-- Test successful payment, canceled checkout, duplicate webhook, invalid webhook token, delayed webhook, and missing-service-role behavior.
+- Confirm `PAYMONGO_SECRET_KEY` (an `sk_live_` key) and `PAYMONGO_WEBHOOK_SECRET` are set in production (Vercel) AND as GitHub repository secrets — the Production preflight workflow reads them from there.
+- In the PayMongo dashboard, register `https://<final-domain>/api/webhooks/paymongo` for the `checkout_session.payment.paid` event, and use that endpoint's secret as `PAYMONGO_WEBHOOK_SECRET`.
+- In PayMongo test mode, test: successful card and GCash payment, cancelled checkout, duplicate webhook, invalid signature, amount mismatch, delayed webhook, and missing-service-role behavior (must answer 503 so PayMongo retries).
+- Check `billing_events` for any `NEEDS_REFUND` or `AMOUNT_MISMATCH` rows: those are payments received but deliberately not applied, and each one needs a manual refund or review.
 - Confirm no normal subscription auto-charge happens after promo/free-invite access unless the user explicitly consented to renewal.
 
 ## Product readiness
