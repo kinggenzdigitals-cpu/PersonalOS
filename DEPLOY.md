@@ -62,6 +62,7 @@ GitHub CLI (`gh auth login`).
    | `0028_audit_trail_and_data_rights.sql` | Admin audit trail survives account deletion; owners can delete their own feedback |
    | `0029_promo_code_integrity.sql` | Atomic promo redemption cap, redemptions survive deletion, redeem-attempt throttle |
    | `0030_feedback_write_bounds.sql` | Admins may only change feedback triage columns; https-only screenshot links |
+   | `0031_trigger_function_grants.sql` | Trigger functions are not exposed as REST RPC endpoints |
 
    Each should finish with "Success. No rows returned." On an existing
    project, run only the files it doesn't have yet, still in order.
