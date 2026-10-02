@@ -24,23 +24,44 @@ system. Built to the spec in [`spec.md`](./spec.md).
    npm install
    ```
 
-2. **Create a Supabase project** and apply the migrations in
-   [`supabase/migrations`](./supabase/migrations) — in order:
-   `0001_init.sql` (schema, view, triggers, category seed) then
-   `0002_rls.sql` (row-level security). Apply via the Supabase SQL editor,
-   the Supabase CLI (`supabase db push`), or the MCP `apply_migration` tool.
+2. **Create a Supabase project** and apply every file in
+   [`supabase/migrations`](./supabase/migrations), in filename order.
+   [`DEPLOY.md`](./DEPLOY.md) step 2 lists them and says which are safe to
+   re-run. Apply via the Supabase SQL editor, the Supabase CLI
+   (`supabase db push`, fresh projects only), or the MCP `apply_migration`
+   tool.
 
 3. **Enable auth providers** in Supabase: Email and Google OAuth. Set the
    redirect URL to `http://localhost:3000/auth/callback` (and your prod URL).
 
 4. **Configure env**: copy `.env.local.example` → `.env.local` and fill in the
-   Supabase URL + anon/publishable key.
+   Supabase URL + anon/publishable key. Billing, the PayMongo webhook and admin
+   features also need `SUPABASE_SERVICE_ROLE_KEY`, `PAYMONGO_SECRET_KEY` and
+   `PAYMONGO_WEBHOOK_SECRET`; [`docs/ENVIRONMENT.md`](./docs/ENVIRONMENT.md)
+   describes every variable.
 
 5. **Run**:
 
    ```bash
    npm run dev
    ```
+
+## Tests
+
+- `npm test`: unit and contract suites, no browser or database needed. CI
+  runs it on every push and PR with placeholder env, alongside typecheck,
+  lint and build.
+- `npm run test:e2e`: Playwright smoke, accessibility and signed-in
+  user-story specs. It starts `next dev` itself unless `PLAYWRIGHT_BASE_URL`
+  points at a running deployment. Use a test Supabase project in
+  `.env.local`, never production. The signed-in spec also needs `E2E_EMAIL`
+  and `E2E_PASSWORD` for a seeded test user, and skips without them. First
+  run: `npx playwright install chromium`.
+- `npm run test:a11y`: only the axe accessibility spec.
+
+Playwright is not in CI yet, because it hasn't been shown to pass against
+CI's placeholder Supabase env. `scripts/proxy-contract.test.cjs` covers the
+smoke spec's route-protection check inside `npm test`.
 
 ## Architecture notes
 

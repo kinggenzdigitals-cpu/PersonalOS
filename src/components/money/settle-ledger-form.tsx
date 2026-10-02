@@ -84,9 +84,9 @@ export function SettleLedgerForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label>{receivable ? "Deposit to" : "Pay from"}</Label>
+        <Label htmlFor="settle-account">{receivable ? "Deposit to" : "Pay from"}</Label>
         <Select value={accountId} onValueChange={setAccountId}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger id="settle-account" className="w-full">
             <SelectValue placeholder="Account" />
           </SelectTrigger>
           <SelectContent>

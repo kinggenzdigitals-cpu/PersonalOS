@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { requireActiveUser } from "@/lib/auth";
 import { PLANS } from "@/lib/plans";
 import { getActivePlan } from "@/lib/queries/billing";
-import { isSchemaMissing, migrationRequired } from "@/lib/supabase/errors";
+import { friendlyDbError, isSchemaMissing, migrationRequired } from "@/lib/supabase/errors";
 import type { Transaction } from "@/lib/supabase/types";
 
 export type ImportRow = {
@@ -47,11 +47,9 @@ export async function importTransactions(input: {
   filename: string | null;
   rows: ImportRow[];
 }): Promise<ImportResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "You're not signed in." };
+  const active = await requireActiveUser();
+  if (!active) return { ok: false, error: "You're not signed in." };
+  const { supabase, user } = active;
 
   if (!input.accountId) return { ok: false, error: "Choose an account." };
   if (input.rows.length === 0) {
@@ -140,7 +138,7 @@ export async function importTransactions(input: {
       if (isSchemaMissing(error)) {
         return { ok: false, error: migrationRequired("CSV import", "0020") };
       }
-      return { ok: false, error: error.message };
+      return { ok: false, error: friendlyDbError(error, "Couldn't check for rows already imported.") };
     }
     for (const row of data ?? []) {
       if (row.import_fingerprint) existing.add(row.import_fingerprint);
@@ -178,7 +176,7 @@ export async function importTransactions(input: {
     }
     return {
       ok: false,
-      error: batchError?.message ?? "Couldn't start the import.",
+      error: friendlyDbError(batchError, "Couldn't start the import."),
     };
   }
 
@@ -208,7 +206,7 @@ export async function importTransactions(input: {
           "Some of those rows were imported by another upload at the same time. Try again.",
       };
     }
-    return { ok: false, error: insertError.message };
+    return { ok: false, error: friendlyDbError(insertError, "Couldn't import those rows.") };
   }
 
   revalidatePath("/", "layout");

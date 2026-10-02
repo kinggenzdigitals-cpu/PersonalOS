@@ -187,10 +187,13 @@ function Field({
   onChange: (v: string) => void;
   rows?: number;
 }) {
+  // Five of these render in one form, so each needs its own id.
+  const id = React.useId();
   return (
     <div className="space-y-1">
-      <Label className="text-xs">{label}</Label>
+      <Label htmlFor={id} className="text-xs">{label}</Label>
       <Textarea
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={rows}

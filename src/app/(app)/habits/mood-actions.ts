@@ -1,19 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { requireActiveUser } from "@/lib/auth";
 import { localDateKey } from "@/lib/date";
+import { friendlyDbError } from "@/lib/supabase/errors";
 import type { MoodEntry } from "@/lib/supabase/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 /** Today's mood entry (in the user's timezone), or null. */
 export async function getTodayMoodAction(): Promise<MoodEntry | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const active = await requireActiveUser();
+  if (!active) return null;
+  const { supabase, user } = active;
   const { data: profile } = await supabase
     .from("profiles")
     .select("timezone")
@@ -42,11 +41,9 @@ export type MoodInput = {
 export async function upsertMoodEntry(
   input: MoodInput,
 ): Promise<ActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "You're not signed in." };
+  const active = await requireActiveUser();
+  if (!active) return { ok: false, error: "You're not signed in." };
+  const { supabase, user } = active;
   if (!(input.mood >= 1 && input.mood <= 5)) {
     return { ok: false, error: "Pick how you're feeling." };
   }
@@ -66,7 +63,7 @@ export async function upsertMoodEntry(
     },
     { onConflict: "user_id,entry_date" },
   );
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save your mood entry.") };
   revalidatePath("/", "layout");
   return { ok: true };
 }

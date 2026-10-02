@@ -100,6 +100,7 @@ export function BillForm({
 
   async function remove() {
     if (!initial) return;
+    if (!window.confirm("Delete this bill? This can't be undone.")) return;
     setSaving(true);
     const result = await deleteBill(initial.id);
     if (!result.ok) {
@@ -178,12 +179,12 @@ export function BillForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label>Frequency</Label>
+          <Label htmlFor="bill-frequency">Frequency</Label>
           <Select
             value={frequency}
             onValueChange={(v) => setFrequency(v as BillFrequency)}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="bill-frequency" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -209,9 +210,9 @@ export function BillForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Category</Label>
+        <Label htmlFor="bill-category">Category</Label>
         <Select value={categoryId} onValueChange={setCategoryId}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger id="bill-category" className="w-full">
             <SelectValue placeholder="Optional" />
           </SelectTrigger>
           <SelectContent>
@@ -226,9 +227,9 @@ export function BillForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Default payment account</Label>
+        <Label htmlFor="bill-account">Default payment account</Label>
         <Select value={accountId} onValueChange={setAccountId}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger id="bill-account" className="w-full">
             <SelectValue placeholder="Optional" />
           </SelectTrigger>
           <SelectContent>
@@ -261,8 +262,10 @@ export function BillForm({
             className="text-error hover:text-error"
             onClick={remove}
             disabled={saving}
+            aria-label="Delete bill"
+            title="Delete bill"
           >
-            <Trash2Icon className="size-4" />
+            <Trash2Icon className="size-4" aria-hidden />
           </Button>
         )}
         <Button className="flex-1" onClick={save} disabled={saving}>

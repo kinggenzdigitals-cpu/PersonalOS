@@ -1,5 +1,6 @@
 "use server";
 
+import { forgetRevokedDeviceCookie } from "@/lib/devices";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -7,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
  * successful sign-in (password and OAuth). Deliberately minimal: we record the
  * time only — no IP, no device fingerprint — so there is nothing sensitive to
  * leak, and it is best-effort (a failure must never block signing in).
+ * It also drops a removed device's cookie, so this sign-in counts as a new device.
  */
 export async function recordLogin(): Promise<void> {
   try {
@@ -19,6 +21,7 @@ export async function recordLogin(): Promise<void> {
       .from("profiles")
       .update({ last_login_at: new Date().toISOString() })
       .eq("user_id", user.id);
+    await forgetRevokedDeviceCookie(user.id);
   } catch {
     // Never surface a login-history failure to the user.
   }

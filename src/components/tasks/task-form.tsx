@@ -88,6 +88,7 @@ export function TaskForm({
 
   async function remove() {
     if (!initial) return;
+    if (!window.confirm("Delete this task? This can't be undone.")) return;
     setSaving(true);
     const result = await deleteTask(initial.id);
     if (!result.ok) {
@@ -114,24 +115,35 @@ export function TaskForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Due</Label>
-        <div className="flex flex-wrap items-center gap-2">
-          {chips.map((c) => (
-            <button
-              key={c.label}
-              type="button"
-              onClick={() => setDue(c.value)}
-              className={cn(
-                "rounded-full border px-3 py-1.5 text-sm transition-colors",
-                (due === c.value || (c.value === null && due === null)) &&
-                  !usingPickDate
-                  ? "border-brand bg-brand/10 text-brand"
-                  : "border-border text-muted-foreground hover:border-brand/40",
-              )}
-            >
-              {c.label}
-            </button>
-          ))}
+        <Label id="task-due-label" asChild>
+          <span>Due</span>
+        </Label>
+        <div
+          role="group"
+          aria-labelledby="task-due-label"
+          className="flex flex-wrap items-center gap-2"
+        >
+          {chips.map((c) => {
+            const active =
+              (due === c.value || (c.value === null && due === null)) &&
+              !usingPickDate;
+            return (
+              <button
+                key={c.label}
+                type="button"
+                onClick={() => setDue(c.value)}
+                aria-pressed={active}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 text-sm transition-colors",
+                  active
+                    ? "border-brand bg-brand/10 text-brand"
+                    : "border-border text-muted-foreground hover:border-brand/40",
+                )}
+              >
+                {c.label}
+              </button>
+            );
+          })}
           <Input
             type="date"
             value={usingPickDate && due ? due : ""}
@@ -203,8 +215,10 @@ export function TaskForm({
             className="text-error hover:text-error"
             onClick={remove}
             disabled={saving}
+            aria-label="Delete task"
+            title="Delete task"
           >
-            <Trash2Icon className="size-4" />
+            <Trash2Icon className="size-4" aria-hidden />
           </Button>
         )}
         <Button className="flex-1" onClick={save} disabled={saving}>

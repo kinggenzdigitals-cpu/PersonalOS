@@ -4,12 +4,22 @@ import { createClient } from "@/lib/supabase/server";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { PricingCards } from "@/components/marketing/pricing-cards";
+import { BASE_OPEN_GRAPH, SHARED_OG_IMAGE } from "@/lib/seo";
+
+const DESCRIPTION =
+  "Start free, upgrade to Pro when you're ready. Simple, honest pricing for Finance & Habit Tracker.";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description:
-    "Start free, upgrade to Pro when you're ready. Simple, honest pricing for Finance & Habit Tracker.",
-  openGraph: { title: "Finance & Habit Tracker — Pricing", type: "website" },
+  description: DESCRIPTION,
+  alternates: { canonical: "/pricing" },
+  openGraph: {
+    ...BASE_OPEN_GRAPH,
+    title: "Finance & Habit Tracker — Pricing",
+    description: DESCRIPTION,
+    url: "/pricing",
+    images: [SHARED_OG_IMAGE],
+  },
 };
 
 const FAQS = [
@@ -18,12 +28,14 @@ const FAQS = [
     a: "Yes — the Free plan is genuinely useful and never expires. Upgrade to Pro only when you need more.",
   },
   {
-    q: "Can I cancel anytime?",
-    a: "Yes. Cancel whenever you like and you'll keep Pro until the end of your billing period.",
+    q: "Do I need to cancel?",
+    a: "No. Paid plans are prepaid — no card is stored and nothing renews automatically. You keep your plan until the period you paid for ends, then move to Free unless you renew.",
   },
   {
+    // Matches plan-guard: caps are checked only when adding, but net worth
+    // and CSV import/export are refused outright on Free, edits included.
     q: "What happens to my data if I downgrade?",
-    a: "Your data is never deleted, and everything you already created stays fully editable. While you are over a Free limit you simply cannot add new items of that type until you remove some or upgrade again.",
+    a: "Your data is never deleted. Accounts, transactions, budgets, goals, bills and habits you already created stay editable; while you are over a Free limit you can't add new ones of that type until you remove some or upgrade again. Paid-only features lock on Free: net worth tracking, CSV import and export, and older report history. Your assets and liabilities are kept and come back when you upgrade.",
   },
 ];
 
@@ -49,9 +61,14 @@ export default async function PricingPage() {
           </p>
         </div>
 
-        <div className="mt-12">
+        {/* PricingCards titles each plan with an h3 (the landing page puts it
+            under a visible h2), so this page needs an h2 of its own here. */}
+        <section aria-labelledby="plans-heading" className="mt-12">
+          <h2 id="plans-heading" className="sr-only">
+            Plans
+          </h2>
           <PricingCards />
-        </div>
+        </section>
 
         <section className="mx-auto mt-20 max-w-3xl">
           <h2 className="text-center font-display text-2xl tracking-tight">

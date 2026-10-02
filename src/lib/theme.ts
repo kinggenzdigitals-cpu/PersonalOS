@@ -37,6 +37,11 @@ export const DEFAULT_THEME: ThemeConfig = {
 
 export type ThemePreset = { name: string; colors: Record<ThemeRole, string> };
 
+/**
+ * Every preset color already clears 4.5:1 as text on the card, so
+ * ensureReadableOn() leaves it alone and the swatches show exactly what gets
+ * applied. The old 900-level primaries (#0f172a…) were near-invisible as text.
+ */
 export const PRESETS: ThemePreset[] = [
   {
     name: "Money (brand)",
@@ -44,23 +49,23 @@ export const PRESETS: ThemePreset[] = [
   },
   {
     name: "Sunset",
-    colors: { primary: "#7c2d12", secondary: "#ea580c", accent: "#f59e0b", tab: "#ea580c" },
+    colors: { primary: "#fb923c", secondary: "#ea580c", accent: "#f59e0b", tab: "#ea580c" },
   },
   {
     name: "Forest",
-    colors: { primary: "#14532d", secondary: "#16a34a", accent: "#84cc16", tab: "#16a34a" },
+    colors: { primary: "#4ade80", secondary: "#16a34a", accent: "#84cc16", tab: "#16a34a" },
   },
   {
     name: "Grape",
-    colors: { primary: "#3b0764", secondary: "#9333ea", accent: "#ec4899", tab: "#9333ea" },
+    colors: { primary: "#c084fc", secondary: "#a78bfa", accent: "#ec4899", tab: "#a78bfa" },
   },
   {
     name: "Midnight",
-    colors: { primary: "#0f172a", secondary: "#3b82f6", accent: "#06b6d4", tab: "#3b82f6" },
+    colors: { primary: "#60a5fa", secondary: "#3b82f6", accent: "#06b6d4", tab: "#3b82f6" },
   },
   {
     name: "Rose",
-    colors: { primary: "#881337", secondary: "#e11d48", accent: "#f472b6", tab: "#e11d48" },
+    colors: { primary: "#fb7185", secondary: "#f43f5e", accent: "#f472b6", tab: "#f43f5e" },
   },
 ];
 
@@ -88,32 +93,89 @@ export function luminance(hex: string): number {
   return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 }
 
-/** Readable text color (near-white or near-ink) for a given background. */
+/**
+ * The surface brand-coloured TEXT sits on: `--card` in globals.css. Both
+ * palettes there are dark, and `--background` is darker still, so a colour
+ * that reads on the card reads on the page too.
+ */
+export const TEXT_SURFACE = "#071a31";
+
+/** Dark ink for light brand fills — globals.css `--brand-foreground`. */
+const INK = "#04122e";
+
+/** WCAG contrast ratio (1–21) between two hex colors. */
+export function contrastRatio(a: string, b: string): number {
+  const x = luminance(a);
+  const y = luminance(b);
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
+/**
+ * Readable text color (white or dark ink) for a given background: whichever
+ * contrasts more. A fixed luminance cut-off (0.42) used to put white on
+ * mid-tone fills such as the default #168cff at 3.4:1.
+ */
 export function readableForeground(hex: string): string {
-  return luminance(hex) > 0.42 ? "#0c1a33" : "#ffffff";
+  return contrastRatio(hex, "#ffffff") >= contrastRatio(hex, INK)
+    ? "#ffffff"
+    : INK;
+}
+
+/**
+ * The color lightened toward white just enough to read as text on the card
+ * (WCAG AA, 4.5:1). Every role color is also a text color (text-brand,
+ * text-tab-active…), so a dark pick like #0f172a rendered links and the active
+ * nav item at ~1:1. Colors that already pass come back untouched.
+ * Mirrored by THEME_INIT_SCRIPT in src/app/layout.tsx.
+ */
+export function ensureReadableOn(
+  hex: string,
+  bg: string = TEXT_SURFACE,
+  min = 4.5,
+): string {
+  if (!(contrastRatio(hex, bg) < min)) return hex;
+  const c = normalizeHex(hex).slice(1);
+  const rgb = [0, 2, 4].map((i) => parseInt(c.slice(i, i + 2), 16));
+  for (let i = 1; i <= 20; i++) {
+    const mixed =
+      "#" +
+      rgb
+        .map((v) =>
+          ("0" + Math.round(v + ((255 - v) * i) / 20).toString(16)).slice(-2),
+        )
+        .join("");
+    if (contrastRatio(mixed, bg) >= min) return mixed;
+  }
+  return "#ffffff";
 }
 
 /** The CSS variable overrides for a set of role colors. */
 export function themeVars(colors: Record<ThemeRole, string>): Record<string, string> {
+  // Each role color doubles as a text color on the card, so it's made
+  // readable there first; fills then take their ink from the adjusted value.
+  const primary = ensureReadableOn(colors.primary);
+  const secondary = ensureReadableOn(colors.secondary);
+  const accent = ensureReadableOn(colors.accent);
+  const tab = ensureReadableOn(colors.tab);
   return {
-    "--primary": colors.primary,
-    "--primary-foreground": readableForeground(colors.primary),
-    "--brand": colors.primary,
-    "--brand-hover": colors.primary,
-    "--sidebar-primary": colors.primary,
-    "--sidebar-primary-foreground": readableForeground(colors.primary),
+    "--primary": primary,
+    "--primary-foreground": readableForeground(primary),
+    "--brand": primary,
+    "--brand-hover": primary,
+    "--sidebar-primary": primary,
+    "--sidebar-primary-foreground": readableForeground(primary),
     // Every filled --brand surface reads its ink from this token. Without it
     // a dark custom primary kept the dark theme's navy foreground and turned
     // 27 buttons into navy-on-navy — the contrast fix had introduced a token
     // the palette engine never learned about.
-    "--brand-foreground": readableForeground(colors.primary),
-    "--ring": colors.secondary,
-    "--sidebar-ring": colors.secondary,
-    "--brand-2": colors.secondary,
-    "--brand-2-hover": colors.secondary,
-    "--accent-brand": colors.accent,
-    "--tab-active": colors.tab,
-    "--tab-active-foreground": readableForeground(colors.tab),
+    "--brand-foreground": readableForeground(primary),
+    "--ring": secondary,
+    "--sidebar-ring": secondary,
+    "--brand-2": secondary,
+    "--brand-2-hover": secondary,
+    "--accent-brand": accent,
+    "--tab-active": tab,
+    "--tab-active-foreground": readableForeground(tab),
   };
 }
 
@@ -145,7 +207,8 @@ export function parseTheme(raw: string | null): ThemeConfig {
 
 /**
  * Shuffle the four role colors (plus saved colors) into readable new
- * combinations. Keeps the darkest color on primary/tab for text contrast.
+ * combinations. Puts colors that already read as text on the card on
+ * primary/tab, the roles that carry the most text (links, the active nav).
  */
 export function shuffleColors(config: ThemeConfig): Record<ThemeRole, string> {
   const pool = Array.from(
@@ -155,10 +218,13 @@ export function shuffleColors(config: ThemeConfig): Record<ThemeRole, string> {
   if (pool.length < 2) return config.colors;
 
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
-  // Prefer a dark-enough color for primary + tab so white text stays readable.
-  const dark = shuffled.filter((c) => luminance(c) < 0.4);
-  const primary = dark[0] ?? shuffled[0];
-  const tab = dark[1] ?? dark[0] ?? shuffled[1] ?? shuffled[0];
+  // Prefer colors that already clear 4.5:1 on the card for primary + tab, so
+  // themeVars() applies them as picked instead of lightening them.
+  const readable = shuffled.filter(
+    (c) => contrastRatio(c, TEXT_SURFACE) >= 4.5,
+  );
+  const primary = readable[0] ?? shuffled[0];
+  const tab = readable[1] ?? readable[0] ?? shuffled[1] ?? shuffled[0];
   const rest = shuffled.filter((c) => c !== primary && c !== tab);
   return {
     primary,

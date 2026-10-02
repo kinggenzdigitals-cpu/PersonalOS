@@ -7,6 +7,8 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { enforceCurrentDevice } from "@/lib/devices";
+import { isAccountLocked } from "@/lib/account-status";
+import { gateRedirect } from "@/lib/auth-gate";
 import type { Profile } from "@/lib/supabase/types";
 
 /**
@@ -19,9 +21,9 @@ import type { Profile } from "@/lib/supabase/types";
  * (node_modules/next/dist/docs/01-app/02-guides/authentication.md → "Creating a
  * Data Access Layer").
  *
- * Only the identity lookup is memoized. The `profiles` row is deliberately left
- * out of the cache so a caller that writes to profiles and re-reads within the
- * same request still sees its own write.
+ * The identity lookup (and the device gate, below) are memoized. The `profiles`
+ * row is deliberately left out of the cache so a caller that writes to profiles
+ * and re-reads within the same request still sees its own write.
  *
  * Exported so lib/entitlement.ts can share the same answer — (app)/layout.tsx
  * awaits the gate and getEntitlement() on every authenticated page render, and
@@ -43,6 +45,43 @@ export async function requireUser() {
   return user;
 }
 
+/**
+ * The device gate, memoized for the render pass the same way getAuthUser is.
+ * The layout and the page each run requireOnboardedAccount(), so without this
+ * one full page load made two identical account_devices reads and two
+ * last_seen_at writes. A redirect it throws is cached and rethrown to the
+ * second caller, so the gate behaves exactly as before.
+ */
+const enforceCurrentDeviceOnce = cache(enforceCurrentDevice);
+
+/**
+ * The signed-in user plus a session client, or null when signed out OR when
+ * the account is suspended / revoked. Never redirects, so a Server Action can
+ * return its own error result instead of writing.
+ *
+ * requireOnboardedAccount() below only runs on page render; without this an
+ * already-open tab of a suspended account could keep calling actions. RLS
+ * enforces the same rule (migration 0027); this is the app-level half, and the
+ * only guard on paths RLS can't see: GoTrue's updateUser and service-role
+ * writes.
+ *
+ * No profile row yet (pre-onboarding) counts as active, as it does in the
+ * database. A failed status read fails closed.
+ */
+export async function requireActiveUser() {
+  const user = await getAuthUser();
+  if (!user) return null;
+
+  const supabase = await createClient();
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("status")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (error || isAccountLocked(profile?.status)) return null;
+  return { supabase, user };
+}
+
 /** A signed-in, onboarded account: the profile row plus its auth identity. */
 export type OnboardedAccount = {
   profile: Profile;
@@ -60,40 +99,29 @@ export type OnboardedAccount = {
  * requireOnboardedProfile() below is a projection of it rather than a second
  * copy, so the two can never drift apart.
  *
- * The redirect ladder is security-relevant and ORDER-DEPENDENT:
- *
- *   1. signed out             → /login
- *   2. no profile row         → /onboarding
- *   3. status !== "active"    → /suspended
- *   4. must_change_password   → /change-password
- *   5. !onboarded             → /onboarding
- *
- * Steps 3 and 4 must stay AHEAD of step 5. A suspended account, or one holding
- * an admin-issued temporary password, is often also mid-onboarding; testing
- * `onboarded` first would send it to /onboarding instead, and finishing that
- * flow would drop it onto a protected page with the lockout never enforced.
- * Any future edit here must preserve every check and their exact order.
+ * The redirect ladder is security-relevant and ORDER-DEPENDENT. It is decided
+ * by gateRedirect() in lib/auth-gate.ts, which documents the order and is
+ * pinned by scripts/auth-gate.test.cjs — change it there, never inline here.
  */
 export async function requireOnboardedAccount(): Promise<OnboardedAccount> {
   const supabase = await createClient();
   const user = await getAuthUser();
 
-  if (!user) redirect("/login");
+  // No user, no profile read: the ladder stops a signed-out request at step 1.
+  const { data: profile } = user
+    ? await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .single()
+    : { data: null };
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
+  const to = gateRedirect(!!user, profile);
+  // `to` is null only for a signed-in user with a profile row; the extra
+  // checks just let TypeScript see that.
+  if (to || !user || !profile) redirect(to ?? "/login");
 
-  if (!profile) redirect("/onboarding");
-  // Suspended / revoked accounts are locked out of protected pages.
-  if (profile.status && profile.status !== "active") redirect("/suspended");
-  // Force a password change after an admin-issued temporary password.
-  if (profile.must_change_password) redirect("/change-password");
-  if (!profile.onboarded) redirect("/onboarding");
-
-  await enforceCurrentDevice(user.id);
+  await enforceCurrentDeviceOnce(user.id);
 
   // The email rides out on the user this gate already fetched. Asking the
   // header for it separately would mean a second supabase.auth.getUser() on

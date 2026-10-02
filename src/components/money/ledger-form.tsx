@@ -67,6 +67,7 @@ export function LedgerForm({
 
   async function remove() {
     if (!initial) return;
+    if (!window.confirm("Delete this entry? This can't be undone.")) return;
     setSaving(true);
     const result = await deleteLedgerEntry(initial.id);
     if (!result.ok) {
@@ -174,8 +175,10 @@ export function LedgerForm({
             className="text-error hover:text-error"
             onClick={remove}
             disabled={saving}
+            aria-label="Delete entry"
+            title="Delete entry"
           >
-            <Trash2Icon className="size-4" />
+            <Trash2Icon className="size-4" aria-hidden />
           </Button>
         )}
         <Button className="flex-1" onClick={save} disabled={saving}>

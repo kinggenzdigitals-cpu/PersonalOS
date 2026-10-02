@@ -6,11 +6,8 @@ import { DownloadIcon, Loader2Icon, SparklesIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReference } from "@/components/providers/reference-provider";
 import { exportTransactionsAction } from "@/app/(app)/money/actions";
+import { csvEscape } from "@/lib/csv-export";
 import { toast } from "sonner";
-
-function csvEscape(value: string) {
-  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
-}
 
 export function ExportButton({ canExport = true }: { canExport?: boolean }) {
   const { accounts, categories } = useReference();

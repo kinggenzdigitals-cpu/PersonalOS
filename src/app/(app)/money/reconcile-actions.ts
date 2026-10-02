@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { isSchemaMissing, migrationRequired } from "@/lib/supabase/errors";
+import { requireActiveUser } from "@/lib/auth";
+import { friendlyDbError, isSchemaMissing, migrationRequired } from "@/lib/supabase/errors";
 import { sameAmount, daysBetween, MAX_DAYS_APART } from "@/lib/reconcile";
 
 export type ReconcileResult =
@@ -10,11 +11,11 @@ export type ReconcileResult =
   | { ok: false; error: string };
 
 async function auth() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return { supabase, user };
+  // requireActiveUser() is null for a suspended / revoked account as well as a
+  // signed-out one, so callers refuse the write either way.
+  const active = await requireActiveUser();
+  if (active) return active;
+  return { supabase: await createClient(), user: null };
 }
 
 /**
@@ -35,7 +36,7 @@ export async function keepBoth(importedId: string): Promise<ReconcileResult> {
     if (isSchemaMissing(error)) {
       return { ok: false, error: migrationRequired("Reconciliation", "0021") };
     }
-    return { ok: false, error: error.message };
+    return { ok: false, error: friendlyDbError(error, "Couldn't keep both transactions.") };
   }
   revalidatePath("/", "layout");
   return { ok: true, message: "Kept both transactions." };
@@ -90,7 +91,7 @@ export async function mergeDuplicate(input: {
     if (isSchemaMissing(readErr)) {
       return { ok: false, error: migrationRequired("Reconciliation", "0021") };
     }
-    return { ok: false, error: readErr.message };
+    return { ok: false, error: friendlyDbError(readErr, "Couldn't load those transactions.") };
   }
 
   const importedRow = rows?.find((r) => r.id === input.importedId);
@@ -153,7 +154,7 @@ export async function mergeDuplicate(input: {
     .from("transactions")
     .delete()
     .eq("id", deleteId);
-  if (delErr) return { ok: false, error: delErr.message };
+  if (delErr) return { ok: false, error: friendlyDbError(delErr, "Couldn't remove the duplicate.") };
 
   // Mark the survivor reviewed. If this fails the row is simply offered again
   // next time, which is safe — but the delete already happened, so surface it
@@ -197,7 +198,7 @@ export async function keepAll(importedIds: string[]): Promise<ReconcileResult> {
     if (isSchemaMissing(error)) {
       return { ok: false, error: migrationRequired("Reconciliation", "0021") };
     }
-    return { ok: false, error: error.message };
+    return { ok: false, error: friendlyDbError(error, "Couldn't dismiss those suggestions.") };
   }
   revalidatePath("/", "layout");
   return { ok: true, message: `Dismissed ${importedIds.length} suggestions.` };

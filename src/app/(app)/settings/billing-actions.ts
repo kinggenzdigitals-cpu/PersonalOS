@@ -10,6 +10,17 @@ import { LIFETIME_OFFER } from "@/lib/offer-config";
 import { resolveLifetimeOffer } from "@/lib/offer";
 import { getEntitlement } from "@/lib/entitlement";
 import { checkoutBlockReason } from "@/lib/checkout-eligibility";
+import {
+  INVALID_PROMO_MESSAGE,
+  isRedeemable,
+  ownRedemptionAction,
+  pendingCutoffIso,
+  promoAttemptBlocked,
+  PROMO_GLOBAL_WINDOW_MS,
+  PROMO_USER_WINDOW_MS,
+} from "@/lib/promo-redemption";
+import { friendlyDbError, isSchemaMissing, migrationRequired } from "@/lib/supabase/errors";
+import type { PromoRedemption } from "@/lib/supabase/types";
 import { createPaymongoCheckout, paymongoConfigured } from "@/lib/paymongo";
 import {
   buildLifetimeReference,
@@ -43,6 +54,49 @@ function addMonthsIso(months: number) {
   const d = new Date();
   d.setMonth(d.getMonth() + months);
   return d.toISOString();
+}
+
+type Admin = ReturnType<typeof createAdminClient>;
+
+/**
+ * Writes this account's redemption of a code: a new row, or, when resuming an
+ * unpaid checkout, that same row (unique (promo_code_id, user_id) allows only
+ * one). The database refuses either past max_redemptions (0029). Returns the
+ * error to show, or null.
+ */
+async function writeRedemption(
+  admin: Admin,
+  promoCodeId: string,
+  userId: string,
+  resumed: { id: string; status: PromoRedemption["status"] } | null,
+  values: {
+    status: "pending" | "active";
+    amount_paid: number;
+    invoice_external_id?: string;
+    redeemed_at?: string;
+    access_starts_at?: string;
+    access_expires_at?: string;
+  },
+): Promise<string | null> {
+  const { data, error } = resumed
+    ? await admin
+        .from("promo_redemptions")
+        .update(values)
+        .eq("id", resumed.id)
+        .eq("status", resumed.status)
+        .select("id")
+    : await admin
+        .from("promo_redemptions")
+        .insert({ promo_code_id: promoCodeId, user_id: userId, ...values })
+        .select("id");
+  if (error) {
+    return error.message.includes("promo_cap_reached")
+      ? "That promo code has reached its limit."
+      : friendlyDbError(error, "Couldn't redeem that promo code. Please try again.");
+  }
+  // The resumed row changed status between the read and this write.
+  if ((data ?? []).length === 0) return "Couldn't redeem that promo code. Please try again.";
+  return null;
 }
 
 /**
@@ -116,6 +170,46 @@ export async function redeemPromoCode(
   if (blocked) return { ok: false, error: blocked };
 
   const admin = createAdminClient();
+
+  // Throttled before the code is looked up, so codes can't be guessed at speed.
+  // The attempt is recorded first and counted second (see promoAttemptBlocked);
+  // a refused one is removed again, so hammering past the limit can't push the
+  // cross-account ceiling up for everyone else.
+  const { data: attempt, error: attemptError } = await admin
+    .from("promo_redeem_attempts")
+    .insert({ user_id: user.id })
+    .select("id")
+    .single<{ id: number }>();
+  if (attemptError || !attempt) {
+    return {
+      ok: false,
+      error: isSchemaMissing(attemptError)
+        ? migrationRequired("Promo codes", "0029")
+        : "Couldn't check that promo code. Please try again.",
+    };
+  }
+  const now = Date.now();
+  const [mine, guesses] = await Promise.all([
+    admin
+      .from("promo_redeem_attempts")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("attempted_at", new Date(now - PROMO_USER_WINDOW_MS).toISOString()),
+    admin
+      .from("promo_redeem_attempts")
+      .select("id", { count: "exact", head: true })
+      .eq("valid_code", false)
+      .gte("attempted_at", new Date(now - PROMO_GLOBAL_WINDOW_MS).toISOString()),
+  ]);
+  const throttled =
+    mine.error || guesses.error
+      ? "Couldn't check that promo code. Please try again."
+      : promoAttemptBlocked(mine.count ?? 0, guesses.count ?? 0);
+  if (throttled) {
+    await admin.from("promo_redeem_attempts").delete().eq("id", attempt.id);
+    return { ok: false, error: throttled };
+  }
+
   const { data: promo, error } = await admin
     .from("promo_codes")
     .select("*")
@@ -130,29 +224,43 @@ export async function redeemPromoCode(
       active: boolean;
       special_price: number | null;
     }>();
-  if (error || !promo) return { ok: false, error: "Promo code not found." };
-  if (!promo.active) return { ok: false, error: "That promo is no longer active." };
-  if (promo.expires_at && new Date(promo.expires_at).getTime() <= Date.now()) {
-    return { ok: false, error: "That promo code has expired." };
+  // One answer for missing, paused and expired codes: separate messages told a
+  // guesser which codes were real.
+  if (error || !isRedeemable(promo, Date.now())) {
+    return { ok: false, error: INVALID_PROMO_MESSAGE };
   }
+  // Not a guess, so it stays out of the cross-account ceiling.
+  await admin.from("promo_redeem_attempts").update({ valid_code: true }).eq("id", attempt.id);
 
-  const { data: existingRedemption } = await admin
+  // An unpaid checkout holds its slot for a day, then is released: marked
+  // expired, not deleted, so a late payment still finds its row and is
+  // recorded for a refund (activatePromo in the PayMongo webhook).
+  await admin
     .from("promo_redemptions")
-    .select("id, status")
+    .update({ status: "expired" })
+    .eq("promo_code_id", promo.id)
+    .eq("status", "pending")
+    .lt("updated_at", pendingCutoffIso(Date.now()));
+
+  const { data: own } = await admin
+    .from("promo_redemptions")
+    .select("id, status, invoice_external_id")
     .eq("promo_code_id", promo.id)
     .eq("user_id", user.id)
-    .maybeSingle<{ id: string; status: string }>();
-  if (existingRedemption?.status === "active") {
+    .maybeSingle<{
+      id: string;
+      status: PromoRedemption["status"];
+      invoice_external_id: string | null;
+    }>();
+  const action = ownRedemptionAction(own);
+  if (action === "used") {
     return { ok: false, error: "You've already used this promo code." };
   }
-  if (existingRedemption?.status === "pending") {
-    return { ok: false, error: "This promo checkout is already pending." };
-  }
-  if (existingRedemption) {
-    return { ok: false, error: "You've already used this promo code." };
-  }
+  const resumed = action === "resume" ? own : null;
 
-  if (promo.max_redemptions !== null) {
+  // A fast pre-check only: the database enforces the cap under a lock (0029).
+  // The caller's own still-pending row already holds its slot.
+  if (promo.max_redemptions !== null && resumed?.status !== "pending") {
     const { count } = await admin
       .from("promo_redemptions")
       .select("id", { count: "exact", head: true })
@@ -168,16 +276,14 @@ export async function redeemPromoCode(
   const expiresAt = addMonthsIso(promo.duration_months);
 
   if (amount === 0) {
-    const { error: redeemError } = await admin.from("promo_redemptions").insert({
-      promo_code_id: promo.id,
-      user_id: user.id,
+    const redeemError = await writeRedemption(admin, promo.id, user.id, resumed, {
       status: "active",
       amount_paid: 0,
       redeemed_at: startsAt,
       access_starts_at: startsAt,
       access_expires_at: expiresAt,
     });
-    if (redeemError) return { ok: false, error: redeemError.message };
+    if (redeemError) return { ok: false, error: redeemError };
 
     const { error: subError } = await admin.from("subscriptions").upsert(
       {
@@ -197,7 +303,14 @@ export async function redeemPromoCode(
       },
       { onConflict: "user_id" },
     );
-    if (subError) return { ok: false, error: subError.message };
+    if (subError) {
+      // The redemption is already recorded as used, so a retry would be refused.
+      console.error("[promo] subscription write failed", subError.code);
+      return {
+        ok: false,
+        error: "Your promo code was redeemed, but we couldn't apply it. Contact support.",
+      };
+    }
 
     return {
       ok: true,
@@ -210,15 +323,17 @@ export async function redeemPromoCode(
     return { ok: false, error: "Billing isn't set up yet. Try again soon." };
   }
 
-  const reference = buildPromoReference(user.id, promo.id, Date.now());
-  const { error: pendingError } = await admin.from("promo_redemptions").insert({
-    promo_code_id: promo.id,
-    user_id: user.id,
+  // A resumed checkout keeps its reference: the webhook finds the row by it, so
+  // a late payment on the earlier session still lands (or, if both sessions
+  // get paid, the second is caught as a conflict and recorded for a refund).
+  const reference =
+    resumed?.invoice_external_id ?? buildPromoReference(user.id, promo.id, Date.now());
+  const pendingError = await writeRedemption(admin, promo.id, user.id, resumed, {
     status: "pending",
     amount_paid: amount,
     invoice_external_id: reference,
   });
-  if (pendingError) return { ok: false, error: pendingError.message };
+  if (pendingError) return { ok: false, error: pendingError };
 
   const site = getSiteURL();
   const tierName = promo.plan === "premium" ? "Premium" : "Pro";
@@ -234,8 +349,18 @@ export async function redeemPromoCode(
     cancelUrl: `${site}/settings?checkout=failed`,
   });
   if (!res.ok) {
-    // Release the slot so a failed start never holds the code or its cap.
-    await admin.from("promo_redemptions").delete().eq("invoice_external_id", reference);
+    // Release the slot so a failed start never holds the code or its cap. A
+    // resumed row that was still pending keeps its hold: its earlier session
+    // can still be paid.
+    if (!resumed) {
+      await admin.from("promo_redemptions").delete().eq("invoice_external_id", reference);
+    } else if (resumed.status === "expired") {
+      await admin
+        .from("promo_redemptions")
+        .update({ status: "expired" })
+        .eq("id", resumed.id)
+        .eq("status", "pending");
+    }
     return res;
   }
   return { ok: true, free: false, url: res.url };

@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { requireActiveUser } from "@/lib/auth";
+import { friendlyDbError } from "@/lib/supabase/errors";
 import { normalizeFocusSettings, type FocusTimerSettings } from "@/lib/focus-settings";
 import type { FocusSessionType } from "@/lib/supabase/types";
 
@@ -22,11 +23,9 @@ export type RecordFocusInput = {
 export async function recordFocusSession(
   input: RecordFocusInput,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "You're not signed in." };
+  const active = await requireActiveUser();
+  if (!active) return { ok: false, error: "You're not signed in." };
+  const { supabase, user } = active;
 
   const { error } = await supabase.from("focus_sessions").insert({
     user_id: user.id,
@@ -45,7 +44,7 @@ export async function recordFocusSession(
       ok: false,
       error: missingTable
         ? "Focus sessions are not ready yet. Apply the latest Supabase migrations."
-        : error.message,
+        : friendlyDbError(error, "Couldn't save this focus session."),
     };
   }
 
@@ -58,11 +57,9 @@ export async function recordFocusSession(
 export async function saveFocusSettings(
   settings: FocusTimerSettings,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "You're not signed in." };
+  const active = await requireActiveUser();
+  if (!active) return { ok: false, error: "You're not signed in." };
+  const { supabase, user } = active;
 
   const normalized = normalizeFocusSettings(settings);
   const { error } = await supabase.from("user_preferences").upsert({
@@ -76,7 +73,7 @@ export async function saveFocusSettings(
       ok: false,
       error: missingTable
         ? "Focus settings sync is not ready yet. Apply the latest Supabase migrations."
-        : error.message,
+        : friendlyDbError(error, "Couldn't save your focus settings."),
     };
   }
 

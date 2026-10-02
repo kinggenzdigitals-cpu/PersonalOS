@@ -3,7 +3,9 @@
 import { addDays, addMonths, addWeeks, format } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireActiveUser } from "@/lib/auth";
 import { localDateKey } from "@/lib/date";
+import { friendlyDbError } from "@/lib/supabase/errors";
 import type { Task, TaskStatus } from "@/lib/supabase/types";
 
 export type ActionResult =
@@ -11,10 +13,11 @@ export type ActionResult =
   | { ok: false; error: string; code?: "cap" };
 
 async function ctx() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // requireActiveUser() is null for a suspended / revoked account as well as a
+  // signed-out one, so callers refuse the write either way.
+  const active = await requireActiveUser();
+  const supabase = active?.supabase ?? (await createClient());
+  const user = active?.user ?? null;
   let timezone = "Asia/Manila";
   if (user) {
     const { data } = await supabase
@@ -109,7 +112,7 @@ export async function createTask(input: TaskInput): Promise<ActionResult> {
     .select("id")
     .single();
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this task.") };
   revalidate();
   return { ok: true, id: data.id };
 }
@@ -139,7 +142,7 @@ export async function updateTask(
       tags: cleanTags(input.tags),
     })
     .eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this task.") };
   revalidate();
   return { ok: true, id };
 }
@@ -148,7 +151,7 @@ export async function deleteTask(id: string): Promise<ActionResult> {
   const { supabase, user } = await ctx();
   if (!user) return { ok: false, error: "You're not signed in." };
   const { error } = await supabase.from("tasks").delete().eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't delete this task.") };
   revalidate();
   return { ok: true };
 }
@@ -178,7 +181,7 @@ export async function setTaskStatus(
   }
 
   const { error } = await supabase.from("tasks").update(patch).eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't update this task.") };
 
   const nextDue =
     status === "done"
@@ -195,7 +198,12 @@ export async function setTaskStatus(
       recurrence_anchor: nextDue,
       tags: current.tags ?? [],
     });
-    if (repeatError) return { ok: false, error: repeatError.message };
+    if (repeatError) {
+      return {
+        ok: false,
+        error: friendlyDbError(repeatError, "Couldn't schedule the next repeat of this task."),
+      };
+    }
   }
 
   revalidate();
@@ -212,7 +220,7 @@ export async function moveTask(
     .from("tasks")
     .update({ due_date: dueDate, status: "todo" })
     .eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't move this task.") };
   revalidate();
   return { ok: true, id };
 }
@@ -234,14 +242,18 @@ export async function setTodayPriorities(
     .update({ is_priority: false })
     .eq("priority_date", today)
     .eq("is_priority", true);
-  if (clearErr) return { ok: false, error: clearErr.message };
+  if (clearErr) {
+    return { ok: false, error: friendlyDbError(clearErr, "Couldn't update today's priorities.") };
+  }
 
   if (taskIds.length > 0) {
     const { error: setErr } = await supabase
       .from("tasks")
       .update({ is_priority: true, priority_date: today, status: "todo" })
       .in("id", taskIds);
-    if (setErr) return { ok: false, error: setErr.message };
+    if (setErr) {
+      return { ok: false, error: friendlyDbError(setErr, "Couldn't update today's priorities.") };
+    }
   }
 
   revalidate();
@@ -258,7 +270,7 @@ export async function carryOverAll(): Promise<ActionResult> {
     .update({ due_date: today })
     .eq("status", "todo")
     .lt("due_date", today);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't move overdue tasks.") };
   revalidate();
   return { ok: true };
 }

@@ -398,18 +398,38 @@ async function activatePromo(
     .maybeSingle<{
       id: string;
       promo_code_id: string;
-      user_id: string;
+      user_id: string | null;
       status: string;
     }>();
-  // "active" is accepted as well as "pending": a redelivery after the
-  // subscriptions write landed must be able to finish the redemption update.
-  if (
-    redemptionError ||
-    !redemption ||
-    redemption.user_id !== ref.userId ||
-    (redemption.status !== "pending" && redemption.status !== "active")
-  ) {
+  if (redemptionError) return { failed: "promo redemption read failed" };
+  // Every promo checkout's row is written before PayMongo is called, so one
+  // missing now never comes back (its code was deleted, or the checkout failed
+  // to start). Retrying can't help: the money needs a refund.
+  if (!redemption) return { conflict: "promo redemption no longer exists" };
+  if (redemption.user_id !== ref.userId) {
     return { failed: "promo redemption not found" };
+  }
+  // "active" and "expired" are accepted as well as "pending". A redelivery
+  // after the subscriptions write landed must be able to finish the redemption
+  // update; and the 24h sweep in redeemPromoCode can release this row's hold
+  // while its payment is in flight, so a paid "expired" row takes its cap slot
+  // back below, under the 0029 check. Anything else (canceled) means the hold
+  // was released for good and its slot may be someone else's now, so it is
+  // refunded, not retried forever. The one exception is a redelivery of this
+  // very session, whose access already landed.
+  if (
+    redemption.status !== "pending" &&
+    redemption.status !== "expired" &&
+    redemption.status !== "active"
+  ) {
+    const { data: sub, error: subError } = await admin
+      .from("subscriptions")
+      .select("xendit_customer_id")
+      .eq("user_id", ref.userId)
+      .maybeSingle<{ xendit_customer_id: string | null }>();
+    if (subError) return { failed: "subscription read failed" };
+    if (sub?.xendit_customer_id === sessionId) return { applied: true };
+    return { conflict: `promo redemption was ${redemption.status} before the payment arrived` };
   }
 
   const { data: promo, error: promoError } = await admin
@@ -475,10 +495,15 @@ async function activatePromo(
   }
   if ("failed" in outcome) return outcome;
 
-  // Idempotent: only a still-pending redemption moves, so a redelivery after
-  // this already ran changes nothing. If it fails, answering 5xx is safe too —
-  // the redelivery skips straight past the (already applied) access change.
-  const { error } = await admin
+  // The row has to END UP "active": that is what holds the code's cap slot and
+  // what stops the code being offered to this account again. A hold the sweep
+  // released ("expired") is taken back here, and the 0029 trigger re-checks the
+  // cap on that move. Exactly one row may change — anything else means the
+  // status moved between the read and this write, and only a row that was
+  // already "active" (this session's own earlier delivery) counts as done. If
+  // this fails, answering 5xx is safe: the redelivery skips straight past the
+  // (already applied) access change and tries the row again.
+  const { data: claimed, error } = await admin
     .from("promo_redemptions")
     .update({
       status: "active",
@@ -488,8 +513,18 @@ async function activatePromo(
       access_expires_at: expiresAt.toISOString(),
     })
     .eq("id", redemption.id)
-    .eq("status", "pending");
-  if (error) return { failed: "promo redemption update failed" };
+    .in("status", ["pending", "expired"])
+    .select("id");
+  if (error) {
+    // The code filled up while this payment was in flight, so the released slot
+    // can't be taken back. Refund it rather than retry forever.
+    return error.message.includes("promo_cap_reached")
+      ? { conflict: "promo code reached its limit before the payment arrived" }
+      : { failed: "promo redemption update failed" };
+  }
+  if ((claimed ?? []).length !== 1 && redemption.status !== "active") {
+    return { failed: "promo redemption update failed" };
+  }
   return { applied: true };
 }
 

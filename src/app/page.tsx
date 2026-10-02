@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteURL } from "@/lib/site";
+import { BASE_OPEN_GRAPH } from "@/lib/seo";
 import { resolveLifetimeOffer } from "@/lib/offer";
 import { formatPHP } from "@/lib/pricing-display";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
@@ -28,11 +29,14 @@ export const metadata: Metadata = {
   description:
     "Know where your money goes and build habits that keep you on track. Plan your monthly budget, track spending, savings, bills, accounts and daily habits in one simple workspace — on your phone or desktop.",
   alternates: { canonical: "/" },
+  // No `images`: the colocated opengraph-image.tsx supplies og:image here, and
+  // only while this block leaves `images` unset.
   openGraph: {
+    ...BASE_OPEN_GRAPH,
     title: "Money + habits in one place — Finance & Habit Tracker",
     description:
       "One system for what you spend and what you repeat. Budget, spending, savings, bills, accounts and habits together.",
-    type: "website",
+    url: "/",
   },
 };
 
@@ -490,8 +494,8 @@ const FAQS: { q: string; a: string }[] = [
     a: "Enough to run your everyday life — budgets, accounts, transactions and habits at the Free limits. Upgrade only when you need more room.",
   },
   {
-    q: "Can I cancel my subscription?",
-    a: "Yes. Cancel anytime and keep your paid plan until the end of the period you already paid for, then move to Free. Nothing is charged after that.",
+    q: "Do I need to cancel my subscription?",
+    a: "No. Paid plans are prepaid for the period you choose. No card is stored and nothing renews automatically — you keep your plan until that period ends, then move to Free unless you renew.",
   },
   {
     q: "What does Lifetime access mean?",

@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { requireActiveUser } from "@/lib/auth";
 import { localDateKey } from "@/lib/date";
-import { isSchemaMissing } from "@/lib/supabase/errors";
+import { friendlyDbError, isSchemaMissing } from "@/lib/supabase/errors";
 import type { AccountType, LifeArea } from "@/lib/supabase/types";
 
 export type OnboardingPayload = {
@@ -31,12 +31,9 @@ function toMoney(n: number): number {
 export async function completeOnboarding(
   payload: OnboardingPayload,
 ): Promise<OnboardingResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { ok: false, error: "You're not signed in." };
+  const active = await requireActiveUser();
+  if (!active) return { ok: false, error: "You're not signed in." };
+  const { supabase, user } = active;
 
   const displayName = payload.displayName.trim();
   if (!displayName) return { ok: false, error: "Please enter your name." };
@@ -61,7 +58,9 @@ export async function completeOnboarding(
       sort_order: i,
     })),
   );
-  if (accountsError) return { ok: false, error: accountsError.message };
+  if (accountsError) {
+    return { ok: false, error: friendlyDbError(accountsError, "Couldn't save your accounts.") };
+  }
 
   // 2. Selected habits (optional)
   if (payload.habits.length > 0) {
@@ -73,7 +72,9 @@ export async function completeOnboarding(
         sort_order: i,
       })),
     );
-    if (habitsError) return { ok: false, error: habitsError.message };
+    if (habitsError) {
+      return { ok: false, error: friendlyDbError(habitsError, "Couldn't save your habits.") };
+    }
   }
 
   // 3. Monthly budget + savings allocation (optional, skippable)
@@ -99,7 +100,7 @@ export async function completeOnboarding(
     );
     // Tolerate the table not existing yet (migration 0011 not applied).
     if (budgetError && !isSchemaMissing(budgetError)) {
-      return { ok: false, error: budgetError.message };
+      return { ok: false, error: friendlyDbError(budgetError, "Couldn't save your monthly budget.") };
     }
   }
 
@@ -113,7 +114,7 @@ export async function completeOnboarding(
       saved_amount: 0,
     });
     if (goalError && !isSchemaMissing(goalError)) {
-      return { ok: false, error: goalError.message };
+      return { ok: false, error: friendlyDbError(goalError, "Couldn't save your savings goal.") };
     }
   }
 
@@ -126,7 +127,9 @@ export async function completeOnboarding(
       onboarded: true,
     })
     .eq("user_id", user.id);
-  if (profileError) return { ok: false, error: profileError.message };
+  if (profileError) {
+    return { ok: false, error: friendlyDbError(profileError, "Couldn't save your profile.") };
+  }
 
   revalidatePath("/", "layout");
   return { ok: true };

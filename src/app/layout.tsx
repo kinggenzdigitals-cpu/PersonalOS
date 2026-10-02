@@ -28,9 +28,11 @@ function supabaseRuntimeConfig() {
 /**
  * Pre-paint script that applies the user's saved custom theme (from
  * localStorage) before first paint, so there's no flash of the default palette.
- * Mirrors themeVars()/readableForeground() in src/lib/theme.ts.
+ * Mirrors themeVars()/ensureReadableOn()/readableForeground() in
+ * src/lib/theme.ts; scripts/theme-contrast.test.cjs runs both and fails if
+ * they ever set different values.
  */
-const THEME_INIT_SCRIPT = `(function(){try{var raw=localStorage.getItem('fht-theme');if(!raw)return;var c=JSON.parse(raw);if(!c||!c.enabled||!c.colors)return;var col=c.colors;function lum(h){h=(h||'').replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];var r=parseInt(h.slice(0,2),16)/255,g=parseInt(h.slice(2,4),16)/255,b=parseInt(h.slice(4,6),16)/255;function f(v){return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);}return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b);}function fg(h){return lum(h)>0.42?'#0c1a33':'#ffffff';}var p=col.primary,s=col.secondary,a=col.accent,t=col.tab;var v={'--primary':p,'--primary-foreground':fg(p),'--brand':p,'--brand-hover':p,'--sidebar-primary':p,'--sidebar-primary-foreground':fg(p),'--brand-foreground':fg(p),'--ring':s,'--sidebar-ring':s,'--brand-2':s,'--brand-2-hover':s,'--accent-brand':a,'--tab-active':t,'--tab-active-foreground':fg(t)};var r=document.documentElement;for(var k in v){r.style.setProperty(k,v[k]);}}catch(e){}})();`;
+const THEME_INIT_SCRIPT = `(function(){try{var raw=localStorage.getItem('fht-theme');if(!raw)return;var c=JSON.parse(raw);if(!c||!c.enabled||!c.colors)return;var col=c.colors;function lum(h){h=(h||'').replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];var r=parseInt(h.slice(0,2),16)/255,g=parseInt(h.slice(2,4),16)/255,b=parseInt(h.slice(4,6),16)/255;function f(v){return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);}return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b);}function cr(x,y){var m=lum(x),n=lum(y);return (Math.max(m,n)+0.05)/(Math.min(m,n)+0.05);}function rd(h){if(!(cr(h,'#071a31')<4.5))return h;var x=h.replace('#','');if(x.length===3)x=x[0]+x[0]+x[1]+x[1]+x[2]+x[2];var q=[0,2,4].map(function(i){return parseInt(x.slice(i,i+2),16);});for(var i=1;i<=20;i++){var m='#'+q.map(function(v){return ('0'+Math.round(v+(255-v)*i/20).toString(16)).slice(-2);}).join('');if(cr(m,'#071a31')>=4.5)return m;}return '#ffffff';}function fg(h){return cr(h,'#ffffff')>=cr(h,'#04122e')?'#ffffff':'#04122e';}var p=rd(col.primary),s=rd(col.secondary),a=rd(col.accent),t=rd(col.tab);var v={'--primary':p,'--primary-foreground':fg(p),'--brand':p,'--brand-hover':p,'--sidebar-primary':p,'--sidebar-primary-foreground':fg(p),'--brand-foreground':fg(p),'--ring':s,'--sidebar-ring':s,'--brand-2':s,'--brand-2-hover':s,'--accent-brand':a,'--tab-active':t,'--tab-active-foreground':fg(t)};var r=document.documentElement;for(var k in v){r.style.setProperty(k,v[k]);}}catch(e){}})();`;
 
 const manrope = Manrope({
   variable: "--font-display",
@@ -68,6 +70,9 @@ export const metadata: Metadata = {
     icon: "/icon-192.png",
     apple: "/apple-icon.png",
   },
+  // No `url` here: every page that doesn't set its own openGraph inherits this
+  // block whole, and a root og:url made /terms and /privacy share as the home
+  // page. Pages that need og:url set it themselves.
   openGraph: {
     siteName: "Finance & Habit Tracker",
     title: "Finance & Habit Tracker",
@@ -75,7 +80,6 @@ export const metadata: Metadata = {
       "Track your money, habits, mood, tasks, and focus sessions in one calm workspace.",
     type: "website",
     locale: "en_US",
-    url: getSiteURL(),
   },
   twitter: {
     card: "summary_large_image",

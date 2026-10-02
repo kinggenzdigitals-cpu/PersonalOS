@@ -36,7 +36,7 @@ export function BillCard({ item }: { item: BillWithStatus }) {
           trigger={
             <button
               type="button"
-              className="min-w-0 flex-1 text-left focus-visible:outline-none"
+              className="min-w-0 flex-1 rounded-lg text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             >
               <div className="flex items-center gap-2">
                 <span className="truncate font-medium">{bill.name}</span>

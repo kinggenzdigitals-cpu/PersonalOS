@@ -107,6 +107,7 @@ export function BudgetForm({
 
   async function remove() {
     if (!initial) return;
+    if (!window.confirm("Delete this budget? This can't be undone.")) return;
     setSaving(true);
     const result = await deleteBudget(initial.id);
     if (!result.ok) {
@@ -177,8 +178,10 @@ export function BudgetForm({
             className="text-error hover:text-error"
             onClick={remove}
             disabled={saving}
+            aria-label="Delete budget"
+            title="Delete budget"
           >
-            <Trash2Icon className="size-4" />
+            <Trash2Icon className="size-4" aria-hidden />
           </Button>
         )}
         <Button className="flex-1" onClick={save} disabled={saving}>

@@ -1,7 +1,8 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireActiveUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { friendlyAuthError } from "@/lib/auth-errors";
 
 export async function changeOwnPassword(
   newPassword: string,
@@ -9,14 +10,14 @@ export async function changeOwnPassword(
   if (newPassword.length < 8) {
     return { ok: false, error: "Password must be at least 8 characters." };
   }
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "You're not signed in." };
+  // GoTrue's updateUser isn't covered by RLS, so this check is the only thing
+  // stopping a suspended / revoked session from resetting the password.
+  const active = await requireActiveUser();
+  if (!active) return { ok: false, error: "You're not signed in." };
+  const { supabase, user } = active;
 
   const { error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyAuthError(error.message) };
 
   // Clear the temp-password flag via the service role (users can't change it
   // themselves — a privilege-escalation guard trigger blocks that column).

@@ -44,11 +44,21 @@ export async function getDeviceCookieHash() {
   return token ? hashDeviceToken(token) : null;
 }
 
+/**
+ * The device limit fails open when it can't be checked (turning that into a
+ * lockout is an owner decision), so at least say so in the logs. Fixed reasons
+ * and error codes only: nothing about the user.
+ */
+function logLimitSkipped(reason: string, code?: string) {
+  console.error(`[devices] device limit NOT enforced: ${reason}`, code ?? "");
+}
+
 export async function enforceCurrentDevice(userId: string) {
   let admin: ReturnType<typeof createAdminClient>;
   try {
     admin = createAdminClient();
   } catch {
+    logLimitSkipped("service-role client unavailable (SUPABASE_SERVICE_ROLE_KEY missing)");
     return;
   }
 
@@ -63,7 +73,10 @@ export async function enforceCurrentDevice(userId: string) {
     .maybeSingle<{ id: string; revoked_at: string | null }>();
 
   if (error) {
-    if (isSchemaMissing(error)) return;
+    if (isSchemaMissing(error)) {
+      logLimitSkipped("account_devices table missing (apply migration 0025)");
+      return;
+    }
     redirect("/api/devices/register");
   }
 
@@ -75,6 +88,7 @@ export async function enforceCurrentDevice(userId: string) {
     .eq("user_id", userId)
     .is("revoked_at", null);
 
+  if (countError) logLimitSkipped("active-device count failed", countError.code);
   if (!countError && (count ?? 0) > MAX_ACTIVE_DEVICES) {
     redirect("/device-limit");
   }
@@ -121,6 +135,7 @@ export async function registerCurrentDevice(nextPath = "/home") {
   try {
     admin = createAdminClient();
   } catch {
+    logLimitSkipped("service-role client unavailable (SUPABASE_SERVICE_ROLE_KEY missing)");
     redirect(nextPath);
   }
 
@@ -139,7 +154,21 @@ export async function registerCurrentDevice(nextPath = "/home") {
     .eq("device_token_hash", tokenHash)
     .maybeSingle<{ id: string; revoked_at: string | null }>();
 
-  if (existingError && isSchemaMissing(existingError)) redirect(nextPath);
+  if (existingError && isSchemaMissing(existingError)) {
+    logLimitSkipped("account_devices table missing (apply migration 0025)");
+    redirect(nextPath);
+  }
+
+  // A removed device stays removed. Reviving its row here let a removed
+  // browser walk straight back in on its next page load whenever a slot was
+  // free. End its session instead: scope "local" revokes this browser's session
+  // on the auth server, not just its cookies. The device cookie goes too, so
+  // the owner can sign in here again later as a new device.
+  if (existing?.revoked_at) {
+    await supabase.auth.signOut({ scope: "local" });
+    jar.delete(DEVICE_COOKIE);
+    redirect("/login?signedOut=1");
+  }
 
   if (existing && !existing.revoked_at) {
     await admin
@@ -157,10 +186,12 @@ export async function registerCurrentDevice(nextPath = "/home") {
     .eq("user_id", user.id)
     .is("revoked_at", null);
 
+  if (countError) logLimitSkipped("active-device count failed", countError.code);
   if (!countError && (count ?? 0) >= MAX_ACTIVE_DEVICES) {
     redirect("/device-limit?blocked=1");
   }
 
+  // No `revoked_at` here: if this ever lands on a revoked row, it stays revoked.
   const { error: upsertError } = await admin.from("account_devices").upsert(
     {
       user_id: user.id,
@@ -168,7 +199,6 @@ export async function registerCurrentDevice(nextPath = "/home") {
       name: deviceNameFromUserAgent(userAgent),
       user_agent: userAgent,
       last_seen_at: now,
-      revoked_at: null,
     },
     { onConflict: "user_id,device_token_hash" },
   );
@@ -179,6 +209,28 @@ export async function registerCurrentDevice(nextPath = "/home") {
 
   jar.set(DEVICE_COOKIE, token, deviceCookieOptions());
   redirect(nextPath);
+}
+
+/**
+ * Runs right after a successful sign-in. A removed browser keeps its device
+ * cookie, and registerCurrentDevice signs a revoked token out: right for a
+ * session that outlived the removal, but it bounced a fresh sign-in straight
+ * back to /login. Fresh credentials make this a new device, so drop the revoked
+ * token and let the next request register one (still under the device limit).
+ * This grants nothing a browser couldn't get by deleting its own cookie.
+ */
+export async function forgetRevokedDeviceCookie(userId: string) {
+  const currentHash = await getDeviceCookieHash();
+  if (!currentHash) return;
+
+  const { data } = await createAdminClient()
+    .from("account_devices")
+    .select("revoked_at")
+    .eq("user_id", userId)
+    .eq("device_token_hash", currentHash)
+    .maybeSingle<{ revoked_at: string | null }>();
+
+  if (data?.revoked_at) (await cookies()).delete(DEVICE_COOKIE);
 }
 
 export function deviceCookieOptions() {

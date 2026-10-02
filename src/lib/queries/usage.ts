@@ -33,11 +33,13 @@ export async function getUsage(timezone: string): Promise<Usage> {
 
   const head = { count: "exact" as const, head: true };
   const [tx, acc, hab, goal, bud] = await Promise.all([
+    // created_at, not occurred_at: the same column the cap is enforced on, so
+    // a backdated entry shows on the meter in the month it was entered.
     supabase
       .from("transactions")
       .select("id", head)
       .eq("user_id", user.id)
-      .gte("occurred_at", monthStart),
+      .gte("created_at", monthStart),
     supabase
       .from("accounts")
       .select("id", head)

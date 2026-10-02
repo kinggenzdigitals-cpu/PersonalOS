@@ -26,6 +26,7 @@ create table if not exists public.promo_codes (
 create index if not exists promo_codes_active_idx
   on public.promo_codes (active, expires_at);
 
+drop trigger if exists promo_codes_set_updated_at on public.promo_codes;
 create trigger promo_codes_set_updated_at
   before update on public.promo_codes
   for each row execute function public.set_updated_at();
@@ -75,6 +76,7 @@ create index if not exists promo_redemptions_user_idx
 create index if not exists promo_redemptions_code_idx
   on public.promo_redemptions (promo_code_id, status);
 
+drop trigger if exists promo_redemptions_set_updated_at on public.promo_redemptions;
 create trigger promo_redemptions_set_updated_at
   before update on public.promo_redemptions
   for each row execute function public.set_updated_at();
@@ -108,6 +110,7 @@ create table if not exists public.account_devices (
 create index if not exists account_devices_user_active_idx
   on public.account_devices (user_id, revoked_at, last_seen_at desc);
 
+drop trigger if exists account_devices_set_updated_at on public.account_devices;
 create trigger account_devices_set_updated_at
   before update on public.account_devices
   for each row execute function public.set_updated_at();

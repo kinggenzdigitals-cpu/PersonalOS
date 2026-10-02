@@ -8,10 +8,14 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: ["/", "/pricing", "/privacy", "/terms"],
+        // /invite/ and the (auth) pages are deliberately NOT listed: they
+        // carry a noindex meta, which a crawler only reads if it is allowed
+        // to fetch the page. A disallowed URL can still be indexed bare.
         disallow: [
           "/account",
           "/admin",
           "/calendar",
+          "/change-password",
           "/device-limit",
           "/feedback",
           "/focus",
@@ -24,7 +28,6 @@ export default function robots(): MetadataRoute.Robots {
           "/tasks",
           "/api/",
           "/auth/",
-          "/invite/",
           "/onboarding",
           "/suspended",
         ],

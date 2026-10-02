@@ -3,12 +3,15 @@
 import { randomBytes, createHash } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { friendlyDbError } from "@/lib/supabase/errors";
 import {
   requireSuperAdmin,
   isOwnerEmail,
   provisionalAdminBlock,
 } from "@/lib/entitlement";
 import { getSiteURL } from "@/lib/site";
+import { auditNote } from "@/lib/admin/audit";
+import { ilikeExact, sameText } from "@/lib/ilike-exact";
 import type { AccessType } from "@/lib/supabase/types";
 
 type Admin = ReturnType<typeof createAdminClient>;
@@ -67,10 +70,16 @@ async function audit(
   target: string | null,
   action: string,
   detail: Record<string, unknown> = {},
-) {
-  await admin
+): Promise<boolean> {
+  const { error } = await admin
     .from("admin_audit_log")
     .insert({ admin_id: adminId, target_user_id: target, action, detail });
+  if (error) {
+    // The action already happened; flag the gap instead of hiding it.
+    console.error("[admin] audit write failed", action, error.code);
+    return false;
+  }
+  return true;
 }
 
 /** Invite an email to complimentary Pro/Premium. Applies immediately if they
@@ -124,7 +133,7 @@ export async function createInvitation(input: {
       accepted_by: existing.id,
       accepted_at: new Date().toISOString(),
     });
-    await audit(admin, me.userId!, existing.id, "invite_existing_applied", {
+    const logged = await audit(admin, me.userId!, existing.id, "invite_existing_applied", {
       email,
       selectedPlan: input.selectedPlan,
     });
@@ -132,18 +141,18 @@ export async function createInvitation(input: {
     return {
       ok: true,
       existing: true,
-      message: `${email} already has an account — complimentary ${input.selectedPlan} applied.`,
+      message: `${email} already has an account — complimentary ${input.selectedPlan} applied.${auditNote(logged)}`,
     };
   }
 
-  // Prevent duplicate pending invitations.
-  const { data: dup } = await admin
+  // Prevent duplicate pending invitations. Exact match only: as a raw pattern,
+  // `_` in the address matched other people's invitations.
+  const { data: pending } = await admin
     .from("user_invitations")
-    .select("id")
-    .ilike("email", email)
-    .eq("status", "pending")
-    .maybeSingle();
-  if (dup) {
+    .select("email")
+    .ilike("email", ilikeExact(email))
+    .eq("status", "pending");
+  if ((pending ?? []).some((row) => sameText(row.email, email))) {
     return { ok: false, error: "A pending invitation already exists for this email." };
   }
 
@@ -162,9 +171,9 @@ export async function createInvitation(input: {
     status: "pending",
     invited_by: me.userId,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't create the invitation.") };
 
-  await audit(admin, me.userId!, null, "invite_created", {
+  const logged = await audit(admin, me.userId!, null, "invite_created", {
     email,
     selectedPlan: input.selectedPlan,
   });
@@ -172,7 +181,7 @@ export async function createInvitation(input: {
   return {
     ok: true,
     link: `${getSiteURL()}/invite/${token}`,
-    message: "Email delivery is not configured — copy the invitation link below.",
+    message: `Email delivery is not configured — copy the invitation link below.${auditNote(logged)}`,
   };
 }
 
@@ -215,13 +224,13 @@ export async function resendInvitation(id: string): Promise<InviteResult> {
     })
     .eq("id", id)
     .eq("status", "pending");
-  if (error) return { ok: false, error: error.message };
-  await audit(admin, me.userId!, null, "invite_resent", { id });
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't resend the invitation.") };
+  const logged = await audit(admin, me.userId!, null, "invite_resent", { id });
   revalidatePath("/admin");
   return {
     ok: true,
     link: `${getSiteURL()}/invite/${token}`,
-    message: "New invitation link generated.",
+    message: `New invitation link generated.${auditNote(logged)}`,
   };
 }
 
@@ -240,7 +249,7 @@ export async function revokeInvitation(id: string): Promise<InviteResult> {
     .from("user_invitations")
     .update({ status: "revoked", revoked_at: new Date().toISOString() })
     .eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't revoke the invitation.") };
 
   // If already accepted, also revoke the complimentary access.
   if (inv?.accepted_by) {
@@ -249,9 +258,9 @@ export async function revokeInvitation(id: string): Promise<InviteResult> {
       .update({ access_type: null, access_expires_at: null })
       .eq("user_id", inv.accepted_by);
   }
-  await audit(admin, me.userId!, inv?.accepted_by ?? null, "invite_revoked", {
+  const logged = await audit(admin, me.userId!, inv?.accepted_by ?? null, "invite_revoked", {
     id,
   });
   revalidatePath("/admin");
-  return { ok: true, message: "Invitation revoked." };
+  return { ok: true, message: `Invitation revoked.${auditNote(logged)}` };
 }

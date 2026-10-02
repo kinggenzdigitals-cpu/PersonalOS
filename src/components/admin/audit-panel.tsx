@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ScrollTextIcon, ShieldIcon } from "lucide-react";
+import { AlertTriangleIcon, ScrollTextIcon, ShieldIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
@@ -45,8 +45,20 @@ function auditTime(iso: string): string {
   });
 }
 
-export function AuditPanel({ entries }: { entries: AuditEntry[] }) {
+export function AuditPanel({ entries }: { entries: AuditEntry[] | null }) {
   const [q, setQ] = React.useState("");
+
+  // Null means the read failed, which is not the same as an empty trail.
+  if (entries === null) {
+    return (
+      <EmptyState
+        icon={AlertTriangleIcon}
+        title="Audit trail unavailable"
+        description="The audit log couldn't be loaded, so recent admin activity isn't shown. Refresh to try again."
+        className="py-10"
+      />
+    );
+  }
 
   const filtered = entries.filter((e) => {
     if (!q.trim()) return true;

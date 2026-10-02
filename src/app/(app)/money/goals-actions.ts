@@ -2,19 +2,20 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireActiveUser } from "@/lib/auth";
 import { checkCap } from "@/lib/plan-guard";
-import { isSchemaMissing } from "@/lib/supabase/errors";
+import { friendlyDbError, isSchemaMissing } from "@/lib/supabase/errors";
 
 export type ActionResult =
   | { ok: true; id?: string }
   | { ok: false; error: string };
 
 async function auth() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return { supabase, user };
+  // requireActiveUser() is null for a suspended / revoked account as well as a
+  // signed-out one, so callers refuse the write either way.
+  const active = await requireActiveUser();
+  if (active) return active;
+  return { supabase: await createClient(), user: null };
 }
 
 function revalidate() {
@@ -61,7 +62,7 @@ export async function upsertSavingsGoal(input: {
         .update(base)
         .eq("id", input.id));
     }
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this goal.") };
     revalidate();
     return { ok: true, id: input.id };
   }
@@ -85,7 +86,7 @@ export async function upsertSavingsGoal(input: {
       .select("id")
       .single());
   }
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this goal.") };
   revalidate();
   return { ok: true, id: data?.id };
 }
@@ -94,12 +95,19 @@ export async function deleteSavingsGoal(id: string): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
   const { error } = await supabase.from("savings_goals").delete().eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't delete this goal.") };
   revalidate();
   return { ok: true };
 }
 
-/** Add (or subtract, if negative) funds to a goal's saved amount. */
+/**
+ * Add (or subtract, if negative) funds to a goal's saved amount.
+ *
+ * The sum is computed here from a value just read, so the write is a
+ * compare-and-set on that value: two devices contributing at once would
+ * otherwise both read 1000, both write 1500, and one contribution would
+ * vanish. If the row changed in between, nothing is written and we re-read.
+ */
 export async function contributeToGoal(
   id: string,
   amount: number,
@@ -107,21 +115,31 @@ export async function contributeToGoal(
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
 
-  const { data: goal, error: getErr } = await supabase
-    .from("savings_goals")
-    .select("saved_amount")
-    .eq("id", id)
-    .single<{ saved_amount: number }>();
-  if (getErr || !goal) {
-    return { ok: false, error: getErr?.message ?? "Goal not found." };
-  }
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: goal, error: getErr } = await supabase
+      .from("savings_goals")
+      .select("saved_amount")
+      .eq("id", id)
+      .single<{ saved_amount: number }>();
+    if (getErr || !goal) {
+      return { ok: false, error: friendlyDbError(getErr, "Goal not found.") };
+    }
 
-  const next = Math.max(0, Number(goal.saved_amount) + amount);
-  const { error } = await supabase
-    .from("savings_goals")
-    .update({ saved_amount: next })
-    .eq("id", id);
-  if (error) return { ok: false, error: error.message };
-  revalidate();
-  return { ok: true, id };
+    const next = Math.max(0, Number(goal.saved_amount) + amount);
+    const { data: updated, error } = await supabase
+      .from("savings_goals")
+      .update({ saved_amount: next })
+      .eq("id", id)
+      .eq("saved_amount", goal.saved_amount)
+      .select("id");
+    if (error) return { ok: false, error: friendlyDbError(error, "Couldn't update this goal.") };
+    if (updated && updated.length > 0) {
+      revalidate();
+      return { ok: true, id };
+    }
+  }
+  return {
+    ok: false,
+    error: "This goal changed while saving. Please try again.",
+  };
 }

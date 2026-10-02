@@ -7,7 +7,8 @@ export type AuditEntry = {
   id: string;
   action: string;
   createdAt: string;
-  adminId: string;
+  /** Null when the admin's account has since been deleted. */
+  adminId: string | null;
   adminLabel: string;
   targetUserId: string | null;
   targetLabel: string | null;
@@ -30,12 +31,12 @@ export async function listAuditLog(
    * page render.
    */
   knownEmails?: Map<string, string>,
-): Promise<AuditEntry[]> {
+): Promise<AuditEntry[] | null> {
   let admin: ReturnType<typeof createAdminClient>;
   try {
     admin = createAdminClient();
   } catch {
-    return [];
+    return null;
   }
 
   const { data, error } = await admin
@@ -45,8 +46,10 @@ export async function listAuditLog(
     .limit(limit)
     .returns<AdminAuditLog[]>();
 
-  // Table missing (migration 0008 not applied) → show an empty trail.
-  if (error || !data) return [];
+  // Null, not []: a failed read must not look like "no admin activity yet".
+  // 0008 is a prerequisite of every admin feature, so the table can't
+  // legitimately be missing here.
+  if (error || !data) return null;
 
   // Resolve the user ids involved to emails in one call.
   const ids = new Set<string>();
@@ -74,7 +77,10 @@ export async function listAuditLog(
     action: row.action,
     createdAt: row.created_at,
     adminId: row.admin_id,
-    adminLabel: emails.get(row.admin_id) ?? short(row.admin_id),
+    // A deleted admin's row keeps admin_label (0028) after admin_id is nulled.
+    adminLabel: row.admin_id
+      ? (emails.get(row.admin_id) ?? row.admin_label ?? short(row.admin_id))
+      : (row.admin_label ?? "deleted admin"),
     targetUserId: row.target_user_id,
     targetLabel: row.target_user_id
       ? (emails.get(row.target_user_id) ?? short(row.target_user_id))
@@ -82,4 +88,13 @@ export async function listAuditLog(
     detail:
       row.detail && Object.keys(row.detail).length > 0 ? row.detail : null,
   }));
+}
+
+/**
+ * Appended to an admin action's success message when its audit row failed to
+ * write. The action itself already happened, so the admin should know that
+ * the trail has a gap.
+ */
+export function auditNote(logged: boolean): string {
+  return logged ? "" : " (Warning: this action was not recorded in the audit log.)";
 }

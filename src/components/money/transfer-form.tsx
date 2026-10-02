@@ -56,9 +56,9 @@ export function TransferForm({ onDone }: { onDone: () => void }) {
 
       <div className="flex items-end gap-2">
         <div className="flex-1 space-y-1.5">
-          <Label>From</Label>
+          <Label htmlFor="transfer-from">From</Label>
           <Select value={from} onValueChange={setFrom}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="transfer-from" className="w-full">
               <SelectValue placeholder="Account" />
             </SelectTrigger>
             <SelectContent>
@@ -72,9 +72,9 @@ export function TransferForm({ onDone }: { onDone: () => void }) {
         </div>
         <ArrowRightIcon className="mb-2.5 size-4 shrink-0 text-muted-foreground" />
         <div className="flex-1 space-y-1.5">
-          <Label>To</Label>
+          <Label htmlFor="transfer-to">To</Label>
           <Select value={to} onValueChange={setTo}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="transfer-to" className="w-full">
               <SelectValue placeholder="Account" />
             </SelectTrigger>
             <SelectContent>

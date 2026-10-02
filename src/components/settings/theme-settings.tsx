@@ -20,6 +20,7 @@ import { useThemeCustomizer } from "@/components/providers/theme-customizer";
 import {
   PRESETS,
   DEFAULT_COLORS,
+  ensureReadableOn,
   isValidHex,
   normalizeHex,
   readableForeground,
@@ -51,7 +52,14 @@ export function ThemeSettings({
   // A downgraded user can still be holding an enabled palette in local
   // storage. Show the controls only when the plan allows them.
   const customActive = config.enabled && canCustomize;
-  const colors = customActive ? config.colors : DEFAULT_COLORS;
+  const picked = customActive ? config.colors : DEFAULT_COLORS;
+  // The live preview shows what themeVars() applies: each role color lifted,
+  // if needed, until it reads as text on the dark card.
+  const colors = {
+    primary: ensureReadableOn(picked.primary),
+    accent: ensureReadableOn(picked.accent),
+    tab: ensureReadableOn(picked.tab),
+  };
 
   return (
     <Card className="shadow-card">

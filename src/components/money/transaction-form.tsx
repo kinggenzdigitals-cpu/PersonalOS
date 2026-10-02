@@ -332,7 +332,11 @@ export function TransactionForm({
       {/* Category grid */}
       <div>
         <div className="mb-2 flex items-center justify-between gap-2">
-          <Label className="block text-xs text-muted-foreground">Category</Label>
+          {/* Names the button grid below (role="group"), which a <label>
+              can't do, so it renders as a span with the label's styling. */}
+          <Label id="txn-category-label" asChild className="block text-xs text-muted-foreground">
+            <span>Category</span>
+          </Label>
           {suggested && (
             <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-medium text-brand">
               <SparklesIcon className="size-3" aria-hidden />
@@ -340,7 +344,11 @@ export function TransactionForm({
             </span>
           )}
         </div>
-        <div className="grid grid-cols-4 gap-2">
+        <div
+          role="group"
+          aria-labelledby="txn-category-label"
+          className="grid grid-cols-4 gap-2"
+        >
           {categories.map((c) => {
             const Icon = categoryIcon(c.name);
             const active = categoryId === c.id;
@@ -367,10 +375,18 @@ export function TransactionForm({
 
       {/* Account picker */}
       <div>
-        <Label className="mb-2 block text-xs text-muted-foreground">
-          Account
+        <Label
+          id="txn-account-label"
+          asChild
+          className="mb-2 block text-xs text-muted-foreground"
+        >
+          <span>Account</span>
         </Label>
-        <div className="flex flex-wrap gap-2">
+        <div
+          role="group"
+          aria-labelledby="txn-account-label"
+          className="flex flex-wrap gap-2"
+        >
           {accounts.map((a) => {
             const active = accountId === a.id;
             return (

@@ -20,7 +20,6 @@ What was **not** testable, and why:
 | Accessibility (WCAG 2.2 AA) | **PARTIALLY AUDITED — see §11.** Public routes scanned with axe-core 4.10.2; auth-gated routes source-reviewed only. Automated scanning cannot establish conformance. |
 | Full security-posture sweep | **PARTIAL.** The dedicated security agent also terminated early. Security findings below come from the third-party, storage and data lenses only. |
 | Supabase backup / PITR window | Not readable from the repo or via available tooling. Must be read off the Supabase dashboard. |
-| Unsplash per-photo licence tier | `images.unsplash.com` returns bytes with no attribution metadata. |
 | Owner business registration | Nothing in repo, database or live site references any. **Not invented.** |
 
 No accessibility conformance is claimed. Automated tooling detects only a fraction of WCAG
@@ -35,17 +34,18 @@ These were proven by exhaustive negative greps, not assumed:
 
 | Finding | Evidence |
 |---|---|
-| **Zero analytics, ad pixels, session replay or error tracking** | Grep for `sentry\|posthog\|mixpanel\|amplitude\|hotjar\|clarity.ms\|fullstory\|logrocket\|datadog\|bugsnag\|newrelic\|plausible\|umami\|matomo\|googletagmanager\|google-analytics\|gtag(\|fbq(\|@vercel/analytics` across `src/` and `public/` → **0 matches**. `npm ls --omit=dev --depth=0` → no telemetry SDK. Live HTML → no `_vercel/insights`. |
+| **No ad pixels, session replay or third-party error tracking** | A grep for `sentry\|posthog\|mixpanel\|amplitude\|hotjar\|clarity.ms\|fullstory\|logrocket\|datadog\|bugsnag\|newrelic\|plausible\|umami\|matomo\|googletagmanager\|google-analytics\|gtag(\|fbq(` across `src/` and `public/` finds none. **Changed since the first pass:** `src/app/layout.tsx` now mounts Vercel Web Analytics (`@vercel/analytics`), plus Speed Insights when `NEXT_PUBLIC_ENABLE_SPEED_INSIGHTS=true`. Server errors are logged by `src/instrumentation.ts`, with no vendor. |
 | **Anonymous visitors receive no cookies at all** | `curl -s -D -` on `/` returns **no `Set-Cookie` header**. |
 | **Google Fonts are self-hosted** | `next/font/google` downloads at build time; `grep -rl 'fonts.gstatic.com\|fonts.googleapis.com' .next` → **0 files**. No visitor IP reaches Google. |
-| **Unsplash never sees the visitor** | `next/image` proxies server-side; live HTML has **0** `<img src="https://images.unsplash...">`. Vercel's optimiser fetches, not the browser. |
 | **All 27 public tables have RLS enabled** | Live `pg_class.relrowsecurity` = true on all 27; 24 owner-scoped on `auth.uid() = user_id`. |
 | **No fake testimonials, reviews, ratings or user counts** | Grep for `testimonial\|review\|rating\|star\|trustpilot\|as seen (on\|in)\|featured in\|endorse\|award` → no marketing hits. |
 
 ### 1.1 Cookie banner verdict: **NOT required — but disclosure is**
 
 Every storage item is **strictly necessary** (Supabase auth session) or **preference**
-(theme, privacy mask, focus timer, last-used account). There is no analytics, no advertising,
+(theme, privacy mask, focus timer, last-used account). The only analytics is Vercel Web Analytics, and a
+browser check of production on 2026-09-16 found it stores nothing (no cookie, no localStorage or
+sessionStorage key; the only key present was the app's own `fht-theme`). There is no advertising,
 no third-party cookie, and no cookie at all before sign-in.
 
 The DPA contains no cookie-specific consent rule — there is no Philippine equivalent of EU
@@ -83,6 +83,10 @@ browser storage|tracking|analytic|session" src/app/privacy/page.tsx` → **0 hit
 `src/app/pricing/page.tsx:22` all assert auto-renewal. Billing is **one-off Xendit invoices,
 no stored card** — `supabase/migrations/0017` says so explicitly. RA 11967 renewal-disclosure;
 RA 7394. **OWNER DECISION + LAWYER.**
+**Status:** copy aligned with the code — the Terms (`779ab59`, then this pass), both FAQs
+(`src/app/page.tsx`, `src/app/pricing/page.tsx`) and the `/subscription` promo banner now
+describe the prepaid, no-renewal model; `pricing-cards.tsx` already did. **LAWYER** should
+still review the Terms paragraph.
 
 ### H-02 — No business-identity disclosure anywhere on the site
 Grep for `DTI|SEC|BIR|TIN|registered business|business permit|\+63|Data Protection Officer|
@@ -107,6 +111,9 @@ schema change and has not been built.
 (receives **email address + raw Supabase user UUID**, `src/app/(app)/settings/billing-actions.ts:54-68`),
 Vercel (terminates TLS, runs every Server Action, `X-Vercel-Id: sin1`), cross-border transfer,
 any retention period, a DPO, and the NPC complaint route. RA 10173 + IRR. **OWNER + LAWYER.**
+**Status:** PARTIAL — the policy now names Supabase, Vercel (hosting, Web Analytics and, where
+enabled, Speed Insights) and PayMongo, which replaced Xendit. Still missing: the Singapore
+storage, any retention period, a DPO and the NPC route.
 
 ### H-05 — IP addresses and user agents are collected and stored, undisclosed
 Live: `select count(*), count(user_agent), count(ip) from auth.sessions` → **total=2,
@@ -189,7 +196,7 @@ No `Content-Security-Policy`, `X-Frame-Options`, `Referrer-Policy`, `Permissions
 | M-12 | Two `localStorage` keys measure engagement to trigger an upsell — the only non-necessary/non-preference items | `active-use-timer.tsx:6-8` |
 | M-13 | Google's "G" trademark is **hand-redrawn** rather than Google's official asset | `google-button.tsx:60-84` |
 | M-14 | No credits/attribution page, while the bundle carries ISC, MIT, Apache-2.0 and OFL notice obligations | no such route exists |
-| M-15 | Four Unsplash photos hotlinked with no provenance record kept | `src/app/page.tsx:51-58` |
+| M-15 ✅ | Four Unsplash photos hotlinked with no provenance record kept | `src/app/page.tsx:51-58` | resolved — the photos left the landing page in `f47c435`, and `images.unsplash.com` is gone from `next.config.ts` `remotePatterns` (now empty) |
 | M-16 ✅ | OpenGraph share image unreachable in production (blocked by the proxy matcher) | `src/proxy.ts:15` | fixed — next/og routes have no file extension, so the matcher's image escape never caught them |
 
 ---
@@ -219,11 +226,11 @@ Every row here is **LAWYER** — the evidence supports the question, not the ans
 | **NPC registration** of the Data Processing System | Not addressed anywhere. Turns on scale/sensitivity thresholds — needs counsel. |
 | Exemption declaration | Not assessed. |
 | **Privacy Impact Assessment** | No PIA exists in the repo. |
-| **Vendor data-processing agreements** | No DPA with Supabase, Vercel or Xendit is recorded in the repo. |
+| **Vendor data-processing agreements** | No DPA with Supabase, Vercel or PayMongo is recorded in the repo. |
 | **Cross-border transfer safeguards** | Transfer to Singapore is real and undisclosed (H-06). No safeguard documented. |
 | **Breach-response plan** | **None exists in the repo.** RA 10173 imposes breach-notification duties. |
 | **DTI / SEC registration** | Not disclosed; existence unknown. |
-| **BIR registration + compliant invoices** | Not addressed. Xendit issues payment records, not BIR-compliant invoices. |
+| **BIR registration + compliant invoices** | Not addressed. PayMongo issues payment receipts, not BIR-compliant invoices. |
 | **LGU business permit** | Not addressed. |
 | **PH Trustmark / Online Business Database** | Not addressed. RA 11967 IRR. |
 
@@ -237,8 +244,7 @@ Every row here is **LAWYER** — the evidence supports the question, not the ans
 |---|---|---|---|---|---|
 | **Supabase** | All auth + financial + habit + mood data; IP + user-agent in `auth.sessions` | Database, auth | **Singapore** (`ap-southeast-1`) | `sb-<ref>-auth-token` (first-party, chunked) | **Yes** |
 | **Vercel** | Every request; TLS termination; all Server Actions | Hosting, image proxy | **Singapore** compute (`sin1`), global edge, US company | none | **Yes** |
-| **Xendit** | **Email address + raw Supabase user UUID**, plan, amount, currency | Payments | Not verified | none (redirect to their domain) | **Yes** |
-| **Unsplash** | Server IP + image path only — **not the visitor's IP** | Landing images | US | none | Server-side only |
+| **PayMongo** (replaced Xendit) | **Email address** (checkout `customer_email`) **+ raw Supabase user UUID** (inside `reference_number`), plan, amount, currency (PHP) | Payments | Not verified | none (redirect to their domain) | **Yes** |
 | **Google (OAuth)** | Configured in code; **provider currently disabled** | Optional sign-in | US | none while disabled | n/a currently |
 
 **Browser storage, complete:** Supabase auth cookie (chunked) + seven `localStorage` keys
@@ -268,7 +274,7 @@ Legal pages cannot be published until these exist:
 13. Governing law and venue
 14. Suspension/termination grounds and notice period
 15. PNGTree licence receipt for the root PNG — or a decision to delete it
-16. Unsplash per-photo provenance (photographer, licence tier, date retrieved)
+16. ~~Unsplash per-photo provenance~~ — no longer needed; the photos were removed (M-15)
 17. App-icon authorship (one line)
 18. Whether the **auto-renewal** language or the **invoice-based** implementation is the intended model
 19. Whether a **device limit** should be built (it currently does not exist)
@@ -339,7 +345,6 @@ testing and keyboard walkthroughs of the authenticated app.
 - Full security sweep — partial only
 - Owner-side registrations (DTI/SEC/BIR/LGU) — existence unknown
 - Supabase backup/PITR retention window
-- Unsplash per-photo licence tier and photographer
 - Whether the owner holds any PNGTree licence
 - Live `Set-Cookie` confirmation of the auth cookie name (requires an authenticated session; the auditor did not sign in)
 - Vercel edge/CDN points of presence actually serving this deployment

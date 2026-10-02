@@ -83,7 +83,7 @@ export function TaskRow({ task }: { task: Task }) {
         trigger={
           <button
             type="button"
-            className="min-w-0 flex-1 text-left focus-visible:outline-none"
+            className="min-w-0 flex-1 rounded-lg text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span
               className={cn(
@@ -155,7 +155,11 @@ export function TaskRow({ task }: { task: Task }) {
           )}
           <DropdownMenuItem
             className="text-error focus:text-error"
-            onClick={() => run(() => deleteTask(task.id))}
+            onClick={() => {
+              if (window.confirm("Delete this task? This can't be undone.")) {
+                run(() => deleteTask(task.id));
+              }
+            }}
           >
             <Trash2Icon className="size-4" /> Delete
           </DropdownMenuItem>

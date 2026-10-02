@@ -8,7 +8,15 @@
  * the real fault was mail configuration. Ordering is the thing under test.
  */
 const assert = require("assert");
-const { friendlyAuthError } = require("../.tmp-test/auth-errors.js");
+const fs = require("node:fs");
+const path = require("node:path");
+const {
+  friendlyAuthError,
+  isBannedAuthError,
+  ACCOUNT_SUSPENDED_MESSAGE,
+} = require("../.tmp-test/auth-errors.js");
+
+const read = (rel) => fs.readFileSync(path.join(__dirname, "..", rel), "utf8");
 
 let passed = 0;
 let failed = 0;
@@ -87,6 +95,52 @@ test("duplicate signup", () => {
   assert.match(
     friendlyAuthError("User already registered"),
     /already exists/,
+  );
+});
+
+// ---- a suspended account ---------------------------------------------------
+// Suspending or revoking bans the account in GoTrue, so sign-in now fails with
+// "User is banned" and /suspended — the page carrying the support address — is
+// out of reach. Parroting the ban would leave the holder no way to appeal.
+
+test("a banned account is told it is suspended, with a way to appeal", () => {
+  const out = friendlyAuthError("User is banned");
+  assert.match(out, /suspended/i);
+  assert.match(out, /contact support at \S+@\S+/);
+});
+
+test("the ban is recognised however GoTrue words it", () => {
+  for (const raw of ["User is banned", "user_banned", "USER IS BANNED"]) {
+    assert.strictEqual(friendlyAuthError(raw), ACCOUNT_SUSPENDED_MESSAGE, raw);
+  }
+});
+
+test("isBannedAuthError reads the callback's error_code and error_description", () => {
+  assert.ok(isBannedAuthError("user_banned", null));
+  assert.ok(isBannedAuthError(null, "User is banned"));
+  assert.ok(!isBannedAuthError("otp_expired", "Email link is invalid or has expired"));
+  assert.ok(!isBannedAuthError(null, undefined));
+});
+
+test("the suspension copy reuses the /suspended page's support address", () => {
+  const address = ACCOUNT_SUSPENDED_MESSAGE.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/);
+  assert.ok(address, "the suspension copy must name a support address");
+  assert.ok(
+    read("src/app/suspended/page.tsx").includes(address[0]),
+    `/suspended does not publish ${address[0]}`,
+  );
+});
+
+test("the Google / email-link path shows the same suspension copy", () => {
+  assert.match(
+    read("src/app/auth/callback/route.ts"),
+    /isBannedAuthError\(/,
+    "the auth callback must recognise a ban instead of reporting an expired link",
+  );
+  assert.match(
+    read("src/app/auth/auth-code-error/page.tsx"),
+    /ACCOUNT_SUSPENDED_MESSAGE/,
+    "the page the callback redirects to must show the same copy",
   );
 });
 

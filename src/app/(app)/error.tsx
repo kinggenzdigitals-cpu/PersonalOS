@@ -24,6 +24,13 @@ export default function AppError({
       <p className="max-w-xs text-sm text-muted-foreground">
         We couldn&apos;t load this page. It might be a connection hiccup.
       </p>
+      {/* Matches the `request_error` log line from src/instrumentation.ts, so a
+          support report can be traced to the server error. */}
+      {error.digest && (
+        <p className="text-xs text-muted-foreground">
+          Reference: <span className="font-mono">{error.digest}</span>
+        </p>
+      )}
       <Button onClick={reset}>Try again</Button>
     </div>
   );

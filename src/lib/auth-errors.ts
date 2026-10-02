@@ -1,4 +1,22 @@
 /**
+ * Shown wherever GoTrue refuses a banned account. Suspending or revoking an
+ * account bans it (admin setAccountStatus), so the user can no longer reach
+ * /suspended; this carries the same support address that page, /privacy and
+ * /terms publish.
+ */
+export const ACCOUNT_SUSPENDED_MESSAGE =
+  "This account is suspended. If you think this is a mistake, contact support at kinggenzdigitals@gmail.com.";
+
+/**
+ * True when any of the given error codes or messages is GoTrue's ban refusal:
+ * code "user_banned", message "User is banned". The auth callback passes the
+ * provider's error_code / error_description here as well.
+ */
+export function isBannedAuthError(...texts: (string | null | undefined)[]): boolean {
+  return texts.some((t) => (t ?? "").toLowerCase().includes("banned"));
+}
+
+/**
  * Maps raw Supabase auth error messages to friendly, user-safe copy. In
  * particular a network failure (e.g. "Failed to fetch" when the Supabase
  * project is paused or unreachable) becomes a calm "temporarily unavailable"
@@ -13,6 +31,14 @@ export function friendlyAuthError(message: string | undefined | null): string {
   // substring "fetch", which is broad enough to swallow real, actionable
   // errors and relabel them "temporarily unavailable" — telling the user to
   // wait when waiting would never help. Anything identifiable must win.
+
+  // Suspending or revoking an account bans it in GoTrue, so sign-in fails with
+  // "User is banned". The raw wording explains nothing and /suspended can no
+  // longer be reached, so this is the only place the holder learns why and how
+  // to appeal.
+  if (isBannedAuthError(m)) {
+    return ACCOUNT_SUSPENDED_MESSAGE;
+  }
 
   // The mail provider rejected the send. Not transient, and not the user's
   // fault: the project's SMTP configuration needs attention.

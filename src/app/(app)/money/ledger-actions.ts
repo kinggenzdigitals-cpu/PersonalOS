@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireActiveUser } from "@/lib/auth";
+import { friendlyDbError } from "@/lib/supabase/errors";
 import type { LedgerDirection } from "@/lib/supabase/types";
 
 export type ActionResult =
@@ -9,11 +11,11 @@ export type ActionResult =
   | { ok: false; error: string };
 
 async function auth() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return { supabase, user };
+  // requireActiveUser() is null for a suspended / revoked account as well as a
+  // signed-out one, so callers refuse the write either way.
+  const active = await requireActiveUser();
+  if (active) return active;
+  return { supabase: await createClient(), user: null };
 }
 
 function revalidate() {
@@ -49,7 +51,7 @@ export async function upsertLedgerEntry(
       .from("ledger_entries")
       .update(row)
       .eq("id", input.id);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this entry.") };
     revalidate();
     return { ok: true, id: input.id };
   }
@@ -59,7 +61,7 @@ export async function upsertLedgerEntry(
     .insert({ user_id: user.id, status: "open", ...row })
     .select("id")
     .single();
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this entry.") };
   revalidate();
   return { ok: true, id: data.id };
 }
@@ -71,7 +73,7 @@ export async function deleteLedgerEntry(id: string): Promise<ActionResult> {
     .from("ledger_entries")
     .delete()
     .eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't delete this entry.") };
   revalidate();
   return { ok: true };
 }
@@ -97,7 +99,7 @@ export async function settleLedgerEntry(input: {
     .eq("id", input.id)
     .single();
   if (entryErr || !entry) {
-    return { ok: false, error: entryErr?.message ?? "Entry not found." };
+    return { ok: false, error: friendlyDbError(entryErr, "Entry not found.") };
   }
 
   const txType = entry.direction === "receivable" ? "income" : "expense";
@@ -118,7 +120,7 @@ export async function settleLedgerEntry(input: {
     })
     .select("id")
     .single();
-  if (txErr) return { ok: false, error: txErr.message };
+  if (txErr) return { ok: false, error: friendlyDbError(txErr, "Couldn't record this settlement.") };
 
   const { error: updErr } = await supabase
     .from("ledger_entries")
@@ -129,7 +131,7 @@ export async function settleLedgerEntry(input: {
       account_id: input.accountId,
     })
     .eq("id", input.id);
-  if (updErr) return { ok: false, error: updErr.message };
+  if (updErr) return { ok: false, error: friendlyDbError(updErr, "Couldn't mark this entry settled.") };
 
   revalidate();
   return { ok: true, id: tx.id };

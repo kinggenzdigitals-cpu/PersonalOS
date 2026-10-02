@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isSchemaMissing, migrationRequired } from "@/lib/supabase/errors";
+import { friendlyDbError, isSchemaMissing, migrationRequired } from "@/lib/supabase/errors";
 import type { Subscription } from "@/lib/supabase/types";
 
 export type SubscriptionResult =
@@ -116,7 +116,7 @@ export async function cancelSubscription(): Promise<SubscriptionResult> {
     if (isSchemaMissing(error)) {
       return { ok: false, error: migrationRequired("Cancellation", "0017") };
     }
-    return { ok: false, error: error.message };
+    return { ok: false, error: friendlyDbError(error, "Couldn't turn off renewal.") };
   }
 
   revalidatePath("/", "layout");
@@ -171,7 +171,7 @@ export async function resumeSubscription(): Promise<SubscriptionResult> {
     if (isSchemaMissing(error)) {
       return { ok: false, error: migrationRequired("Cancellation", "0017") };
     }
-    return { ok: false, error: error.message };
+    return { ok: false, error: friendlyDbError(error, "Couldn't turn renewal back on.") };
   }
 
   revalidatePath("/", "layout");

@@ -75,9 +75,10 @@ export type ExistingAccess = {
 } | null;
 
 /**
- * Whether a subscriptions row grants access right now. Mirrors getEntitlement()
- * in lib/entitlement.ts: Lifetime never ends; complimentary access with no end
- * date is permanent; a promo or paid period needs a real, future end date.
+ * Whether a subscriptions row grants access right now. getEntitlement() resolves
+ * the plan through this same rule (resolvePlan() in lib/entitlement-core.ts):
+ * Lifetime never ends; complimentary access with no end date is permanent; a
+ * promo or paid period needs a real, future end date.
  */
 export function isAccessLive(existing: ExistingAccess, nowMs: number): boolean {
   if (!existing) return false;

@@ -85,7 +85,7 @@ export function AdminDashboard({
   summary: AdminSummary;
   feedback: Feedback[];
   invitations: Invitation[];
-  auditLog: AuditEntry[];
+  auditLog: AuditEntry[] | null;
   promoCodes: AdminPromoCode[];
   canManageAccounts?: boolean;
 }) {
@@ -566,7 +566,10 @@ function FeedbackItem({ f, email }: { f: Feedback; email: string | null }) {
           </div>
         </div>
         <p className="whitespace-pre-wrap text-sm text-muted-foreground">{f.message}</p>
-        {f.screenshot_url && <a href={f.screenshot_url} target="_blank" rel="noreferrer" className="text-xs text-brand-2 underline">View screenshot</a>}
+        {/* User-supplied: only an https value becomes a link (0030 enforces it; this covers older rows). */}
+        {f.screenshot_url && (/^https:\/\//i.test(f.screenshot_url)
+          ? <a href={f.screenshot_url} target="_blank" rel="noreferrer" className="text-xs text-brand-2 underline">View screenshot</a>
+          : <span className="break-all text-xs text-muted-foreground">{f.screenshot_url}</span>)}
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1 text-xs text-muted-foreground">
             <span>Status</span>

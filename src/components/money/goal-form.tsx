@@ -98,6 +98,7 @@ export function GoalForm({
 
   async function remove() {
     if (!initial) return;
+    if (!window.confirm("Delete this goal? This can't be undone.")) return;
     setSaving(true);
     const result = await deleteSavingsGoal(initial.id);
     if (!result.ok) {
@@ -190,14 +191,21 @@ export function GoalForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Color</Label>
-        <div className="flex flex-wrap gap-2">
+        <Label id="goal-color-label" asChild>
+          <span>Color</span>
+        </Label>
+        <div
+          role="group"
+          aria-labelledby="goal-color-label"
+          className="flex flex-wrap gap-2"
+        >
           {GOAL_COLORS.map((c) => (
             <button
               key={c}
               type="button"
               onClick={() => setColor(c)}
               aria-label={`Color ${c}`}
+              aria-pressed={color === c}
               className={cn(
                 "grid size-7 place-items-center rounded-full transition-transform hover:scale-110",
                 color === c && "ring-2 ring-offset-2 ring-offset-background",
@@ -218,8 +226,10 @@ export function GoalForm({
             className="text-error hover:text-error"
             onClick={remove}
             disabled={saving}
+            aria-label="Delete goal"
+            title="Delete goal"
           >
-            <Trash2Icon className="size-4" />
+            <Trash2Icon className="size-4" aria-hidden />
           </Button>
         )}
         <Button className="flex-1" onClick={save} disabled={saving}>

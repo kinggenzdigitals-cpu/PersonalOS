@@ -84,9 +84,9 @@ export function PayBillForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label>{income ? "Receive into" : "Pay from"}</Label>
+        <Label htmlFor="pay-bill-account">{income ? "Receive into" : "Pay from"}</Label>
         <Select value={accountId} onValueChange={setAccountId}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger id="pay-bill-account" className="w-full">
             <SelectValue placeholder="Account" />
           </SelectTrigger>
           <SelectContent>

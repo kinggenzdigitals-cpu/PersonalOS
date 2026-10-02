@@ -2,8 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireActiveUser } from "@/lib/auth";
 import { categoryKey, normalizeCategoryName } from "@/lib/category-name";
 import { merchantKey } from "@/lib/transaction-parser";
+import { fetchAllPages } from "@/lib/fetch-all-pages";
+import { friendlyDbError } from "@/lib/supabase/errors";
 import {
   checkCap,
   checkTransactionCap,
@@ -13,6 +16,11 @@ import {
   getTransactions,
   type TransactionFilters,
 } from "@/lib/queries/money";
+import {
+  deriveUndoKey,
+  signUndoToken,
+  verifyUndoToken,
+} from "@/lib/undo-token";
 import type {
   Category,
   AccountType,
@@ -24,6 +32,7 @@ import type {
 export async function fetchTransactionsAction(
   filters: TransactionFilters,
 ): Promise<Transaction[]> {
+  if (!(await requireActiveUser())) return [];
   return getTransactions(filters);
 }
 
@@ -35,32 +44,50 @@ export type ExportResult =
   | { ok: true; transactions: Transaction[] }
   | { ok: false; error: string };
 
+/** `undo` is the signed token restoreTransaction needs — opaque to the client. */
+export type DeleteResult =
+  | { ok: true; undo?: string }
+  | { ok: false; error: string };
+
 /**
  * Transactions for CSV export. The plan check lives HERE (server-side) rather
  * than only in the UI — a locked button is a hint, not a control.
  */
 export async function exportTransactionsAction(): Promise<ExportResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "You're not signed in." };
+  const active = await requireActiveUser();
+  if (!active) {
+    return { ok: false, error: "You're not signed in." };
+  }
 
   const locked = await requireProFeature("csvExport", "CSV export");
   if (locked) return { ok: false, error: locked };
 
-  return {
-    ok: true,
-    transactions: await getTransactions({ limit: 100000, offset: 0 }),
-  };
+  // Ranged pages, not one huge range: PostgREST clamps any range to max-rows
+  // (1000) with no error, so a long history exported silently truncated. `id`
+  // breaks occurred_at ties so pages can't repeat or skip rows.
+  const { rows, error } = await fetchAllPages((from, to) =>
+    active.supabase
+      .from("transactions")
+      .select("*")
+      .order("occurred_at", { ascending: false })
+      .order("id")
+      .range(from, to)
+      .returns<Transaction[]>(),
+  );
+  if (error) {
+    // A partial file would pass for a complete one, so fail the whole export.
+    console.error("[exportTransactionsAction] query failed:", error.message);
+    return { ok: false, error: "Couldn't export your transactions. Try again." };
+  }
+  return { ok: true, transactions: rows };
 }
 
 async function auth() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return { supabase, user };
+  // requireActiveUser() is null for a suspended / revoked account as well as a
+  // signed-out one, so callers refuse the write either way.
+  const active = await requireActiveUser();
+  if (active) return active;
+  return { supabase: await createClient(), user: null };
 }
 
 function revalidateMoney() {
@@ -79,6 +106,27 @@ export type TransactionInput = {
   notes?: string | null;
 };
 
+/**
+ * Upgrade message once the plan's monthly transaction limit is reached.
+ * Counted on created_at, not occurred_at, like the statement importer: the
+ * date on an entry is the user's to pick, so an occurred_at window let every
+ * backdated entry skip the count.
+ */
+async function transactionCapError(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<string | null> {
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
+  const { count } = await supabase
+    .from("transactions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", monthStart.toISOString());
+  return checkTransactionCap(count ?? 0);
+}
+
 export async function createTransaction(
   input: TransactionInput,
 ): Promise<ActionResult> {
@@ -88,15 +136,7 @@ export async function createTransaction(
   if (!input.accountId) return { ok: false, error: "Choose an account." };
 
   // Enforce the monthly transaction limit for the user's plan.
-  const monthStart = new Date();
-  monthStart.setUTCDate(1);
-  monthStart.setUTCHours(0, 0, 0, 0);
-  const { count } = await supabase
-    .from("transactions")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .gte("occurred_at", monthStart.toISOString());
-  const capError = await checkTransactionCap(count ?? 0);
+  const capError = await transactionCapError(supabase, user.id);
   if (capError) return { ok: false, error: capError };
 
   const { data, error } = await supabase
@@ -114,7 +154,7 @@ export async function createTransaction(
     .select("id")
     .single();
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this transaction.") };
   revalidateMoney();
   return { ok: true, id: data.id };
 }
@@ -140,19 +180,53 @@ export async function updateTransaction(
     })
     .eq("id", id);
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this transaction.") };
   revalidateMoney();
   return { ok: true, id };
 }
 
-/** Re-inserts a just-deleted transaction (for Undo). */
+/**
+ * HMAC key for undo tokens, derived one-way from the service-role key so it
+ * needs no extra env var and never reaches the browser. Empty when the app runs
+ * without one — Undo then falls back to re-entering the client's copy.
+ */
+function undoKey(): string {
+  return deriveUndoKey(process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+/**
+ * Re-inserts a just-deleted transaction (for Undo).
+ *
+ * With the token deleteTransaction handed back, the original row goes in
+ * exactly as it was signed — same id, same created_at — and no cap applies:
+ * undoing a delete must not be refused because the deleted row was created in
+ * an earlier month, nor spend a slot from this one. Without a valid token the
+ * client's copy is re-entered as a new row and passes the same cap as a new
+ * entry — except for transfers and adjustments, which createTransfer and
+ * createAdjustment never cap either.
+ */
 export async function restoreTransaction(
   t: Transaction,
+  undo?: string,
 ): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
-  const { error } = await supabase.from("transactions").insert({
-    id: t.id,
+
+  const signed = verifyUndoToken(undo, {
+    key: undoKey(),
+    now: Date.now(),
+    userId: user.id,
+  });
+
+  if (!signed) {
+    if (!(Number(t.amount) > 0)) return { ok: false, error: "Enter an amount." };
+    if (t.type === "income" || t.type === "expense") {
+      const capError = await transactionCapError(supabase, user.id);
+      if (capError) return { ok: false, error: capError };
+    }
+  }
+
+  const row = signed ?? {
     user_id: user.id,
     type: t.type,
     amount: t.amount,
@@ -163,19 +237,53 @@ export async function restoreTransaction(
     occurred_at: t.occurred_at,
     merchant: t.merchant,
     notes: t.notes,
-  });
-  if (error) return { ok: false, error: error.message };
-  revalidateMoney();
-  return { ok: true, id: t.id };
-}
+  };
 
-export async function deleteTransaction(id: string): Promise<ActionResult> {
-  const { supabase, user } = await auth();
-  if (!user) return { ok: false, error: "You're not signed in." };
-  const { error } = await supabase.from("transactions").delete().eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  const { error } = await supabase.from("transactions").insert(row);
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't restore this transaction.") };
   revalidateMoney();
   return { ok: true };
+}
+
+/**
+ * Deletes a transaction and signs the row it removed, so Undo can restore that
+ * row rather than whatever the browser still had on screen.
+ */
+export async function deleteTransaction(id: string): Promise<DeleteResult> {
+  const { supabase, user } = await auth();
+  if (!user) return { ok: false, error: "You're not signed in." };
+  const { data, error } = await supabase
+    .from("transactions")
+    .delete()
+    .eq("id", id)
+    .select("*")
+    .maybeSingle<Transaction>();
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't delete this transaction.") };
+  revalidateMoney();
+
+  const key = undoKey();
+  // No row means it was already gone, so there is nothing to offer an undo of.
+  if (!data || !key) return { ok: true };
+  return {
+    ok: true,
+    undo: signUndoToken(
+      {
+        id: data.id,
+        user_id: data.user_id,
+        type: data.type,
+        amount: data.amount,
+        category_id: data.category_id,
+        account_id: data.account_id,
+        to_account_id: data.to_account_id,
+        direction: data.direction,
+        occurred_at: data.occurred_at,
+        merchant: data.merchant,
+        notes: data.notes,
+        created_at: data.created_at,
+      },
+      { key, now: Date.now() },
+    ),
+  };
 }
 
 // ---- Duplicate detection -------------------------------------------------
@@ -296,7 +404,7 @@ export async function createTransfer(input: {
     .select("id")
     .single();
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this transfer.") };
   revalidateMoney();
   return { ok: true, id: data.id };
 }
@@ -330,7 +438,7 @@ export async function createAdjustment(input: {
     .select("id")
     .single();
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this adjustment.") };
   revalidateMoney();
   return { ok: true, id: data.id };
 }
@@ -380,7 +488,7 @@ export async function createAccount(
     .select("id")
     .single();
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this account.") };
   revalidateMoney();
   return { ok: true, id: data.id };
 }
@@ -407,7 +515,7 @@ export async function updateAccount(
     })
     .eq("id", id);
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this account.") };
   revalidateMoney();
   return { ok: true, id };
 }
@@ -422,7 +530,7 @@ export async function setAccountArchived(
     .from("accounts")
     .update({ archived })
     .eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't update this account.") };
   revalidateMoney();
   return { ok: true };
 }
@@ -466,7 +574,7 @@ export async function createCategory(
     .eq("kind", kind)
     .returns<Category[]>();
   if (readError) {
-    return { ok: false, error: `Couldn't check categories: ${readError.message}` };
+    return { ok: false, error: friendlyDbError(readError, "Couldn't check categories.") };
   }
 
   const key = categoryKey(clean);
@@ -496,7 +604,7 @@ export async function createCategory(
       const found = (raced ?? []).find((c) => categoryKey(c.name) === key);
       if (found) return { ok: true, category: found };
     }
-    return { ok: false, error: `Couldn't create the category: ${error.message}` };
+    return { ok: false, error: friendlyDbError(error, "Couldn't create the category.") };
   }
 
   revalidatePath("/money", "layout");

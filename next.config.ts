@@ -4,7 +4,7 @@ import type { NextConfig } from "next";
  * Security response headers.
  *
  * Deliberately NO Content-Security-Policy. A correct one here has to enumerate
- * Supabase (the browser talks to it directly), Xendit's hosted invoice
+ * Supabase (the browser talks to it directly), PayMongo's hosted checkout
  * redirect, and Next's own inline bootstrap/pre-paint scripts — and a CSP that
  * misses one of those does not degrade, it breaks sign-in or checkout in
  * production with no local symptom. Add it only alongside report-only
@@ -29,16 +29,25 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
-    // Only hosts actually referenced by the app. The two picsum.photos entries
-    // that used to sit here were leftover scaffolding that nothing rendered —
-    // an unused remote pattern is a needless widening of what the image
-    // optimizer will fetch and then re-serve from this domain.
-    remotePatterns: [
-      { protocol: "https", hostname: "images.unsplash.com" },
-    ],
+    // No remote hosts: every next/image source is a local file. The
+    // picsum.photos and images.unsplash.com entries that used to sit here
+    // outlived whatever rendered them — an unused remote pattern is a needless
+    // widening of what the image optimizer will fetch and then re-serve from
+    // this domain. Give any future entry an explicit `pathname` as well.
+    remotePatterns: [],
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Invite pages print the invitee's email. The page's noindex meta only
+      // counts once its HTML is parsed; the header also covers error renders.
+      {
+        source: "/invite/:path*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
+    ];
   },
 };
 

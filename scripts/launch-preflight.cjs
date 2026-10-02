@@ -3,9 +3,16 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-for (const file of [".env.local", ".env"]) {
-  const envPath = path.join(process.cwd(), file);
-  if (!fs.existsSync(envPath)) continue;
+// `npm run launch:preflight -- <file>` reads only that file, so a key missing
+// from pulled production values can't be filled in from a dev .env.local.
+const explicitFile = process.argv[2];
+for (const file of explicitFile ? [explicitFile] : [".env.local", ".env"]) {
+  const envPath = path.resolve(file);
+  if (!fs.existsSync(envPath)) {
+    if (file !== explicitFile) continue;
+    console.error(`Launch preflight failed: ${file} not found.`);
+    process.exit(1);
+  }
   for (const line of fs.readFileSync(envPath, "utf8").split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;

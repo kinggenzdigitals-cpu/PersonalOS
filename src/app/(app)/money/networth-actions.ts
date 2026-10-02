@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireActiveUser } from "@/lib/auth";
+import { friendlyDbError } from "@/lib/supabase/errors";
 import { hasProFeature } from "@/lib/plan-guard";
 import type { AssetKind, LiabilityKind } from "@/lib/supabase/types";
 
@@ -13,11 +15,11 @@ export type ActionResult =
   | { ok: false; error: string };
 
 async function auth() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return { supabase, user };
+  // requireActiveUser() is null for a suspended / revoked account as well as a
+  // signed-out one, so callers refuse the write either way.
+  const active = await requireActiveUser();
+  if (active) return active;
+  return { supabase: await createClient(), user: null };
 }
 
 function revalidate() {
@@ -53,7 +55,7 @@ export async function upsertAsset(input: {
       .from("assets")
       .update(row)
       .eq("id", input.id);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this asset.") };
     revalidate();
     return { ok: true, id: input.id };
   }
@@ -63,7 +65,7 @@ export async function upsertAsset(input: {
     .insert({ user_id: user.id, ...row })
     .select("id")
     .single();
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this asset.") };
   revalidate();
   return { ok: true, id: data.id };
 }
@@ -72,7 +74,7 @@ export async function deleteAsset(id: string): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
   const { error } = await supabase.from("assets").delete().eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't delete this asset.") };
   revalidate();
   return { ok: true };
 }
@@ -106,7 +108,7 @@ export async function upsertLiability(input: {
       .from("liabilities")
       .update(row)
       .eq("id", input.id);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this liability.") };
     revalidate();
     return { ok: true, id: input.id };
   }
@@ -116,7 +118,7 @@ export async function upsertLiability(input: {
     .insert({ user_id: user.id, ...row })
     .select("id")
     .single();
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this liability.") };
   revalidate();
   return { ok: true, id: data.id };
 }
@@ -125,7 +127,7 @@ export async function deleteLiability(id: string): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
   const { error } = await supabase.from("liabilities").delete().eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't delete this liability.") };
   revalidate();
   return { ok: true };
 }

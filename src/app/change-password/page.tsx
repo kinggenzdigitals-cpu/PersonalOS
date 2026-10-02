@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { getProfile, requireUser } from "@/lib/auth";
+import { isAccountLocked } from "@/lib/account-status";
 import { ChangePasswordForm } from "@/components/auth/change-password-form";
 
 export const metadata: Metadata = { title: "Set or create password" };
@@ -7,6 +9,9 @@ export const metadata: Metadata = { title: "Set or create password" };
 export default async function ChangePasswordPage() {
   await requireUser();
   const profile = await getProfile();
+  // Same status rung as lib/auth.ts: a suspended / revoked account can't
+  // reset its password from a session it still holds.
+  if (isAccountLocked(profile?.status)) redirect("/suspended");
   const forced = Boolean(profile?.must_change_password);
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-4">

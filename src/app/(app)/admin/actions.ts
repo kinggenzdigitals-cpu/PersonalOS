@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { friendlyDbError } from "@/lib/supabase/errors";
+import { friendlyAuthError } from "@/lib/auth-errors";
+import { banDurationFor } from "@/lib/account-status";
 import {
   requireSuperAdmin,
   isOwnerEmail,
@@ -9,6 +12,8 @@ import {
   type Entitlement,
 } from "@/lib/entitlement";
 import { STATUS_ORDER } from "@/lib/feedback";
+import { auditNote } from "@/lib/admin/audit";
+import { ilikeExact, sameText } from "@/lib/ilike-exact";
 import type {
   AccessType,
   AccountStatus,
@@ -36,10 +41,16 @@ async function audit(
   targetUserId: string | null,
   action: string,
   detail: Record<string, unknown> = {},
-) {
-  await admin
+): Promise<boolean> {
+  const { error } = await admin
     .from("admin_audit_log")
     .insert({ admin_id: adminId, target_user_id: targetUserId, action, detail });
+  if (error) {
+    // The action already happened; flag the gap instead of hiding it.
+    console.error("[admin] audit write failed", action, error.code);
+    return false;
+  }
+  return true;
 }
 
 export type AdminResult = { ok: true; message?: string } | { ok: false; error: string };
@@ -100,11 +111,47 @@ export async function setAccountStatus(
   const blocked = await guardPrivilegedTarget(admin, userId);
   if (blocked) return { ok: false, error: blocked };
 
+  // Read before banning, so a failed status write below can put the ban back.
+  const { data: current, error: readErr } = await admin
+    .from("profiles")
+    .select("status")
+    .eq("user_id", userId)
+    .maybeSingle<{ status: AccountStatus | null }>();
+  if (readErr) return { ok: false, error: friendlyDbError(readErr, "Couldn't read the account status.") };
+  const previousStatus: AccountStatus = current?.status ?? "active";
+
+  // The status alone only locked pages on their next render: an open tab or a
+  // direct PostgREST call kept working on a session that kept refreshing. The
+  // ban stops the refresh and any new sign-in; "none" lifts it again. Done
+  // first so a failed ban changes nothing; a failed status write after a
+  // successful ban is rolled back below.
+  const { error: banErr } = await admin.auth.admin.updateUserById(userId, {
+    ban_duration: banDurationFor(status),
+  });
+  if (banErr) return { ok: false, error: friendlyAuthError(banErr.message) };
+
   const { error } = await admin
     .from("profiles")
     .update({ status })
     .eq("user_id", userId);
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    // Put the ban back to match the status that is still stored. Otherwise the
+    // dashboard shows the old status while GoTrue enforces the new one.
+    const { error: rollbackErr } = await admin.auth.admin.updateUserById(userId, {
+      ban_duration: banDurationFor(previousStatus),
+    });
+    if (rollbackErr) {
+      console.error("[admin] ban rollback failed", userId, rollbackErr.message);
+    }
+    const banned = banDurationFor(rollbackErr ? status : previousStatus) !== "none";
+    const base = friendlyDbError(error, "Couldn't update the account status.");
+    return {
+      ok: false,
+      error: rollbackErr
+        ? `${base} Undoing the sign-in ban also failed: the account is ${banned ? "" : "not "}banned from signing in, but still shows as ${previousStatus}. Try again.`
+        : `${base} Nothing changed: the account is ${banned ? "still" : "not"} banned from signing in.`,
+    };
+  }
 
   if (status === "revoked") {
     // Clear the period too. Leaving a future current_period_end behind meant a
@@ -122,9 +169,9 @@ export async function setAccountStatus(
       .eq("user_id", userId);
   }
 
-  await audit(admin, me.userId!, userId, `account_${status}`);
+  const logged = await audit(admin, me.userId!, userId, `account_${status}`);
   revalidatePath("/admin");
-  return { ok: true, message: `Account ${status}.` };
+  return { ok: true, message: `Account ${status}.${auditNote(logged)}` };
 }
 
 /** Grant / change / remove complimentary or lifetime Pro. */
@@ -171,7 +218,7 @@ export async function setAccess(
             },
       )
       .eq("user_id", userId);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: friendlyDbError(error, "Couldn't update access.") };
   } else {
     const { error } = await admin.from("subscriptions").upsert(
       {
@@ -193,16 +240,16 @@ export async function setAccess(
       },
       { onConflict: "user_id" },
     );
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: friendlyDbError(error, "Couldn't update access.") };
   }
 
-  await audit(admin, me.userId!, userId, "set_access", {
+  const logged = await audit(admin, me.userId!, userId, "set_access", {
     accessType,
     expiresAt,
     plan,
   });
   revalidatePath("/admin");
-  return { ok: true, message: "Access updated." };
+  return { ok: true, message: `Access updated.${auditNote(logged)}` };
 }
 
 function tempPassword(): string {
@@ -229,15 +276,15 @@ export async function resetPassword(userId: string): Promise<AdminResult> {
   const { error } = await admin.auth.admin.updateUserById(userId, {
     password: temp,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyAuthError(error.message) };
 
   await admin
     .from("profiles")
     .update({ must_change_password: true })
     .eq("user_id", userId);
-  await audit(admin, me.userId!, userId, "reset_password");
+  const logged = await audit(admin, me.userId!, userId, "reset_password");
   revalidatePath("/admin");
-  return { ok: true, message: `Temporary password: ${temp}` };
+  return { ok: true, message: `Temporary password: ${temp}${auditNote(logged)}` };
 }
 
 /** Create a complimentary/lifetime Pro account (no payment). */
@@ -267,13 +314,15 @@ export async function createComplimentaryAccount(input: {
     };
   }
 
-  // Enforce case-insensitive unique username.
-  const { data: clash } = await admin
+  // Enforce case-insensitive unique username. Exact match only: as a raw
+  // pattern, `_` (common in usernames) matched any character.
+  const { data: clashes } = await admin
     .from("profiles")
-    .select("user_id")
-    .ilike("username", username)
-    .maybeSingle();
-  if (clash) return { ok: false, error: "That username is already taken." };
+    .select("username")
+    .ilike("username", ilikeExact(username));
+  if ((clashes ?? []).some((row) => sameText(row.username, username))) {
+    return { ok: false, error: "That username is already taken." };
+  }
 
   const temp = tempPassword();
   const { data: created, error: createErr } =
@@ -284,6 +333,9 @@ export async function createComplimentaryAccount(input: {
       user_metadata: { full_name: input.fullName.trim() },
     });
   if (createErr || !created.user) {
+    // GoTrue's own wording ("...has already been registered") is the clearest
+    // thing to show an admin; friendlyAuthError's version is written for the
+    // account holder.
     return { ok: false, error: createErr?.message ?? "Couldn't create user." };
   }
   const uid = created.user.id;
@@ -321,14 +373,17 @@ export async function createComplimentaryAccount(input: {
     { onConflict: "user_id" },
   );
 
-  await audit(admin, me.userId!, uid, "create_complimentary", {
+  const logged = await audit(admin, me.userId!, uid, "create_complimentary", {
     email,
     username,
     accessType: input.accessType,
     plan: input.plan ?? "pro",
   });
   revalidatePath("/admin");
-  return { ok: true, message: `Account created. Temporary password: ${temp}` };
+  return {
+    ok: true,
+    message: `Account created. Temporary password: ${temp}${auditNote(logged)}`,
+  };
 }
 
 
@@ -372,15 +427,18 @@ export async function grantTimedAccess(input: {
     },
     { onConflict: "user_id" },
   );
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't grant access.") };
 
-  await audit(admin, me.userId!, input.userId, "grant_timed_access", {
+  const logged = await audit(admin, me.userId!, input.userId, "grant_timed_access", {
     plan: input.plan,
     months,
     accessType,
   });
   revalidatePath("/admin");
-  return { ok: true, message: `${input.plan} access granted for ${months} month${months === 1 ? "" : "s"}.` };
+  return {
+    ok: true,
+    message: `${input.plan} access granted for ${months} month${months === 1 ? "" : "s"}.${auditNote(logged)}`,
+  };
 }
 
 export async function extendUserAccess(
@@ -429,11 +487,14 @@ export async function extendUserAccess(
     },
     { onConflict: "user_id" },
   );
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't extend access.") };
 
-  await audit(admin, me.userId!, userId, "extend_access", { months: add, plan });
+  const logged = await audit(admin, me.userId!, userId, "extend_access", { months: add, plan });
   revalidatePath("/admin");
-  return { ok: true, message: `Access extended by ${add} month${add === 1 ? "" : "s"}.` };
+  return {
+    ok: true,
+    message: `Access extended by ${add} month${add === 1 ? "" : "s"}.${auditNote(logged)}`,
+  };
 }
 
 export async function cancelUserSubscription(userId: string): Promise<AdminResult> {
@@ -466,11 +527,14 @@ export async function cancelUserSubscription(userId: string): Promise<AdminResul
       },
       { onConflict: "user_id" },
     );
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't cancel the subscription.") };
 
-  await audit(admin, me.userId!, userId, "cancel_subscription");
+  const logged = await audit(admin, me.userId!, userId, "cancel_subscription");
   revalidatePath("/admin");
-  return { ok: true, message: "Subscription canceled and account moved to Free." };
+  return {
+    ok: true,
+    message: `Subscription canceled and account moved to Free.${auditNote(logged)}`,
+  };
 }
 
 export async function createPromoCode(input: {
@@ -506,9 +570,9 @@ export async function createPromoCode(input: {
     special_price: specialPrice,
     created_by: me.userId,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't create the promo code.") };
 
-  await audit(admin, me.userId!, null, "promo_created", {
+  const logged = await audit(admin, me.userId!, null, "promo_created", {
     code,
     plan: input.plan,
     durationMonths,
@@ -516,7 +580,7 @@ export async function createPromoCode(input: {
     specialPrice,
   });
   revalidatePath("/admin");
-  return { ok: true, message: `Promo code ${code} created.` };
+  return { ok: true, message: `Promo code ${code} created.${auditNote(logged)}` };
 }
 
 export async function setPromoCodeActive(
@@ -532,11 +596,14 @@ export async function setPromoCodeActive(
     .from("promo_codes")
     .update({ active })
     .eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't update the promo code.") };
 
-  await audit(admin, me.userId!, null, active ? "promo_activated" : "promo_deactivated", { id });
+  const logged = await audit(admin, me.userId!, null, active ? "promo_activated" : "promo_deactivated", { id });
   revalidatePath("/admin");
-  return { ok: true, message: active ? "Promo activated." : "Promo paused." };
+  return {
+    ok: true,
+    message: `${active ? "Promo activated." : "Promo paused."}${auditNote(logged)}`,
+  };
 }
 
 /** Triage a feedback item (status / internal note / user response). */
@@ -575,15 +642,15 @@ export async function updateFeedback(
   if (patch.archived !== undefined) row.archived = patch.archived;
 
   const { error } = await admin.from("feedback").update(row).eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't update the feedback.") };
 
   // Record WHICH fields changed, not their caller-controlled values — spreading
   // `patch` let an admin write unbounded JSON into the audit trail.
-  await audit(admin, me.userId!, null, "update_feedback", {
+  const logged = await audit(admin, me.userId!, null, "update_feedback", {
     id,
     fields: Object.keys(row),
     status: patch.status ?? null,
   });
   revalidatePath("/admin");
-  return { ok: true, message: "Feedback updated." };
+  return { ok: true, message: `Feedback updated.${auditNote(logged)}` };
 }

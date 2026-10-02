@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireActiveUser } from "@/lib/auth";
 import { merchantKey } from "@/lib/transaction-parser";
-import { isSchemaMissing, migrationRequired } from "@/lib/supabase/errors";
+import { friendlyDbError, isSchemaMissing, migrationRequired } from "@/lib/supabase/errors";
 import type {
   MerchantCategory,
   Transaction,
@@ -15,11 +16,11 @@ export type ActionResult =
   | { ok: false; error: string };
 
 async function auth() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return { supabase, user };
+  // requireActiveUser() is null for a suspended / revoked account as well as a
+  // signed-out one, so callers refuse the write either way.
+  const active = await requireActiveUser();
+  if (active) return active;
+  return { supabase: await createClient(), user: null };
 }
 
 function revalidate() {
@@ -171,7 +172,7 @@ export async function saveFavorite(
       .from("transaction_favorites")
       .update(row)
       .eq("id", input.id);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this favourite.") };
     revalidate();
     return { ok: true, id: input.id };
   }
@@ -190,7 +191,7 @@ export async function saveFavorite(
     if (isSchemaMissing(error)) {
       return { ok: false, error: migrationRequired("Favourites", "0014") };
     }
-    return { ok: false, error: error.message };
+    return { ok: false, error: friendlyDbError(error, "Couldn't save this favourite.") };
   }
   revalidate();
   return { ok: true, id: data.id };
@@ -203,7 +204,7 @@ export async function deleteFavorite(id: string): Promise<ActionResult> {
     .from("transaction_favorites")
     .delete()
     .eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't delete this favourite.") };
   revalidate();
   return { ok: true };
 }

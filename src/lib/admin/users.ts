@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { effectivePlan } from "@/lib/entitlement-core";
 import type { PlanId } from "@/lib/plans";
 import type {
   AccountStatus,
@@ -65,36 +66,6 @@ type SubRow = {
   created_at: string;
   cancel_at_period_end?: boolean | null;
 };
-
-function live(iso: string | null | undefined, now: number) {
-  return !iso || new Date(iso).getTime() > now;
-}
-
-function periodLive(iso: string | null | undefined, now: number) {
-  return !!iso && new Date(iso).getTime() > now;
-}
-
-function effectivePlan(
-  role: UserRole,
-  status: AccountStatus,
-  sub: SubRow | undefined,
-  now: number,
-): PlanValue {
-  if (status !== "active") return "free";
-  if (role === "super_admin") return "premium";
-  const at = sub?.access_type ?? null;
-  const paidTier: PlanValue = sub?.plan === "premium" ? "premium" : "pro";
-  if (at === "lifetime_pro") return paidTier;
-  if (at === "complimentary_pro") return live(sub?.access_expires_at, now) ? paidTier : "free";
-  if (at === "promo") return periodLive(sub?.access_expires_at ?? sub?.current_period_end, now) ? paidTier : "free";
-  if (
-    (sub?.plan === "pro" || sub?.plan === "premium") &&
-    sub?.status === "active"
-  ) {
-    return periodLive(sub?.current_period_end, now) ? paidTier : "free";
-  }
-  return "free";
-}
 
 export async function listAdminUsers(): Promise<AdminUser[]> {
   const admin = createAdminClient();

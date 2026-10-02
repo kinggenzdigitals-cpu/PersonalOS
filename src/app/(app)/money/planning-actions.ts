@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 import { addWeeks, addMonths, addYears, format } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { checkCap } from "@/lib/plan-guard";
-import { getProfile } from "@/lib/auth";
+import { getProfile, requireActiveUser } from "@/lib/auth";
 import { localDateKey } from "@/lib/date";
-import { isSchemaMissing, migrationRequired } from "@/lib/supabase/errors";
+import { friendlyDbError, isSchemaMissing, migrationRequired } from "@/lib/supabase/errors";
 import type { BillFrequency, CategoryKind } from "@/lib/supabase/types";
 
 export type ActionResult =
@@ -14,11 +14,11 @@ export type ActionResult =
   | { ok: false; error: string };
 
 async function auth() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return { supabase, user };
+  // requireActiveUser() is null for a suspended / revoked account as well as a
+  // signed-out one, so callers refuse the write either way.
+  const active = await requireActiveUser();
+  if (active) return active;
+  return { supabase: await createClient(), user: null };
 }
 
 function revalidate() {
@@ -52,7 +52,7 @@ export async function upsertBudget(input: {
         .update(base)
         .eq("id", input.id));
     }
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this budget.") };
     revalidate();
     return { ok: true, id: input.id };
   }
@@ -94,7 +94,7 @@ export async function upsertBudget(input: {
       .single());
   }
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this budget.") };
   revalidate();
   return { ok: true, id: data?.id };
 }
@@ -103,7 +103,7 @@ export async function deleteBudget(id: string): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
   const { error } = await supabase.from("budgets").delete().eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't delete this budget.") };
   revalidate();
   return { ok: true };
 }
@@ -156,7 +156,7 @@ export async function setMonthlyBudget(input: {
     if (isSchemaMissing(error)) {
       return { ok: false, error: migrationRequired("Monthly budgets", "0011") };
     }
-    return { ok: false, error: error.message };
+    return { ok: false, error: friendlyDbError(error, "Couldn't save your monthly budget.") };
   }
   revalidate();
   return { ok: true };
@@ -205,7 +205,7 @@ export async function upsertBill(
       .from("bills")
       .update(row)
       .eq("id", input.id);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this bill.") };
     revalidate();
     return { ok: true, id: input.id };
   }
@@ -224,7 +224,7 @@ export async function upsertBill(
     .insert({ user_id: user.id, active: true, ...row })
     .select("id")
     .single();
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this bill.") };
   revalidate();
   return { ok: true, id: data.id };
 }
@@ -233,7 +233,7 @@ export async function deleteBill(id: string): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
   const { error } = await supabase.from("bills").delete().eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't delete this bill.") };
   revalidate();
   return { ok: true };
 }
@@ -275,7 +275,7 @@ export async function markBillPaid(input: {
     .eq("id", input.billId)
     .single();
   if (billErr || !bill) {
-    return { ok: false, error: billErr?.message ?? "Bill not found." };
+    return { ok: false, error: friendlyDbError(billErr, "Bill not found.") };
   }
 
   const kind = bill.kind === "income" ? "income" : "expense";
@@ -295,7 +295,7 @@ export async function markBillPaid(input: {
     })
     .select("id")
     .single();
-  if (txErr) return { ok: false, error: txErr.message };
+  if (txErr) return { ok: false, error: friendlyDbError(txErr, "Couldn't record this payment.") };
 
   // 2. Record the payment. This is the idempotency key — a unique index on
   //    (user_id, bill_id, paid_for_date) rejects a double-submit. If it fails
@@ -315,7 +315,7 @@ export async function markBillPaid(input: {
         error: "This bill is already marked paid for that date.",
       };
     }
-    return { ok: false, error: payErr.message };
+    return { ok: false, error: friendlyDbError(payErr, "Couldn't record this payment.") };
   }
 
   // 3. Advance the due date (or close a one-off).

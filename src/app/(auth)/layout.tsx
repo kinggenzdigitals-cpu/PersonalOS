@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+// Sign-in and password pages are utilities, not search results. The pages
+// here set only `title`, so they inherit this (metadata merges shallowly).
+// Keep these paths out of robots.txt's disallow list: a crawler that may not
+// fetch a page never reads its noindex.
+export const metadata: Metadata = { robots: { index: false, follow: true } };
 
 export default function AuthLayout({
   children,

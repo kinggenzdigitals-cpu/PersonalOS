@@ -106,6 +106,7 @@ export function NetWorthItemForm({
 
   async function remove() {
     if (!initial) return;
+    if (!window.confirm(`Delete this ${type}? This can't be undone.`)) return;
     setSaving(true);
     const result = isAsset
       ? await deleteAsset(initial.id)
@@ -134,9 +135,9 @@ export function NetWorthItemForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Type</Label>
+        <Label htmlFor="nw-kind">Type</Label>
         <Select value={kind} onValueChange={setKind}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger id="nw-kind" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -174,8 +175,10 @@ export function NetWorthItemForm({
             className="text-error hover:text-error"
             onClick={remove}
             disabled={saving}
+            aria-label={`Delete ${type}`}
+            title={`Delete ${type}`}
           >
-            <Trash2Icon className="size-4" />
+            <Trash2Icon className="size-4" aria-hidden />
           </Button>
         )}
         <Button className="flex-1" onClick={save} disabled={saving}>

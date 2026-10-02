@@ -103,6 +103,7 @@ export function EventForm({
 
   async function remove() {
     if (!initial) return;
+    if (!window.confirm("Delete this event? This can't be undone.")) return;
     setSaving(true);
     const result = await deleteEvent(initial.id);
     if (!result.ok) {
@@ -129,9 +130,9 @@ export function EventForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Type</Label>
+        <Label htmlFor="event-kind">Type</Label>
         <Select value={kind} onValueChange={(v) => setKind(v as CalendarEventKind)}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger id="event-kind" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -213,8 +214,10 @@ export function EventForm({
             className="text-error hover:text-error"
             onClick={remove}
             disabled={saving}
+            aria-label="Delete event"
+            title="Delete event"
           >
-            <Trash2Icon className="size-4" />
+            <Trash2Icon className="size-4" aria-hidden />
           </Button>
         )}
         <Button className="flex-1" onClick={save} disabled={saving}>

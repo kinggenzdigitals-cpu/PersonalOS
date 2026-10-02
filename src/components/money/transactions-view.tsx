@@ -104,6 +104,10 @@ export function TransactionsView({
     initialFilters?.categoryId ?? "all",
   );
   const [search, setSearch] = React.useState(initialFilters?.search ?? "");
+  // What the list is actually filtered by. `search` follows every keystroke;
+  // this trails it by 300ms so typing "groceries" is one fetch, not nine, and
+  // a whitespace-only edit is no new fetch at all.
+  const [debouncedSearch, setDebouncedSearch] = React.useState(search.trim());
   const [fromDate, setFromDate] = React.useState(
     initialFilters?.fromDate ?? "",
   );
@@ -116,12 +120,20 @@ export function TransactionsView({
   const [loading, setLoading] = React.useState(false);
   const [selected, setSelected] = React.useState<Transaction | null>(null);
 
+  React.useEffect(() => {
+    const handle = window.setTimeout(
+      () => setDebouncedSearch(search.trim()),
+      300,
+    );
+    return () => window.clearTimeout(handle);
+  }, [search]);
+
   const filters = React.useMemo(
     () => ({
       type: type === "all" ? undefined : (type as TransactionType),
       accountId: accountId === "all" ? undefined : accountId,
       categoryId: categoryId === "all" ? undefined : categoryId,
-      search: search.trim() || undefined,
+      search: debouncedSearch || undefined,
       from: fromDate
         ? fromZonedTime(`${fromDate}T00:00:00`, timezone).toISOString()
         : undefined,
@@ -129,7 +141,7 @@ export function TransactionsView({
         ? fromZonedTime(`${toDate}T23:59:59.999`, timezone).toISOString()
         : undefined,
     }),
-    [type, accountId, categoryId, search, fromDate, timezone, toDate],
+    [type, accountId, categoryId, debouncedSearch, fromDate, timezone, toDate],
   );
 
   const anyFilter =
@@ -178,6 +190,9 @@ export function TransactionsView({
     setAccountId("all");
     setCategoryId("all");
     setSearch("");
+    // Skip the debounce, or the other filters would clear first and fetch
+    // once with the old search term still applied.
+    setDebouncedSearch("");
     setFromDate("");
     setToDate("");
   }
@@ -226,6 +241,7 @@ export function TransactionsView({
     setAccountId(saved.accountId);
     setCategoryId(saved.categoryId);
     setSearch(saved.search);
+    setDebouncedSearch(saved.search.trim());
     setFromDate(saved.fromDate);
     setToDate(saved.toDate);
   }
@@ -546,6 +562,21 @@ export function TransactionsView({
 
       {/* List */}
       <div className="p-4 sm:p-5">
+        {/* Announces each settled result (filter change, saved filter, Clear,
+            Load more) to screen readers. Always mounted so it is a live
+            region before it changes; blank while a fetch is in flight so the
+            same count twice in a row is still read out. */}
+        <p className="sr-only" role="status" aria-live="polite">
+          {loading
+            ? ""
+            : items.length === 0
+              ? anyFilter
+                ? "No matching transactions"
+                : "No transactions yet"
+              : `${items.length}${hasMore ? "+" : ""} transaction${
+                  items.length === 1 && !hasMore ? "" : "s"
+                } shown`}
+        </p>
         {items.length === 0 ? (
         <EmptyState
           icon={WalletIcon}
@@ -652,7 +683,9 @@ export function TransactionsView({
                     action: {
                       label: "Undo",
                       onClick: async () => {
-                        const r = await restoreTransaction(snapshot);
+                        // res.undo lets the server put the original row back,
+                        // id and all, instead of re-entering this copy.
+                        const r = await restoreTransaction(snapshot, res.undo);
                         if (!r.ok) return toast.error(r.error);
                         refetch();
                         router.refresh();

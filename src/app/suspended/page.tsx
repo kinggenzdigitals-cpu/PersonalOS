@@ -18,9 +18,9 @@ export default async function SuspendedPage() {
           think this is a mistake, please contact support at{" "}
           <a
             className="text-brand underline-offset-4 hover:underline"
-            href="mailto:kingfmgonzales@gmail.com"
+            href="mailto:kinggenzdigitals@gmail.com"
           >
-            kingfmgonzales@gmail.com
+            kinggenzdigitals@gmail.com
           </a>
           .
         </p>

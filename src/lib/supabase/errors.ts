@@ -34,3 +34,45 @@ export function isSchemaMissing(error: MaybeError): boolean {
 export function migrationRequired(feature: string, migration: string): string {
   return `${feature} isn't set up on the database yet. Apply migration ${migration}, then try again.`;
 }
+
+/**
+ * Plain-language text for a failed database call, for a user-facing action
+ * result.
+ *
+ * PostgREST's error.message is written for developers ("numeric field
+ * overflow", "new row violates row-level security policy for table ..."), so
+ * passing it to a toast told the user nothing they could act on and named
+ * tables and constraints along the way. Known SQLSTATEs get specific copy;
+ * anything else gets the caller's action-specific `fallback`.
+ *
+ * The raw code and message are logged server-side. `details` and `hint` are
+ * left out on purpose: that is where Postgres echoes the offending row's values.
+ */
+export function friendlyDbError(error: MaybeError, fallback: string): string {
+  if (!error) return fallback;
+  console.error("[db]", fallback, error.code ?? "", error.message ?? "");
+
+  if (isSchemaMissing(error)) {
+    return "This feature isn't set up on the database yet. Please try again later.";
+  }
+  switch (error.code) {
+    case "22003": // numeric_value_out_of_range — past numeric(12,2)
+      return "That amount is too large.";
+    case "23505": // unique_violation
+      return "That already exists.";
+    case "23503": // foreign_key_violation — deleting a row others point at, or
+      // pointing at a row that's gone. Postgres words the first "update or
+      // delete on table ...", the second "insert or update on table ...".
+      return /update or delete on table/i.test(error.message ?? "")
+        ? "This is still in use elsewhere, so it can't be removed."
+        : "Something this refers to no longer exists. Refresh and try again.";
+    case "23502": // not_null_violation
+    case "23514": // check_violation
+    case "22P02": // invalid_text_representation (bad enum, uuid or number)
+      return "One of the values isn't valid. Check it and try again.";
+    case "42501": // insufficient_privilege, including an RLS refusal
+      return "You don't have permission to do that.";
+    default:
+      return fallback;
+  }
+}

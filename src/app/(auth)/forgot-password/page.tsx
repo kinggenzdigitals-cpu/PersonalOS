@@ -12,6 +12,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { OtpInput } from "@/components/auth/otp-input";
 import { createClient } from "@/lib/supabase/client";
 import { friendlyAuthError } from "@/lib/auth-errors";
+import { recordLogin } from "@/app/auth/actions";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -163,6 +164,7 @@ function ForgotPassword() {
         return;
       }
       toast.success("Password updated.");
+      await recordLogin();
       router.replace("/home");
       router.refresh();
     } catch (err) {

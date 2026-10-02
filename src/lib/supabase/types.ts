@@ -388,7 +388,9 @@ export type PromoCode = {
   created_by: string | null;
 } & Timestamps;
 
-export type PromoRedemption = Owned & {
+export type PromoRedemption = Omit<Owned, "user_id"> & {
+  /** Null once the account is deleted (0029); the row still counts toward the cap. */
+  user_id: string | null;
   promo_code_id: string;
   status: "pending" | "active" | "expired" | "canceled";
   amount_paid: number | null;
@@ -397,6 +399,14 @@ export type PromoRedemption = Owned & {
   access_starts_at: string | null;
   access_expires_at: string | null;
 } & Timestamps;
+
+/** Service role only (0029): the throttle on redeemPromoCode. */
+export type PromoRedeemAttempt = {
+  id: number;
+  user_id: string;
+  valid_code: boolean;
+  attempted_at: string;
+};
 
 export type AccountDevice = Owned & {
   device_token_hash: string;
@@ -440,7 +450,10 @@ export type Invitation = {
 
 export type AdminAuditLog = {
   id: string;
-  admin_id: string;
+  /** Null once the admin's auth user is deleted (0028); admin_label keeps who it was. */
+  admin_id: string | null;
+  /** The admin's email, stamped by a database trigger on insert (0028). */
+  admin_label: string | null;
   target_user_id: string | null;
   action: string;
   detail: Record<string, unknown> | null;
@@ -590,6 +603,11 @@ export type Database = {
         >,
         Partial<PromoRedemption>
       >;
+      promo_redeem_attempts: TableShape<
+        PromoRedeemAttempt,
+        { user_id: string } & Partial<Omit<PromoRedeemAttempt, "id" | "user_id">>,
+        Partial<Omit<PromoRedeemAttempt, "id">>
+      >;
       account_devices: TableShape<
         AccountDevice,
         { user_id: string; device_token_hash: string; name: string } & Partial<
@@ -610,7 +628,9 @@ export type Database = {
       feedback: TableShape<Feedback, InsertOf<Feedback>, UpdateOf<Feedback>>;
       admin_audit_log: TableShape<
         AdminAuditLog,
-        Omit<AdminAuditLog, "id" | "created_at"> & {
+        // admin_label is left out on purpose: the trigger sets it, and writing it
+        // from the app would break every audit insert until 0028 is applied.
+        Omit<AdminAuditLog, "id" | "created_at" | "admin_label"> & {
           id?: string;
           created_at?: string;
         },

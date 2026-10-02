@@ -76,6 +76,8 @@ export function HabitForm({
 
   async function remove() {
     if (!initial) return;
+    // Deleting a habit cascades to its whole check-in history.
+    if (!window.confirm("Delete this habit and all its check-ins? This can't be undone.")) return;
     setSaving(true);
     const result = await deleteHabit(initial.id);
     if (!result.ok) {
@@ -102,12 +104,12 @@ export function HabitForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Life area</Label>
+        <Label htmlFor="habit-life-area">Life area</Label>
         <Select
           value={lifeArea}
           onValueChange={(v) => setLifeArea(v as LifeArea)}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger id="habit-life-area" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -127,8 +129,14 @@ export function HabitForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Days</Label>
-        <div className="flex flex-wrap gap-1.5">
+        <Label id="habit-days-label" asChild>
+          <span>Days</span>
+        </Label>
+        <div
+          role="group"
+          aria-labelledby="habit-days-label"
+          className="flex flex-wrap gap-1.5"
+        >
           {WEEKDAYS.map((w) => {
             const active = days.includes(w.value);
             return (
@@ -172,8 +180,10 @@ export function HabitForm({
             className="text-error hover:text-error"
             onClick={remove}
             disabled={saving}
+            aria-label="Delete habit"
+            title="Delete habit"
           >
-            <Trash2Icon className="size-4" />
+            <Trash2Icon className="size-4" aria-hidden />
           </Button>
         )}
         <Button className="flex-1" onClick={save} disabled={saving}>

@@ -4,13 +4,14 @@
 
 - Link the production Vercel project to the correct Git repository.
 - Add the custom domain in Vercel and set `NEXT_PUBLIC_SITE_URL` to the final `https://` URL.
+- Point an external uptime monitor at `https://<final-domain>/api/health` (see `docs/DISASTER_RECOVERY.md`).
 - Enable Vercel Web Analytics for the project. The app already renders `@vercel/analytics` in the root layout.
 - Enable Speed Insights/performance monitoring only when the selected plan supports it, then set `NEXT_PUBLIC_ENABLE_SPEED_INSIGHTS=true`.
 - Review the current Vercel Hobby plan before collecting payments. A paid finance product should use a plan that provides the needed observability, support, team access, deployment controls, and commercial-use limits for the owner’s launch risk.
 
 ## Supabase
 
-- Apply every migration in `supabase/migrations` through `0026_launch_readiness.sql`.
+- Apply every migration in `supabase/migrations`, in filename order (`DEPLOY.md` step 2 lists them).
 - Confirm Google auth is enabled and the production callback URL points to `/auth/callback` on the final domain.
 - Enable Supabase Auth identity linking/manual linking if you want existing email/password users to connect Google from Account Settings.
 - Confirm RLS is enabled on owner data tables.

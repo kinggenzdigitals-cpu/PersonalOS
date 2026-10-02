@@ -62,7 +62,7 @@ export function MoneyAmountInput({
         onChange={(e) => handle(e.target.value)}
         placeholder="0.00"
         aria-label="Amount"
-        className="tnum w-40 border-0 bg-transparent text-center font-display text-5xl tracking-tight outline-none placeholder:text-muted-foreground/40 focus:ring-0"
+        className="tnum w-40 rounded-lg border-0 bg-transparent text-center font-display text-5xl tracking-tight outline-hidden placeholder:text-muted-foreground/40 focus-visible:ring-2 focus-visible:ring-ring"
       />
     </div>
   );

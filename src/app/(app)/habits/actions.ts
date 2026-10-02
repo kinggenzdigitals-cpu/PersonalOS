@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { friendlyDbError } from "@/lib/supabase/errors";
+import { requireActiveUser } from "@/lib/auth";
 import { checkCap } from "@/lib/plan-guard";
 import { nextStatus } from "@/lib/habits";
 import { getHabitsBoard, type HabitBoardItem } from "@/lib/queries/habits";
@@ -9,11 +11,9 @@ import type { HabitStatus, LifeArea } from "@/lib/supabase/types";
 
 /** Fresh habit board (with recomputed streaks) for optimistic UIs. */
 export async function refreshHabitsBoard(): Promise<HabitBoardItem[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
+  const active = await requireActiveUser();
+  if (!active) return [];
+  const { supabase, user } = active;
   const { data: profile } = await supabase
     .from("profiles")
     .select("timezone")
@@ -27,11 +27,11 @@ export type ActionResult =
   | { ok: false; error: string };
 
 async function auth() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return { supabase, user };
+  // requireActiveUser() is null for a suspended / revoked account as well as a
+  // signed-out one, so callers refuse the write either way.
+  const active = await requireActiveUser();
+  if (active) return active;
+  return { supabase: await createClient(), user: null };
 }
 
 function revalidate() {
@@ -96,7 +96,7 @@ export async function upsertHabit(
       .from("habits")
       .update(row)
       .eq("id", input.id);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this habit.") };
     revalidate();
     return { ok: true, id: input.id };
   }
@@ -119,7 +119,7 @@ export async function upsertHabit(
     .insert({ user_id: user.id, sort_order: count ?? 0, ...row })
     .select("id")
     .single();
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this habit.") };
   revalidate();
   return { ok: true, id: data.id };
 }
@@ -134,7 +134,7 @@ export async function setHabitArchived(
     .from("habits")
     .update({ active: !archived })
     .eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't update this habit.") };
   revalidate();
   return { ok: true };
 }
@@ -143,7 +143,7 @@ export async function deleteHabit(id: string): Promise<ActionResult> {
   const { supabase, user } = await auth();
   if (!user) return { ok: false, error: "You're not signed in." };
   const { error } = await supabase.from("habits").delete().eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't delete this habit.") };
   revalidate();
   return { ok: true };
 }
@@ -173,7 +173,7 @@ export async function cycleHabitLog(
         .from("habit_logs")
         .delete()
         .eq("id", existing.id);
-      if (error) return { ok: false, error: error.message };
+      if (error) return { ok: false, error: friendlyDbError(error, "Couldn't log this habit.") };
     }
     revalidate();
     return { ok: true, status: null };
@@ -188,7 +188,7 @@ export async function cycleHabitLog(
     },
     { onConflict: "habit_id,log_date" },
   );
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't log this habit.") };
   revalidate();
   return { ok: true, status: next };
 }
@@ -208,7 +208,7 @@ export async function setHabitLog(
       .delete()
       .eq("habit_id", habitId)
       .eq("log_date", logDate);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: friendlyDbError(error, "Couldn't log this habit.") };
     revalidate();
     return { ok: true, status: null };
   }
@@ -217,7 +217,7 @@ export async function setHabitLog(
     { user_id: user.id, habit_id: habitId, log_date: logDate, status },
     { onConflict: "habit_id,log_date" },
   );
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't log this habit.") };
   revalidate();
   return { ok: true, status };
 }

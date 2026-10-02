@@ -1,11 +1,30 @@
 import type { Metadata } from "next";
 import { LegalShell } from "@/components/marketing/legal-shell";
+import { TERMS_UPDATED, legalDateLabel } from "@/lib/legal-dates";
+import { BASE_OPEN_GRAPH, SHARED_OG_IMAGE } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Terms of Service" };
+const DESCRIPTION =
+  "The terms that govern your use of Finance & Habit Tracker, including plans, billing and refunds.";
+
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description: DESCRIPTION,
+  alternates: { canonical: "/terms" },
+  openGraph: {
+    ...BASE_OPEN_GRAPH,
+    title: "Terms of Service · Finance & Habit Tracker",
+    description: DESCRIPTION,
+    url: "/terms",
+    images: [SHARED_OG_IMAGE],
+  },
+};
 
 export default function TermsPage() {
   return (
-    <LegalShell title="Terms of Service" updated="September 2026">
+    <LegalShell
+      title="Terms of Service"
+      updated={legalDateLabel(TERMS_UPDATED)}
+    >
       <section>
         <p>
           Welcome to Finance & Habit Tracker. By creating an account or using the service, you
@@ -52,9 +71,8 @@ export default function TermsPage() {
           <strong>Subscriptions are prepaid</strong> for the billing period you
           choose. No card is stored and nothing renews automatically — your
           access continues until the end of the period you paid for and then
-          returns to Free unless you choose to renew. You can turn off future
-          renewal at any time from your account and keep the access you have
-          already paid for until it ends.
+          returns to Free unless you choose to renew. There is nothing to
+          cancel.
         </p>
         <p>
           <strong>Premium Lifetime</strong> is a single payment for Premium-tier
@@ -98,7 +116,7 @@ export default function TermsPage() {
         <p>
           We may update these terms; we&apos;ll note the date above. Questions?
           Reach us at{" "}
-          <a href="mailto:kingfmgonzales@gmail.com">kingfmgonzales@gmail.com</a>.
+          <a href="mailto:kinggenzdigitals@gmail.com">kinggenzdigitals@gmail.com</a>.
         </p>
         <p>
           These Terms are governed by the laws of the Republic of the

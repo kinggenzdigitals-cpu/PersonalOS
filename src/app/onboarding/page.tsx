@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { isAccountLocked } from "@/lib/account-status";
 import { OnboardingWizard } from "./onboarding-wizard";
 
 export const metadata: Metadata = { title: "Welcome" };
@@ -15,10 +16,13 @@ export default async function OnboardingPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, onboarded")
+    .select("display_name, onboarded, status")
     .eq("user_id", user.id)
     .single();
 
+  // Same status rung as lib/auth.ts, ahead of the onboarded check: a
+  // suspended / revoked account must not finish onboarding and write rows.
+  if (isAccountLocked(profile?.status)) redirect("/suspended");
   if (profile?.onboarded) redirect("/home");
 
   const suggestedName =

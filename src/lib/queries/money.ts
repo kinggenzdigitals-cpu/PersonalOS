@@ -1,6 +1,7 @@
 import { addDays, format, subMonths } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { monthRange } from "@/lib/date";
+import { isUuid } from "@/lib/billing-reference";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import type {
   Account,
@@ -69,7 +70,9 @@ export async function getTransactions(
     .select("*")
     .order("occurred_at", { ascending: false });
 
-  if (filters.accountId) {
+  // `?account=` comes straight from the URL and .or() parses its own commas,
+  // so anything but a uuid could smuggle in extra filter clauses. Drop it.
+  if (filters.accountId && isUuid(filters.accountId)) {
     query = query.or(
       `account_id.eq.${filters.accountId},to_account_id.eq.${filters.accountId}`,
     );

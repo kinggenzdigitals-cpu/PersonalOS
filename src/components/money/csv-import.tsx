@@ -248,9 +248,9 @@ export function CsvImport() {
         </div>
 
         <div className="mt-4 space-y-1.5">
-          <Label>Import into account</Label>
+          <Label htmlFor="csv-account">Import into account</Label>
           <Select value={accountId} onValueChange={setAccountId}>
-            <SelectTrigger className="w-full sm:w-72">
+            <SelectTrigger id="csv-account" className="w-full sm:w-72">
               <SelectValue placeholder="Choose an account" />
             </SelectTrigger>
             <SelectContent>
@@ -269,7 +269,7 @@ export function CsvImport() {
         <div className="grid gap-3 sm:grid-cols-2">
           {FIELDS.map((f) => (
             <div key={f.key} className="space-y-1">
-              <Label className="text-xs">
+              <Label htmlFor={`csv-col-${f.key}`} className="text-xs">
                 {f.label}{" "}
                 <span className="font-normal text-muted-foreground">
                   · {f.hint}
@@ -281,7 +281,7 @@ export function CsvImport() {
                   setMap({ ...map, [f.key]: v === "none" ? null : Number(v) })
                 }
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger id={`csv-col-${f.key}`} className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

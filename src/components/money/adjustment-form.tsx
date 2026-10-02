@@ -81,9 +81,9 @@ export function AdjustmentForm({ onDone }: { onDone: () => void }) {
       </div>
 
       <div className="space-y-1.5">
-        <Label>Account</Label>
+        <Label htmlFor="adj-account">Account</Label>
         <Select value={accountId} onValueChange={setAccountId}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger id="adj-account" className="w-full">
             <SelectValue placeholder="Account" />
           </SelectTrigger>
           <SelectContent>

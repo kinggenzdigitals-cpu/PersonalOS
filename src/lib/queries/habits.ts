@@ -1,6 +1,7 @@
 import { addDays, format } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { localDateKey } from "@/lib/date";
+import { fetchAllPages } from "@/lib/fetch-all-pages";
 import {
   currentStreak,
   longestStreak,
@@ -33,19 +34,31 @@ async function fetchHabitsAndLogs(timezone: string, lookbackDays = 400) {
   const today = localToday(timezone);
   const since = format(addDays(today, -lookbackDays), "yyyy-MM-dd");
 
-  const [{ data: habits }, { data: logs }] = await Promise.all([
+  const [{ data: habits }, { rows: logs, error: logsError }] = await Promise.all([
     supabase
       .from("habits")
       .select("*")
       .eq("active", true)
       .order("sort_order")
       .returns<Habit[]>(),
-    supabase
-      .from("habit_logs")
-      .select("habit_id, log_date, status")
-      .gte("log_date", since)
-      .returns<Pick<HabitLog, "habit_id" | "log_date" | "status">[]>(),
+    // Ranged pages, not one select: PostgREST caps an un-ranged read at
+    // max-rows (1000) with no error, and a year of daily logs passes that —
+    // the rows it dropped were often the newest, so today read as unlogged
+    // and streaks reset. `id` makes the order total so pages can't overlap.
+    fetchAllPages((from, to) =>
+      supabase
+        .from("habit_logs")
+        .select("habit_id, log_date, status")
+        .gte("log_date", since)
+        .order("log_date", { ascending: false })
+        .order("id")
+        .range(from, to)
+        .returns<Pick<HabitLog, "habit_id" | "log_date" | "status">[]>(),
+    ),
   ]);
+  if (logsError) {
+    console.error("[fetchHabitsAndLogs] habit_logs query failed:", logsError.message);
+  }
 
   const byHabit = new Map<
     string,

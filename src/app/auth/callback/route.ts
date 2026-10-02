@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isBannedAuthError } from "@/lib/auth-errors";
 import { safeNextPath } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
 import { recordLogin } from "@/app/auth/actions";
@@ -59,9 +60,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/auth/auth-code-error`);
   }
 
+  // A suspended or revoked account is banned in GoTrue, so the provider and
+  // both exchanges below refuse it with "User is banned". "That link expired,
+  // request another" would be wrong — no new link can work — and /suspended
+  // needs a session the user no longer has. Show the suspension copy instead.
+  function suspended() {
+    return NextResponse.redirect(`${origin}/auth/auth-code-error?reason=suspended`);
+  }
+
   // The user cancelled consent, or the link was expired/already used.
   if (errorDescription) {
     console.error("[auth/callback] provider error");
+    if (isBannedAuthError(errorCode, errorDescription)) return suspended();
     return fail(errorCode === "otp_expired" ? "expired" : "invalid");
   }
 
@@ -84,12 +94,14 @@ export async function GET(request: NextRequest) {
     if (error) {
       // Log a safe message only — never the token or query string.
       console.error("[auth/callback] otp verification failed");
+      if (isBannedAuthError(error.code, error.message)) return suspended();
       return fail("expired");
     }
   } else if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
       console.error("[auth/callback] code exchange failed");
+      if (isBannedAuthError(error.code, error.message)) return suspended();
       return fail("expired");
     }
   }

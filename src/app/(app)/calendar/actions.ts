@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireActiveUser } from "@/lib/auth";
+import { friendlyDbError } from "@/lib/supabase/errors";
 import { getCalendarRange, type CalendarData } from "@/lib/queries/calendar";
 import type { CalendarEventKind } from "@/lib/supabase/types";
 
@@ -10,10 +12,11 @@ export type ActionResult =
   | { ok: false; error: string };
 
 async function ctx() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // requireActiveUser() is null for a suspended / revoked account as well as a
+  // signed-out one, so callers refuse the write either way.
+  const active = await requireActiveUser();
+  const supabase = active?.supabase ?? (await createClient());
+  const user = active?.user ?? null;
   let timezone = "Asia/Manila";
   if (user) {
     const { data } = await supabase
@@ -63,7 +66,7 @@ export async function upsertEvent(
       .from("calendar_events")
       .update(row)
       .eq("id", input.id);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this event.") };
     revalidate();
     return { ok: true, id: input.id };
   }
@@ -73,7 +76,7 @@ export async function upsertEvent(
     .insert({ user_id: user.id, ...row })
     .select("id")
     .single();
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't save this event.") };
   revalidate();
   return { ok: true, id: data.id };
 }
@@ -85,7 +88,7 @@ export async function deleteEvent(id: string): Promise<ActionResult> {
     .from("calendar_events")
     .delete()
     .eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyDbError(error, "Couldn't delete this event.") };
   revalidate();
   return { ok: true };
 }

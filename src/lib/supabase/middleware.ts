@@ -17,6 +17,7 @@ const PUBLIC_PATHS = [
   "/sitemap.xml",
   "/api/webhooks",
   "/api/devices",
+  "/api/health",
   "/device-limit",
   "/invite",
 ];

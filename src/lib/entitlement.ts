@@ -6,6 +6,7 @@ import {
   ensureSuperAdminRole,
   revokeBootstrapSuperAdmin,
 } from "@/lib/admin/bootstrap";
+import { resolvePlan } from "@/lib/entitlement-core";
 import type { PlanId } from "@/lib/plans";
 import type {  AccountStatus,
   RoleSource,
@@ -259,36 +260,10 @@ export async function getEntitlement(): Promise<Entitlement> {
       >
     >();
 
-  const now = Date.now();
-  // A null expiry means "no end date" — correct for a granted access_type.
-  const notExpired = (iso: string | null | undefined) =>
-    !iso || new Date(iso).getTime() > now;
-  // A PAID period must have a real end date. Treating null as "never expires"
-  // meant a row left at plan='pro'/status='active' with no period (which is
-  // exactly what admin "Remove Pro access" used to leave behind) granted the
-  // tier forever, to someone who never paid.
-  const periodLive = (iso: string | null | undefined) =>
-    !!iso && new Date(iso).getTime() > now;
-
-  // The paid tier stored on the subscription row ("pro" | "premium").
-  const paidTier: PlanId = sub?.plan === "premium" ? "premium" : "pro";
-
-  let plan: PlanId = "free";
+  // The rule per access_type lives in lib/entitlement-core.ts, shared with the
+  // admin user list and pinned by scripts/entitlement-core.test.cjs.
+  const plan: PlanId = resolvePlan(sub, Date.now());
   const accessType = sub?.access_type ?? null;
-  if (sub) {
-    if (accessType === "lifetime_pro") {
-      plan = paidTier;
-    } else if (accessType === "complimentary_pro") {
-      plan = notExpired(sub.access_expires_at) ? paidTier : "free";
-    } else if (accessType === "promo") {
-      plan = periodLive(sub.access_expires_at) ? paidTier : "free";
-    } else if (
-      (sub.plan === "pro" || sub.plan === "premium") &&
-      sub.status === "active"
-    ) {
-      plan = periodLive(sub.current_period_end) ? paidTier : "free";
-    }
-  }
 
   return {
     userId: user.id,
